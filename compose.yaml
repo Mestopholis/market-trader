@@ -1,0 +1,30 @@
+services:
+  api:
+    build:
+      context: ./apps/api
+    environment:
+      MARKET_TRADER_ENVIRONMENT: ${MARKET_TRADER_ENVIRONMENT:-local}
+      MARKET_TRADER_TRADING_MODE: paper
+      MARKET_TRADER_APP_VERSION: ${MARKET_TRADER_APP_VERSION:-0.1.0}
+      MARKET_TRADER_DATABASE_URL: sqlite:////data/market_trader.db
+    volumes:
+      - market-trader-data:/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health')"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ./apps/web
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8080:8080"
+    restart: unless-stopped
+
+volumes:
+  market-trader-data:
