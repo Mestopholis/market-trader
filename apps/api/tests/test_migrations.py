@@ -31,3 +31,12 @@ def test_initial_migration_creates_domain_tables(tmp_path: Path) -> None:
         }.issubset(set(inspector.get_table_names()))
     finally:
         engine.dispose()
+
+
+def test_initial_migration_matches_orm_metadata(tmp_path: Path) -> None:
+    database_url = f"sqlite:///{tmp_path / 'metadata.db'}"
+    config = alembic_config(database_url)
+
+    command.upgrade(config, "head")
+
+    command.check(config)

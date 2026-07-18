@@ -37,7 +37,6 @@ def upgrade() -> None:
         sa.Column("metadata_payload", sa.JSON(), nullable=False),
         sa.Column("metadata_schema_version", sa.Integer(), nullable=False),
         _correlation_column(),
-        sa.UniqueConstraint("display_symbol", name="uq_symbols_display_symbol"),
     )
     op.create_index("ix_symbols_display_symbol", "symbols", ["display_symbol"], unique=True)
     op.create_index("ix_symbols_correlation_id", "symbols", ["correlation_id"])

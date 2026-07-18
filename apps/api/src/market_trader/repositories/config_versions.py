@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from market_trader.db.models import ConfigurationVersionORM
@@ -90,7 +90,10 @@ class ConfigurationVersionRepository:
             .where(
                 ConfigurationVersionORM.configuration_key == configuration_key,
                 ConfigurationVersionORM.effective_at <= effective_at,
-                ConfigurationVersionORM.retired_at.is_(None),
+                or_(
+                    ConfigurationVersionORM.retired_at.is_(None),
+                    ConfigurationVersionORM.retired_at > effective_at,
+                ),
             )
             .order_by(ConfigurationVersionORM.effective_at.desc())
             .limit(1)

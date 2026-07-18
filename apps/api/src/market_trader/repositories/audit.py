@@ -73,14 +73,26 @@ class AuditRepository:
         )
         return [_to_domain(record) for record in records]
 
-    def list_by_subject(self, subject_type: str, subject_id: str) -> list[AuditEvent]:
-        records = self._session.scalars(
-            select(JournalEventORM)
-            .where(
-                JournalEventORM.subject_type == subject_type,
-                JournalEventORM.subject_id == subject_id,
+    def list_by_subject(
+        self,
+        subject_type: str,
+        subject_id: str,
+        *,
+        occurred_from: datetime | None = None,
+        occurred_to: datetime | None = None,
+    ) -> list[AuditEvent]:
+        statement = select(JournalEventORM).where(
+            JournalEventORM.subject_type == subject_type,
+            JournalEventORM.subject_id == subject_id,
+        )
+        if occurred_from is not None:
+            statement = statement.where(
+                JournalEventORM.occurred_at >= ensure_utc(occurred_from)
             )
-            .order_by(JournalEventORM.occurred_at, JournalEventORM.id)
+        if occurred_to is not None:
+            statement = statement.where(JournalEventORM.occurred_at <= ensure_utc(occurred_to))
+        records = self._session.scalars(
+            statement.order_by(JournalEventORM.occurred_at, JournalEventORM.id)
         )
         return [_to_domain(record) for record in records]
 

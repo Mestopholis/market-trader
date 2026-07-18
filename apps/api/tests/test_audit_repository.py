@@ -1,4 +1,4 @@
-from datetime import UTC
+from datetime import UTC, timedelta
 from pathlib import Path
 
 import pytest
@@ -75,5 +75,51 @@ def test_journal_events_reject_direct_update_and_delete(tmp_path: Path) -> None:
                 text("DELETE FROM journal_events WHERE id = :id"),
                 {"id": event.id},
             )
+    finally:
+        engine.dispose()
+
+
+def test_lists_subject_events_within_time_range(tmp_path: Path) -> None:
+    engine = migrated_engine(tmp_path)
+    first_at = utc_now()
+    second_at = first_at + timedelta(hours=2)
+    try:
+        with Session(engine) as session:
+            repository = AuditRepository(session)
+            first = repository.append(
+                AuditEventCreate(
+                    correlation_id="corr_range",
+                    event_type="fixture.first",
+                    actor_type="system",
+                    occurred_at=first_at,
+                    subject_type="fixture",
+                    subject_id="fixture_1",
+                    payload={"schema_version": 1},
+                    schema_version=1,
+                )
+            )
+            repository.append(
+                AuditEventCreate(
+                    correlation_id="corr_range",
+                    event_type="fixture.second",
+                    actor_type="system",
+                    occurred_at=second_at,
+                    subject_type="fixture",
+                    subject_id="fixture_1",
+                    payload={"schema_version": 1},
+                    schema_version=1,
+                )
+            )
+            session.commit()
+
+        with Session(engine) as session:
+            events = AuditRepository(session).list_by_subject(
+                "fixture",
+                "fixture_1",
+                occurred_from=first_at - timedelta(minutes=1),
+                occurred_to=first_at + timedelta(minutes=1),
+            )
+
+        assert [event.id for event in events] == [first.id]
     finally:
         engine.dispose()
