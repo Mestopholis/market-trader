@@ -318,4 +318,7 @@ Every milestone specification and implementation plan must identify:
 
 ## Next planning action
 
-Create and approve the Milestone 1 domain-storage-and-audit specification. Its implementation plan should establish the repository and migration boundaries that later milestones consume, without adding provider or broker behavior.
+Create and approve the Milestone 2 market-calendar-and-scheduling implementation
+plan. It should establish deterministic clock, XNYS calendar, market-state,
+entry-window, and schedule-planning boundaries without adding providers,
+background execution, or broker behavior.
