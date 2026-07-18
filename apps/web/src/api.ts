@@ -3,6 +3,7 @@ export type HealthResponse = {
   environment: string
   trading_mode: 'paper'
   version: string
+  database: 'ok' | 'unavailable'
 }
 
 export async function fetchHealth(signal?: AbortSignal): Promise<HealthResponse> {

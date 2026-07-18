@@ -15,6 +15,7 @@ test('shows an unmistakable paper mode banner', async () => {
         environment: 'local',
         trading_mode: 'paper',
         version: '0.1.0',
+        database: 'ok',
       }),
       { status: 200 },
     ),
@@ -24,6 +25,8 @@ test('shows an unmistakable paper mode banner', async () => {
 
   expect(await screen.findByRole('status')).toHaveTextContent('PAPER MODE')
   expect(screen.getByText(/No live orders can be submitted/i)).toBeInTheDocument()
+  expect(screen.getByText('Database')).toBeInTheDocument()
+  expect(screen.getByText('ok')).toBeInTheDocument()
 })
 
 test('shows a safe unavailable state when health fails', async () => {

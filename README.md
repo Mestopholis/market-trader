@@ -12,6 +12,13 @@
 
 The foundation is paper-only and contains no broker credentials or order submission.
 
+## Milestone 1 storage
+
+Milestone 1 adds versioned SQLite storage, Alembic migrations, audited repository
+boundaries, and a local backup/restore fixture. API containers migrate the database
+before startup. See the [Milestone 1 storage guide](docs/milestone-1-storage.md) for
+macOS/Linux setup, verification, reset, and safety details.
+
 ## Foundation boundary
 
 The foundation milestone proves local startup, paper-only configuration, health-state visibility and CI. Market data, scanning, brokerage authentication, account access and order submission require separate reviewed implementation plans.

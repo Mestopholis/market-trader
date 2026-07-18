@@ -1,0 +1,125 @@
+from datetime import UTC, timedelta
+from pathlib import Path
+
+import pytest
+from sqlalchemy import text
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
+
+from market_trader.domain.time import utc_now
+from market_trader.repositories.audit import AuditEventCreate, AuditRepository
+from tests.db_helpers import migrated_engine
+
+
+def test_appends_and_fetches_journal_event(tmp_path: Path) -> None:
+    engine = migrated_engine(tmp_path)
+    try:
+        with Session(engine) as session:
+            repo = AuditRepository(session)
+            event = repo.append(
+                AuditEventCreate(
+                    correlation_id="corr_1",
+                    event_type="symbol.created",
+                    actor_type="system",
+                    occurred_at=utc_now(),
+                    subject_type="symbol",
+                    subject_id="sym_1",
+                    payload={"schema_version": 1, "symbol": "SPY"},
+                    schema_version=1,
+                )
+            )
+            session.commit()
+
+        with Session(engine) as session:
+            repo = AuditRepository(session)
+            stored = repo.get(event.id)
+            by_correlation = repo.list_by_correlation_id("corr_1")
+            by_subject = repo.list_by_subject("symbol", "sym_1")
+
+        assert stored == event
+        assert [item.id for item in by_correlation] == [event.id]
+        assert [item.id for item in by_subject] == [event.id]
+        assert stored is not None
+        assert stored.occurred_at.tzinfo is UTC
+        assert stored.recorded_at.tzinfo is UTC
+    finally:
+        engine.dispose()
+
+
+def test_journal_events_reject_direct_update_and_delete(tmp_path: Path) -> None:
+    engine = migrated_engine(tmp_path)
+    try:
+        with Session(engine) as session:
+            event = AuditRepository(session).append(
+                AuditEventCreate(
+                    correlation_id="corr_2",
+                    event_type="symbol.created",
+                    actor_type="system",
+                    occurred_at=utc_now(),
+                    subject_type="symbol",
+                    subject_id="sym_2",
+                    payload={"schema_version": 1},
+                    schema_version=1,
+                )
+            )
+            session.commit()
+
+        with pytest.raises(IntegrityError, match="append-only"), engine.begin() as connection:
+            connection.execute(
+                text("UPDATE journal_events SET event_type = 'changed' WHERE id = :id"),
+                {"id": event.id},
+            )
+
+        with pytest.raises(IntegrityError, match="append-only"), engine.begin() as connection:
+            connection.execute(
+                text("DELETE FROM journal_events WHERE id = :id"),
+                {"id": event.id},
+            )
+    finally:
+        engine.dispose()
+
+
+def test_lists_subject_events_within_time_range(tmp_path: Path) -> None:
+    engine = migrated_engine(tmp_path)
+    first_at = utc_now()
+    second_at = first_at + timedelta(hours=2)
+    try:
+        with Session(engine) as session:
+            repository = AuditRepository(session)
+            first = repository.append(
+                AuditEventCreate(
+                    correlation_id="corr_range",
+                    event_type="fixture.first",
+                    actor_type="system",
+                    occurred_at=first_at,
+                    subject_type="fixture",
+                    subject_id="fixture_1",
+                    payload={"schema_version": 1},
+                    schema_version=1,
+                )
+            )
+            repository.append(
+                AuditEventCreate(
+                    correlation_id="corr_range",
+                    event_type="fixture.second",
+                    actor_type="system",
+                    occurred_at=second_at,
+                    subject_type="fixture",
+                    subject_id="fixture_1",
+                    payload={"schema_version": 1},
+                    schema_version=1,
+                )
+            )
+            session.commit()
+
+        with Session(engine) as session:
+            events = AuditRepository(session).list_by_subject(
+                "fixture",
+                "fixture_1",
+                occurred_from=first_at - timedelta(minutes=1),
+                occurred_to=first_at + timedelta(minutes=1),
+            )
+
+        assert [event.id for event in events] == [first.id]
+    finally:
+        engine.dispose()

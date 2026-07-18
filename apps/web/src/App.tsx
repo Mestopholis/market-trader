@@ -46,6 +46,7 @@ export default function App() {
       <dl>
         <dt>Environment</dt><dd>{state.health.environment}</dd>
         <dt>Version</dt><dd>{state.health.version}</dd>
+        <dt>Database</dt><dd>{state.health.database}</dd>
       </dl>
     </main>
   )
