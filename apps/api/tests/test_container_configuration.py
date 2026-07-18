@@ -8,6 +8,8 @@ def test_api_container_runs_migrations_before_startup() -> None:
 
     assert "COPY alembic.ini ./" in dockerfile
     assert "COPY migrations ./migrations" in dockerfile
+    assert "COPY fixtures ./fixtures" in dockerfile
+    assert "USER appuser" in dockerfile
     assert "alembic upgrade head && exec uvicorn" in dockerfile
 
 
@@ -39,3 +41,5 @@ def test_smoke_verification_checks_the_market_state_contract() -> None:
     assert '"calendar_timezone"' in verification_script
     assert '"display_timezone"' in verification_script
     assert '"trading_mode"' in verification_script
+    assert "market_trader.market_data.cli validate" in verification_script
+    assert "/app/fixtures/market_data/regular-session" in verification_script
