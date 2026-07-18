@@ -19,6 +19,14 @@ boundaries, and a local backup/restore fixture. API containers migrate the datab
 before startup. See the [Milestone 1 storage guide](docs/milestone-1-storage.md) for
 macOS/Linux setup, verification, reset, and safety details.
 
+## Milestone 2 market calendar
+
+Milestone 2 adds deterministic XNYS regular-session state, versioned entry-window
+decisions, schedule planning, and a read-only ET/CT status panel. It does not run
+planned jobs or add providers, broker access, or order controls. See the
+[Milestone 2 calendar guide](docs/milestone-2-calendar.md) for macOS startup,
+test commands, calendar rules, and safety boundaries.
+
 ## Foundation boundary
 
 The foundation milestone proves local startup, paper-only configuration, health-state visibility and CI. Market data, scanning, brokerage authentication, account access and order submission require separate reviewed implementation plans.
