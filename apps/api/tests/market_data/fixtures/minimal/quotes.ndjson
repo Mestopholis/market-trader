@@ -1,0 +1,2 @@
+{"event_id":"quote-1","data_kind":"quote","ingested_at":"2026-07-17T14:30:01+00:00","observed_at":"2026-07-17T14:30:00+00:00","payload":{"symbol":"SPY","bid":"625.10","ask":"625.20","bid_size":100,"ask_size":200}}
+{"event_id":"quote-2","data_kind":"quote","ingested_at":"2026-07-17T14:30:02+00:00","observed_at":"2026-07-17T14:30:01+00:00","payload":{"symbol":"SPY","bid":"625.11","ask":"625.21","bid_size":110,"ask_size":190}}
