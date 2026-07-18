@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
-from market_trader.domain.time import Clock
+from market_trader.domain.time import Clock, ensure_utc
 from market_trader.market_calendar.models import (
     EntryWindow,
     ExchangeCalendar,
@@ -33,7 +33,7 @@ class MarketStateService:
         ZoneInfo(display_timezone)
 
     def current(self) -> MarketStateSnapshot:
-        observed_at = self._clock.now()
+        observed_at = ensure_utc(self._clock.now())
         exchange_date = observed_at.astimezone(self._exchange_timezone).date()
 
         if not self._calendar.is_session(exchange_date):

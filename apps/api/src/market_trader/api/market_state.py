@@ -3,14 +3,12 @@ from functools import lru_cache
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Response
-from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from market_trader.config import get_settings
 from market_trader.domain.time import SystemClock
 from market_trader.market_calendar.adapter import XNYSCalendarAdapter
 from market_trader.market_calendar.models import (
-    CalendarUnavailableError,
     MarketState,
     MarketStateSnapshot,
 )
@@ -71,16 +69,8 @@ def get_market_state_service() -> MarketStateService:
 def market_state(
     response: Response,
     service: Annotated[MarketStateService, Depends(get_market_state_service)],
-) -> MarketStateResponse | JSONResponse:
-    try:
-        snapshot = service.current()
-    except CalendarUnavailableError:
-        unavailable = MarketStateUnavailableResponse()
-        return JSONResponse(
-            status_code=503,
-            content=unavailable.model_dump(mode="json"),
-            headers={"Cache-Control": "no-store"},
-        )
+) -> MarketStateResponse:
+    snapshot = service.current()
     response.headers["Cache-Control"] = "no-store"
     return _to_response(snapshot)
 

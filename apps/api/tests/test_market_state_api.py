@@ -92,3 +92,21 @@ def test_calendar_failure_returns_structured_fail_closed_response() -> None:
         "error_code": "market_calendar_unavailable",
     }
     assert "internal dependency detail" not in response.text
+
+
+def test_calendar_failure_during_service_construction_is_structured() -> None:
+    def unavailable_dependency() -> None:
+        raise CalendarUnavailableError("calendar initialization detail")
+
+    app.dependency_overrides[get_market_state_service] = unavailable_dependency
+
+    response = TestClient(app, raise_server_exceptions=False).get("/api/market-state")
+
+    assert response.status_code == 503
+    assert response.headers["cache-control"] == "no-store"
+    assert response.json() == {
+        "market_state": "unavailable",
+        "entry_allowed": False,
+        "error_code": "market_calendar_unavailable",
+    }
+    assert "calendar initialization detail" not in response.text

@@ -128,6 +128,11 @@ class FailingCalendar:
         raise CalendarUnavailableError("fixture failure")
 
 
+class NaiveClock:
+    def now(self) -> datetime:
+        return datetime(2026, 7, 20, 15, 0)
+
+
 def test_calendar_failure_is_not_replaced_with_guessed_state() -> None:
     service = MarketStateService(
         clock=FrozenClock(datetime(2026, 7, 20, 15, 0, tzinfo=UTC)),
@@ -137,4 +142,18 @@ def test_calendar_failure_is_not_replaced_with_guessed_state() -> None:
     )
 
     with pytest.raises(CalendarUnavailableError, match="fixture failure"):
+        service.current()
+
+
+def test_naive_clock_value_is_rejected_before_calendar_lookup(
+    calendar: XNYSCalendarAdapter,
+) -> None:
+    service = MarketStateService(
+        clock=NaiveClock(),
+        calendar=calendar,
+        entry_policy=EntryWindowPolicy.v1(),
+        display_timezone="America/Chicago",
+    )
+
+    with pytest.raises(ValueError, match="timezone-aware"):
         service.current()
