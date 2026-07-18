@@ -45,6 +45,8 @@ class VirtualReplayClock:
 @dataclass(frozen=True)
 class ReplayResult:
     dataset_id: str
+    configuration_version: str
+    policy_versions: tuple[str, ...]
     accepted: int
     degraded: int
     stale: int
@@ -77,9 +79,9 @@ class ReplayEngine:
     ) -> None:
         self._clock = clock
         self._sink = sink
-        self._pipeline = MarketDataPipeline(
-            freshness_policy=FreshnessPolicy.v1(calendar=calendar, clock=clock)
-        )
+        freshness_policy = FreshnessPolicy.v1(calendar=calendar, clock=clock)
+        self._policy_versions = (freshness_policy.version,)
+        self._pipeline = MarketDataPipeline(freshness_policy=freshness_policy)
 
     def replay(self, dataset: FixtureDataset) -> ReplayResult:
         counts = _MutableCounts()
@@ -196,6 +198,8 @@ class ReplayEngine:
 
         return ReplayResult(
             dataset_id=dataset.manifest.dataset_id,
+            configuration_version=dataset.manifest.configuration_version,
+            policy_versions=self._policy_versions,
             accepted=counts.accepted,
             degraded=counts.degraded,
             stale=counts.stale,

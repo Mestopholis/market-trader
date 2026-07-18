@@ -8,6 +8,7 @@ from datetime import timedelta
 from pathlib import Path
 from typing import TextIO
 
+from alembic.util.exc import CommandError
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -38,18 +39,20 @@ def main(argv: Sequence[str] | None = None) -> int:
     except ReplayInfrastructureError as error:
         _print_error("infrastructure_error", str(error))
         return 3
-    except (OSError, SQLAlchemyError):
+    except (CommandError, OSError, SQLAlchemyError):
         _print_error("infrastructure_error", "database operation failed")
         return 3
 
     payload: dict[str, object] = {
         "accepted": result.accepted,
         "command": arguments.command,
+        "configuration_version": result.configuration_version,
         "dataset_id": result.dataset_id,
         "deduplicated": result.deduplicated,
         "degraded": result.degraded,
         "quarantined": result.quarantined,
         "reasons": dict(result.reasons),
+        "policy_versions": list(result.policy_versions),
         "result_digest": result.result_digest,
         "stale": result.stale,
     }

@@ -2,8 +2,11 @@ from pathlib import Path
 
 from alembic import command
 from sqlalchemy import create_engine, inspect, text
+from sqlalchemy.dialects import postgresql
+from sqlalchemy.schema import CreateIndex
 
 from market_trader.db.migrations import alembic_config
+from market_trader.db.models import MarketDataQuarantineORM
 
 
 def test_initial_migration_creates_domain_tables(tmp_path: Path) -> None:
@@ -86,7 +89,6 @@ def test_market_data_migration_upgrades_existing_snapshot(tmp_path: Path) -> Non
             )
     finally:
         engine.dispose()
-
     command.upgrade(config, "head")
 
     engine = create_engine(database_url)
@@ -101,3 +103,15 @@ def test_market_data_migration_upgrades_existing_snapshot(tmp_path: Path) -> Non
         assert row == ("legacy", "legacy:mds_existing", "legacy:mds_existing")
     finally:
         engine.dispose()
+
+
+def test_quarantine_reason_index_uses_postgresql_gin() -> None:
+    index = next(
+        index
+        for index in MarketDataQuarantineORM.__table__.indexes
+        if index.name == "ix_market_data_quarantine_reason_codes"
+    )
+
+    statement = str(CreateIndex(index).compile(dialect=postgresql.dialect()))
+
+    assert "USING gin" in statement

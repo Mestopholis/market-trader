@@ -9,6 +9,7 @@ from collections.abc import Sequence
 
 import sqlalchemy as sa
 from alembic import op
+from sqlalchemy.dialects import postgresql
 
 revision: str = "20260718_0002"
 down_revision: str | None = "20260718_0001"
@@ -81,7 +82,11 @@ def upgrade() -> None:
         sa.Column("instrument_identity", sa.String(length=160), nullable=True),
         sa.Column("sanitized_payload", sa.JSON(), nullable=False),
         sa.Column("payload_digest", sa.String(length=64), nullable=False),
-        sa.Column("reason_codes", sa.JSON(), nullable=False),
+        sa.Column(
+            "reason_codes",
+            sa.JSON().with_variant(postgresql.JSONB(), "postgresql"),
+            nullable=False,
+        ),
         sa.Column("fixture_schema_version", sa.Integer(), nullable=False),
         sa.Column("normalized_schema_version", sa.Integer(), nullable=True),
         sa.Column("configuration_version", sa.String(length=80), nullable=False),
@@ -103,6 +108,7 @@ def upgrade() -> None:
         "ix_market_data_quarantine_reason_codes",
         "market_data_quarantine",
         ["reason_codes"],
+        postgresql_using="gin",
     )
     op.create_index(
         "ix_market_data_quarantine_correlation_id",

@@ -14,6 +14,7 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from market_trader.db.base import Base
@@ -139,7 +140,11 @@ class MarketDataQuarantineORM(Base):
             "symbol_identity",
             "ingested_at",
         ),
-        Index("ix_market_data_quarantine_reason_codes", "reason_codes"),
+        Index(
+            "ix_market_data_quarantine_reason_codes",
+            "reason_codes",
+            postgresql_using="gin",
+        ),
     )
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
@@ -153,7 +158,9 @@ class MarketDataQuarantineORM(Base):
     instrument_identity: Mapped[str | None] = mapped_column(String(160), nullable=True)
     sanitized_payload: Mapped[dict[str, Any]] = mapped_column(JSON)
     payload_digest: Mapped[str] = mapped_column(String(64))
-    reason_codes: Mapped[list[str]] = mapped_column(JSON)
+    reason_codes: Mapped[list[str]] = mapped_column(
+        JSON().with_variant(JSONB(), "postgresql")
+    )
     fixture_schema_version: Mapped[int]
     normalized_schema_version: Mapped[int | None] = mapped_column(nullable=True)
     configuration_version: Mapped[str] = mapped_column(String(80))

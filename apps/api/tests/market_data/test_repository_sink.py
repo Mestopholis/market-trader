@@ -109,12 +109,22 @@ def test_repository_sink_replay_is_idempotent(tmp_path: Path) -> None:
                 select(func.count()).select_from(MarketDataQuarantineORM)
             )
             audit_count = session.scalar(select(func.count()).select_from(JournalEventORM))
+            snapshot_events = session.scalars(
+                select(JournalEventORM).where(
+                    JournalEventORM.event_type == "market_data_snapshot.stored"
+                )
+            ).all()
 
         assert first.accepted == 2
         assert second.deduplicated == 2
         assert snapshot_count == 2
         assert quarantine_count == 0
         assert audit_count == 3  # Symbol creation plus two snapshot events.
+        assert {event.payload["event_id"] for event in snapshot_events} == {
+            "quote-1",
+            "quote-2",
+        }
+        assert all(event.payload["reason_codes"] == [] for event in snapshot_events)
     finally:
         engine.dispose()
 

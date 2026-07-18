@@ -110,6 +110,7 @@ class RepositoryIngestionSink:
             MarketDataSnapshotCreate(
                 ingestion_key=outcome.ingestion_key,
                 payload_digest=outcome.payload_digest,
+                event_id=outcome.event.event_id,
                 source=outcome.event.source,
                 data_kind=outcome.event.data_kind.value,
                 symbol_id=symbol.id,
@@ -118,6 +119,7 @@ class RepositoryIngestionSink:
                 ingested_at=outcome.event.ingested_at,
                 session_date=outcome.value.metadata.session_date,
                 quality_state=outcome.quality_state.value,
+                reason_codes=outcome.reason_codes,
                 configuration_version_id=None,
                 payload=payload,
                 payload_schema_version=outcome.value.metadata.normalized_schema_version,

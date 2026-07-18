@@ -33,6 +33,8 @@ class MarketDataSnapshotCreate:
     ingestion_key: str | None = None
     data_kind: str = "legacy"
     payload_digest: str | None = None
+    event_id: str | None = None
+    reason_codes: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -140,11 +142,13 @@ class MarketDataRepository:
                 payload={
                     "schema_version": 1,
                     "source": command.source,
+                    "event_id": command.event_id,
                     "data_kind": command.data_kind,
                     "ingestion_key": ingestion_key,
                     "payload_digest": payload_digest,
                     "symbol_id": command.symbol_id,
                     "quality_state": command.quality_state,
+                    "reason_codes": list(sorted(set(command.reason_codes))),
                 },
                 schema_version=1,
             )

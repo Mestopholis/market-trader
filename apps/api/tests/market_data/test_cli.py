@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
+from alembic.util.exc import CommandError
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -38,6 +39,8 @@ def test_validate_prints_machine_readable_summary(
     assert payload["dataset_id"] == "regular-session"
     assert payload["accepted"] == 6
     assert payload["degraded"] == 2
+    assert payload["configuration_version"] == "market-data-fixtures-v1"
+    assert payload["policy_versions"] == ["market-data-freshness-v1"]
     assert payload["result_digest"]
     assert "database" not in payload
 
@@ -122,6 +125,31 @@ def test_dataset_error_is_sanitized_json(
     assert error["error"] == "dataset_error"
     assert "malformed JSON" in error["message"]
     assert "must-not-leak" not in captured.err
+
+
+def test_migration_error_is_sanitized_json(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    def fail_migration(_database_url: str) -> None:
+        raise CommandError("internal migration detail")
+
+    monkeypatch.setattr(
+        "market_trader.market_data.cli.upgrade_to_head",
+        fail_migration,
+    )
+
+    exit_code = main(
+        ["replay", str(MINIMAL), "--database-url", "sqlite:///ignored.db"]
+    )
+
+    captured = capsys.readouterr()
+    assert exit_code == 3
+    assert captured.out == ""
+    assert json.loads(captured.err) == {
+        "error": "infrastructure_error",
+        "message": "database operation failed",
+    }
 
 
 def seed_symbols(database_url: str, *symbols: str) -> None:
