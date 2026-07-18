@@ -12,11 +12,10 @@ export function formatMarketTime(value: string, timeZone: string, label: 'ET' | 
 }
 
 export function isSnapshotFresh(
-  snapshot: Pick<MarketStateResponse, 'observed_at' | 'valid_until'>,
+  snapshot: Pick<MarketStateResponse, 'valid_until'>,
   now: Date,
 ): boolean {
-  const observedAt = new Date(snapshot.observed_at).getTime()
   const validUntil = new Date(snapshot.valid_until).getTime()
   const reference = now.getTime()
-  return observedAt <= reference && reference <= validUntil
+  return reference <= validUntil
 }
