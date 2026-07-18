@@ -1,5 +1,7 @@
 # Market Trader
 
+[![CI](https://github.com/Mestopholis/market-trader/actions/workflows/ci.yml/badge.svg)](https://github.com/Mestopholis/market-trader/actions/workflows/ci.yml)
+
 ## Local foundation startup
 
 1. Copy `.env.example` to `.env`.
