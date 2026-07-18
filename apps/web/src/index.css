@@ -1,0 +1,14 @@
+:root {
+  color: #e7edf5;
+  background: #0b1118;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+}
+
+body { margin: 0; min-width: 320px; min-height: 100vh; }
+main { max-width: 960px; margin: 0 auto; padding: 2rem; }
+.paper-banner, .unavailable { padding: 1rem; border-radius: 0.5rem; }
+.paper-banner { display: flex; gap: 1rem; background: #173f5f; border: 2px solid #58a6ff; }
+.unavailable { background: #4a1717; border: 2px solid #ff7b72; }
+dl { display: grid; grid-template-columns: max-content 1fr; gap: 0.5rem 1rem; }
+dt { color: #9fb0c3; }
+dd { margin: 0; }
