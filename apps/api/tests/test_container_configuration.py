@@ -1,5 +1,7 @@
 from pathlib import Path
 
+REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
+
 
 def test_api_container_runs_migrations_before_startup() -> None:
     dockerfile = (Path(__file__).resolve().parents[1] / "Dockerfile").read_text()
@@ -15,3 +17,25 @@ def test_migrations_use_the_configured_database_url() -> None:
     ).read_text()
 
     assert 'os.getenv("MARKET_TRADER_DATABASE_URL")' in migration_environment
+
+
+def test_compose_passes_the_display_timezone_to_the_api() -> None:
+    compose = (REPOSITORY_ROOT / "compose.yaml").read_text()
+
+    assert "MARKET_TRADER_DISPLAY_TIMEZONE" in compose
+    assert "America/Chicago" in compose
+
+
+def test_smoke_verification_checks_the_market_state_contract() -> None:
+    verification_script = (
+        REPOSITORY_ROOT / "scripts" / "verify-foundation.sh"
+    ).read_text()
+
+    assert "/api/market-state" in verification_script
+    assert '"calendar"' in verification_script
+    assert '"entry_allowed"' in verification_script
+    assert "isinstance" in verification_script
+    assert '"policy_version"' in verification_script
+    assert '"calendar_timezone"' in verification_script
+    assert '"display_timezone"' in verification_script
+    assert '"trading_mode"' in verification_script

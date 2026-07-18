@@ -1,7 +1,23 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 
 from market_trader.api.health import router as health_router
+from market_trader.api.market_state import MarketStateUnavailableResponse
+from market_trader.api.market_state import router as market_state_router
 from market_trader.config import get_settings
+from market_trader.market_calendar.models import CalendarUnavailableError
+
+
+async def calendar_unavailable_handler(
+    _request: Request,
+    _error: Exception,
+) -> JSONResponse:
+    unavailable = MarketStateUnavailableResponse()
+    return JSONResponse(
+        status_code=503,
+        content=unavailable.model_dump(mode="json"),
+        headers={"Cache-Control": "no-store"},
+    )
 
 
 def create_app() -> FastAPI:
@@ -12,7 +28,12 @@ def create_app() -> FastAPI:
         docs_url="/api/docs",
         openapi_url="/api/openapi.json",
     )
+    application.add_exception_handler(
+        CalendarUnavailableError,
+        calendar_unavailable_handler,
+    )
     application.include_router(health_router, prefix="/api")
+    application.include_router(market_state_router, prefix="/api")
     return application
 
 

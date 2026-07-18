@@ -1,7 +1,7 @@
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta, timezone
 
 from market_trader.domain.ids import new_domain_id
-from market_trader.domain.time import ensure_utc, utc_now
+from market_trader.domain.time import FrozenClock, SystemClock, ensure_utc, utc_now
 
 
 def test_utc_now_returns_timezone_aware_utc_datetime() -> None:
@@ -17,6 +17,25 @@ def test_ensure_utc_rejects_naive_datetime() -> None:
         assert "timezone-aware" in str(error)
     else:
         raise AssertionError("naive datetime was accepted")
+
+
+def test_system_clock_returns_timezone_aware_utc_datetime() -> None:
+    assert SystemClock().now().tzinfo is UTC
+
+
+def test_frozen_clock_normalizes_aware_value_to_utc() -> None:
+    source = datetime(2026, 7, 20, 10, 30, tzinfo=timezone(timedelta(hours=-5)))
+
+    assert FrozenClock(source).now() == datetime(2026, 7, 20, 15, 30, tzinfo=UTC)
+
+
+def test_frozen_clock_rejects_naive_value() -> None:
+    try:
+        FrozenClock(datetime(2026, 7, 20, 10, 30))
+    except ValueError as error:
+        assert "timezone-aware" in str(error)
+    else:
+        raise AssertionError("frozen clock accepted a naive datetime")
 
 
 def test_new_domain_id_uses_prefixed_uuid_shape() -> None:
