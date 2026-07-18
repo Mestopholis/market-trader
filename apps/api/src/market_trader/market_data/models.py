@@ -50,6 +50,14 @@ class CorporateActionType(StrEnum):
     CASH_DIVIDEND = "cash_dividend"
 
 
+class ProviderOperationalState(StrEnum):
+    AVAILABLE = "available"
+    THROTTLED = "throttled"
+    UNAVAILABLE = "unavailable"
+    PARTIAL = "partial"
+    RECOVERING = "recovering"
+
+
 @dataclass(frozen=True)
 class ProviderEvent:
     source: str
@@ -163,6 +171,13 @@ class NormalizedCorporateAction:
     share_ratio: Decimal | None
     cash_amount: Decimal | None
     currency: str | None
+    metadata: ObservationMetadata
+
+
+@dataclass(frozen=True)
+class NormalizedProviderState:
+    provider: str
+    state: ProviderOperationalState
     metadata: ObservationMetadata
 
 

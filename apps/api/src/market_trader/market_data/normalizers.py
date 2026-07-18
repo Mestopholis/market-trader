@@ -15,9 +15,11 @@ from market_trader.market_data.models import (
     NormalizedCorporateAction,
     NormalizedOptionChain,
     NormalizedOptionContract,
+    NormalizedProviderState,
     NormalizedQuote,
     ObservationMetadata,
     ProviderEvent,
+    ProviderOperationalState,
     PutCall,
     QualityState,
     RejectedObservation,
@@ -37,6 +39,7 @@ def normalize_quote(event: ProviderEvent) -> NormalizationResult[NormalizedQuote
 
     try:
         payload = event.payload
+        _validate_payload_schema(payload)
         symbol = _required_string(payload, "symbol")
         if any(payload.get(field) is None for field in ("bid", "ask", "bid_size", "ask_size")):
             _fail("missing_top_of_book")
@@ -89,6 +92,7 @@ def normalize_candle(event: ProviderEvent) -> NormalizationResult[NormalizedCand
 
     try:
         payload = event.payload
+        _validate_payload_schema(payload)
         symbol = _required_string(payload, "symbol")
         interval = _candle_interval(payload.get("interval"))
         start = _required_datetime(payload.get("start"))
@@ -157,6 +161,7 @@ def normalize_option_chain(event: ProviderEvent) -> NormalizationResult[Normaliz
 
     try:
         payload = event.payload
+        _validate_payload_schema(payload)
         underlying = _required_string(payload, "underlying")
         session_date = _required_date(payload.get("session_date"))
         completeness = payload.get("completeness")
@@ -209,6 +214,7 @@ def normalize_corporate_action(
 
     try:
         payload = event.payload
+        _validate_payload_schema(payload)
         action_id = _required_string(payload, "action_id")
         symbol = _required_string(payload, "symbol")
         action_type = _corporate_action_type(payload.get("action_type"))
@@ -260,6 +266,38 @@ def normalize_corporate_action(
                 error.reason_code,
                 symbol_identity=_safe_string(event.payload.get("symbol")),
                 instrument_identity=_safe_string(event.payload.get("action_id")),
+            )
+        )
+
+
+def normalize_provider_state(
+    event: ProviderEvent,
+) -> NormalizationResult[NormalizedProviderState]:
+    if event.data_kind is not DataKind.PROVIDER_STATE:
+        return NormalizationResult(rejection=_rejection(event, "unexpected_data_kind"))
+    try:
+        _validate_payload_schema(event.payload)
+        provider = _required_string(event.payload, "provider")
+        state = _provider_operational_state(event.payload.get("state"))
+        reasons = (
+            ()
+            if state is ProviderOperationalState.AVAILABLE
+            else (f"provider_{state.value}",)
+        )
+        quality_state = QualityState.VALID if not reasons else QualityState.DEGRADED
+        return NormalizationResult(
+            accepted=NormalizedProviderState(
+                provider=provider,
+                state=state,
+                metadata=_metadata(event, quality_state, reasons),
+            )
+        )
+    except _NormalizationFailure as error:
+        return NormalizationResult(
+            rejection=_rejection(
+                event,
+                error.reason_code,
+                symbol_identity=_safe_string(event.payload.get("provider")),
             )
         )
 
@@ -322,6 +360,12 @@ def _normalize_option_contract(
         vega=_optional_decimal(payload.get("vega")),
         quality_reasons=tuple(sorted(reasons)),
     )
+
+
+def _validate_payload_schema(payload: Mapping[str, object]) -> None:
+    version = payload.get("schema_version")
+    if version is not None and (isinstance(version, bool) or version != 1):
+        _fail("unknown_payload_schema")
 
 
 def _metadata(
@@ -500,6 +544,15 @@ def _currency(value: object) -> str:
     if len(currency) != 3 or not currency.isalpha():
         _fail("invalid_currency")
     return currency
+
+
+def _provider_operational_state(value: object) -> ProviderOperationalState:
+    if not isinstance(value, str):
+        _fail("unknown_provider_state")
+    try:
+        return ProviderOperationalState(value)
+    except ValueError:
+        _fail("unknown_provider_state")
 
 
 def _string_tuple(value: object) -> tuple[str, ...]:

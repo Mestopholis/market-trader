@@ -1,0 +1,1 @@
+{"event_id":"must-not-leak","data_kind":"quote","ingested_at":"2026-07-20T14:30:01+00:00","observed_at":"2026-07-20T14:30:00+00:00","payload":{"symbol":"SPY"}

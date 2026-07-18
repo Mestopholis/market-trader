@@ -1,0 +1,14 @@
+{
+  "dataset_id": "regular-session",
+  "description": "Representative regular, daylight-saving, early-close, and options observations.",
+  "fixture_schema_version": 1,
+  "source": "recorded-fixture",
+  "configuration_version": "market-data-fixtures-v1",
+  "streams": [
+    {"filename": "quotes.ndjson", "data_kind": "quote", "sha256": "136a760a92f30e338a0aaccddf29a2feac260a0f5e8fbf7d74c4f40de01158ce", "event_count": 3},
+    {"filename": "candles.ndjson", "data_kind": "candle", "sha256": "11298a9807858aedced3b3ca20470fcc43335b47cda68c5171fae08021ef396f", "event_count": 3},
+    {"filename": "options.ndjson", "data_kind": "option_chain", "sha256": "5265a7ed473056ec541ee86fdf1fb550e95ec5448811a85cc2ba5396026f1227", "event_count": 2}
+  ],
+  "expected_counts": {"accepted": 6, "degraded": 2, "stale": 0, "quarantined": 0, "deduplicated": 0},
+  "expected_result_digest": "09967d9d9e5a64cb05745b8f430dd112526e9f9f76c47ca911960fcc5d82311b"
+}

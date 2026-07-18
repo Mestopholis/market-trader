@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from market_trader.market_data.models import (
     NormalizedOptionChain,
+    NormalizedProviderState,
     ProviderEvent,
     QualityState,
     RejectedObservation,
@@ -92,6 +93,8 @@ class RepositoryIngestionSink:
         return self._repository.payload_digest_for_ingestion_key(ingestion_key)
 
     def write_accepted(self, outcome: AcceptedIngestion) -> None:
+        if isinstance(outcome.value, NormalizedProviderState):
+            raise ReplayInfrastructureError("provider state persistence is unsupported")
         symbol_identity = (
             outcome.value.underlying
             if isinstance(outcome.value, NormalizedOptionChain)

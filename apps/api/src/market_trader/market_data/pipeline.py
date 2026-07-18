@@ -5,6 +5,7 @@ from market_trader.market_data.models import (
     NormalizedCandle,
     NormalizedCorporateAction,
     NormalizedOptionChain,
+    NormalizedProviderState,
     NormalizedQuote,
     ProviderEvent,
     QualityState,
@@ -14,12 +15,17 @@ from market_trader.market_data.normalizers import (
     normalize_candle,
     normalize_corporate_action,
     normalize_option_chain,
+    normalize_provider_state,
     normalize_quote,
 )
 from market_trader.market_data.quality import FreshnessPolicy
 
 type NormalizedObservation = (
-    NormalizedQuote | NormalizedCandle | NormalizedOptionChain | NormalizedCorporateAction
+    NormalizedQuote
+    | NormalizedCandle
+    | NormalizedOptionChain
+    | NormalizedCorporateAction
+    | NormalizedProviderState
 )
 
 
@@ -37,6 +43,8 @@ class MarketDataPipeline:
             result = normalize_option_chain(event)
         elif event.data_kind is DataKind.CORPORATE_ACTION:
             result = normalize_corporate_action(event)
+        elif event.data_kind is DataKind.PROVIDER_STATE:
+            result = normalize_provider_state(event)
         else:
             return NormalizationResult(
                 rejection=self.reject(event, "unsupported_data_kind")
@@ -46,6 +54,8 @@ class MarketDataPipeline:
 
         value = result.accepted
         assert value is not None
+        if isinstance(value, NormalizedProviderState):
+            return result
         if isinstance(value, NormalizedCandle) and value.interval is CandleInterval.DAILY:
             session_date = value.metadata.session_date
             if session_date is None:
@@ -74,6 +84,8 @@ class MarketDataPipeline:
     def identity(value: NormalizedObservation) -> str:
         if isinstance(value, NormalizedOptionChain):
             return value.underlying
+        if isinstance(value, NormalizedProviderState):
+            return value.provider
         return value.symbol
 
     @staticmethod
@@ -93,4 +105,3 @@ class MarketDataPipeline:
             quality_state=quality_state,
             symbol_identity=symbol_identity,
         )
-

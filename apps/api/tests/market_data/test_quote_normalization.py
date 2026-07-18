@@ -82,6 +82,13 @@ def test_rejects_wrong_event_kind() -> None:
     assert result.rejection.reason_codes == ("unexpected_data_kind",)
 
 
+def test_rejects_explicit_unknown_payload_schema() -> None:
+    result = normalize_quote(quote_event(payload_update={"schema_version": 999}))
+
+    assert result.rejection is not None
+    assert result.rejection.reason_codes == ("unknown_payload_schema",)
+
+
 def quote_event(*, payload_update: dict[str, object] | None = None) -> ProviderEvent:
     payload: dict[str, object] = {
         "symbol": "SPY",

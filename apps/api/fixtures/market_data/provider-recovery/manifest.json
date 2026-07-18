@@ -1,0 +1,12 @@
+{
+  "dataset_id": "provider-recovery",
+  "description": "Provider outage, throttling, partial service, recovery, and availability transitions.",
+  "fixture_schema_version": 1,
+  "source": "recorded-fixture",
+  "configuration_version": "market-data-fixtures-v1",
+  "streams": [
+    {"filename": "states.ndjson", "data_kind": "provider_state", "sha256": "1f9752eeaad9e5b676e6a9e6005981f5b32d35340508e4351ff4d0ab7562625c", "event_count": 5}
+  ],
+  "expected_counts": {"accepted": 1, "degraded": 4, "stale": 0, "quarantined": 0, "deduplicated": 0},
+  "expected_result_digest": "1a9565fbf0fea21f57879cff51930f71db2d9a58ef54a7eed2a8287eb87493e7"
+}
