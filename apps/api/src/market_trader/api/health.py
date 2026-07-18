@@ -2,8 +2,11 @@ from typing import Literal
 
 from fastapi import APIRouter
 from pydantic import BaseModel
+from sqlalchemy import Engine, text
+from sqlalchemy.exc import SQLAlchemyError
 
 from market_trader.config import get_settings
+from market_trader.db.engine import create_engine_from_url
 
 router = APIRouter(tags=["health"])
 
@@ -13,6 +16,7 @@ class HealthResponse(BaseModel):
     environment: str
     trading_mode: Literal["paper"]
     version: str
+    database: Literal["ok", "unavailable"]
 
 
 @router.get("/health", response_model=HealthResponse)
@@ -23,4 +27,19 @@ def health() -> HealthResponse:
         environment=settings.environment,
         trading_mode="paper",
         version=settings.app_version,
+        database=database_state(settings.database_url),
     )
+
+
+def database_state(database_url: str) -> Literal["ok", "unavailable"]:
+    engine: Engine | None = None
+    try:
+        engine = create_engine_from_url(database_url)
+        with engine.connect() as connection:
+            connection.execute(text("SELECT 1")).scalar_one()
+    except SQLAlchemyError:
+        return "unavailable"
+    finally:
+        if engine is not None:
+            engine.dispose()
+    return "ok"
