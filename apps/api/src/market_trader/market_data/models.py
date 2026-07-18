@@ -1,0 +1,209 @@
+from collections.abc import Mapping
+from dataclasses import dataclass
+from datetime import date, datetime
+from decimal import Decimal
+from enum import StrEnum
+from types import MappingProxyType
+
+from market_trader.domain.time import ensure_utc
+
+
+class DataKind(StrEnum):
+    QUOTE = "quote"
+    CANDLE = "candle"
+    OPTION_CHAIN = "option_chain"
+    CORPORATE_ACTION = "corporate_action"
+    PROVIDER_STATE = "provider_state"
+
+
+class QualityState(StrEnum):
+    VALID = "valid"
+    DEGRADED = "degraded"
+    STALE = "stale"
+    QUARANTINED = "quarantined"
+
+
+class CandleInterval(StrEnum):
+    ONE_MINUTE = "1m"
+    DAILY = "1d"
+
+
+class AdjustmentState(StrEnum):
+    ADJUSTED = "adjusted"
+    UNADJUSTED = "unadjusted"
+
+
+class PutCall(StrEnum):
+    PUT = "put"
+    CALL = "call"
+
+
+class DeliverableState(StrEnum):
+    STANDARD = "standard"
+    UNSUPPORTED = "unsupported"
+
+
+class CorporateActionType(StrEnum):
+    SPLIT = "split"
+    REVERSE_SPLIT = "reverse_split"
+    STOCK_DIVIDEND = "stock_dividend"
+    CASH_DIVIDEND = "cash_dividend"
+
+
+class ProviderOperationalState(StrEnum):
+    AVAILABLE = "available"
+    THROTTLED = "throttled"
+    UNAVAILABLE = "unavailable"
+    PARTIAL = "partial"
+    RECOVERING = "recovering"
+
+
+@dataclass(frozen=True)
+class ProviderEvent:
+    source: str
+    event_id: str
+    data_kind: DataKind
+    observed_at: datetime
+    ingested_at: datetime
+    payload: Mapping[str, object]
+    fixture_schema_version: int
+    configuration_version: str
+    correlation_id: str
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "observed_at", ensure_utc(self.observed_at))
+        object.__setattr__(self, "ingested_at", ensure_utc(self.ingested_at))
+        object.__setattr__(self, "payload", MappingProxyType(dict(self.payload)))
+
+
+@dataclass(frozen=True)
+class ObservationMetadata:
+    source: str
+    event_id: str
+    observed_at: datetime
+    ingested_at: datetime
+    session_date: date | None
+    normalized_schema_version: int
+    configuration_version: str
+    correlation_id: str
+    quality_state: QualityState
+    quality_reasons: tuple[str, ...]
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "observed_at", ensure_utc(self.observed_at))
+        object.__setattr__(self, "ingested_at", ensure_utc(self.ingested_at))
+        object.__setattr__(self, "quality_reasons", tuple(sorted(set(self.quality_reasons))))
+
+
+@dataclass(frozen=True)
+class NormalizedQuote:
+    symbol: str
+    bid: Decimal
+    ask: Decimal
+    bid_size: int
+    ask_size: int
+    last: Decimal | None
+    last_size: int | None
+    last_at: datetime | None
+    bid_venue: str | None
+    ask_venue: str | None
+    trade_venue: str | None
+    condition_codes: tuple[str, ...]
+    metadata: ObservationMetadata
+
+
+@dataclass(frozen=True)
+class NormalizedCandle:
+    symbol: str
+    interval: CandleInterval
+    start: datetime
+    end: datetime
+    open: Decimal
+    high: Decimal
+    low: Decimal
+    close: Decimal
+    volume: int
+    vwap: Decimal | None
+    trade_count: int | None
+    adjustment: AdjustmentState
+    metadata: ObservationMetadata
+
+
+@dataclass(frozen=True)
+class NormalizedOptionContract:
+    contract_id: str
+    expiration: date
+    strike: Decimal
+    option_type: PutCall
+    deliverable: DeliverableState
+    bid: Decimal
+    ask: Decimal
+    bid_size: int
+    ask_size: int
+    last: Decimal | None
+    volume: int | None
+    open_interest: int | None
+    implied_volatility: Decimal | None
+    delta: Decimal | None
+    gamma: Decimal | None
+    theta: Decimal | None
+    vega: Decimal | None
+    quality_reasons: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class NormalizedOptionChain:
+    underlying: str
+    is_complete: bool
+    contracts: tuple[NormalizedOptionContract, ...]
+    metadata: ObservationMetadata
+
+
+@dataclass(frozen=True)
+class NormalizedCorporateAction:
+    action_id: str
+    symbol: str
+    action_type: CorporateActionType
+    declaration_date: date | None
+    effective_date: date
+    record_date: date | None
+    payment_date: date | None
+    share_ratio: Decimal | None
+    cash_amount: Decimal | None
+    currency: str | None
+    metadata: ObservationMetadata
+
+
+@dataclass(frozen=True)
+class NormalizedProviderState:
+    provider: str
+    state: ProviderOperationalState
+    metadata: ObservationMetadata
+
+
+@dataclass(frozen=True)
+class RejectedObservation:
+    source: str
+    event_id: str
+    data_kind: DataKind
+    observed_at: datetime
+    ingested_at: datetime
+    reason_codes: tuple[str, ...]
+    quality_state: QualityState = QualityState.QUARANTINED
+    symbol_identity: str | None = None
+    instrument_identity: str | None = None
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "observed_at", ensure_utc(self.observed_at))
+        object.__setattr__(self, "ingested_at", ensure_utc(self.ingested_at))
+        object.__setattr__(self, "reason_codes", tuple(sorted(set(self.reason_codes))))
+
+
+@dataclass(frozen=True)
+class NormalizationResult[NormalizedValue]:
+    accepted: NormalizedValue | None = None
+    rejection: RejectedObservation | None = None
+
+    def __post_init__(self) -> None:
+        if (self.accepted is None) == (self.rejection is None):
+            raise ValueError("normalization result requires exactly one outcome")

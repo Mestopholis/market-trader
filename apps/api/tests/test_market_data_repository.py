@@ -32,7 +32,9 @@ def test_stores_and_lists_snapshots_by_symbol_source_and_time(tmp_path: Path) ->
             )
             snapshot = MarketDataRepository(session).store_snapshot(
                 MarketDataSnapshotCreate(
+                    ingestion_key="ing_quote_1",
                     source="fixture",
+                    data_kind="quote",
                     symbol_id=symbol.id,
                     instrument_id=None,
                     observed_at=observed_at,
@@ -41,6 +43,7 @@ def test_stores_and_lists_snapshots_by_symbol_source_and_time(tmp_path: Path) ->
                     quality_state="valid",
                     configuration_version_id=None,
                     payload={"schema_version": 1, "last": "625.50"},
+                    payload_digest="digest_quote_1",
                     payload_schema_version=1,
                     correlation_id="corr_pipeline",
                 )
@@ -58,5 +61,8 @@ def test_stores_and_lists_snapshots_by_symbol_source_and_time(tmp_path: Path) ->
         assert stored == [snapshot]
         assert stored[0].observed_at.tzinfo is UTC
         assert stored[0].payload == {"schema_version": 1, "last": "625.50"}
+        assert stored[0].ingestion_key == "ing_quote_1"
+        assert stored[0].data_kind == "quote"
+        assert stored[0].payload_digest == "digest_quote_1"
     finally:
         engine.dispose()

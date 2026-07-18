@@ -1,0 +1,12 @@
+{
+  "dataset_id": "corporate-actions",
+  "description": "Supported split and dividend corporate action forms.",
+  "fixture_schema_version": 1,
+  "source": "recorded-fixture",
+  "configuration_version": "market-data-fixtures-v1",
+  "streams": [
+    {"filename": "actions.ndjson", "data_kind": "corporate_action", "sha256": "ab422136aebbabfc1a16942c545601f73b00e47e44347c19739628501fc225a6", "event_count": 4}
+  ],
+  "expected_counts": {"accepted": 4, "degraded": 0, "stale": 0, "quarantined": 0, "deduplicated": 0},
+  "expected_result_digest": "2ab46731e9bcf979a76c6e2e9f8daa1b839d26ca160c5be4ee6f8e9aa7250db0"
+}

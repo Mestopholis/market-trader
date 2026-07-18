@@ -85,7 +85,12 @@ Milestones 5 and 6 may begin independently after Milestone 3, but both must be c
 
 ## Milestone 3: Provider-neutral market data and replay
 
-**Status:** Planning in progress.
+**Status:** Complete.
+
+**Completion:** Delivered by the approved
+[specification](plans/2026-07-18-milestone-3-provider-neutral-market-data-and-replay-spec.md),
+[implementation plan](plans/2026-07-18-milestone-3-provider-neutral-market-data-and-replay-implementation-plan.md),
+and [operator runbook](milestone-3-market-data-replay.md).
 
 **Objective:** Support deterministic development and testing with normalized data contracts before connecting Schwab.
 
@@ -324,8 +329,6 @@ Every milestone specification and implementation plan must identify:
 
 ## Next planning action
 
-Create and approve the Milestone 3 provider-neutral market-data and replay
-specification, followed by its implementation plan. It must define normalized
-quotes, candles, option chains, corporate actions, freshness, quarantine, cache,
-rate-limit, fixture, and replay boundaries without adding Schwab credentials,
-real-time Schwab data, account access, or order behavior.
+Create and approve the Milestone 4 eligible-universe, regime, scanner, and
+scoring specification, followed by its implementation plan. Do not begin
+Milestone 4 implementation until both documents are reviewed and approved.

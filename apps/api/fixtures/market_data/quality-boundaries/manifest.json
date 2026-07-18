@@ -1,0 +1,12 @@
+{
+  "dataset_id": "quality-boundaries",
+  "description": "Freshness, structural quality, ordering, duplication, and timestamp boundaries.",
+  "fixture_schema_version": 1,
+  "source": "recorded-fixture",
+  "configuration_version": "market-data-fixtures-v1",
+  "streams": [
+    {"filename": "quotes.ndjson", "data_kind": "quote", "sha256": "862b967a1f86489a7c62ce4ae724940390d3107371b830f0076f74e0d04268e9", "event_count": 12}
+  ],
+  "expected_counts": {"accepted": 2, "degraded": 0, "stale": 3, "quarantined": 6, "deduplicated": 1},
+  "expected_result_digest": "a900d47fa9ea24addd5e70288ab79e1d218c1037720b16cbfd1aba3f03420bf9"
+}

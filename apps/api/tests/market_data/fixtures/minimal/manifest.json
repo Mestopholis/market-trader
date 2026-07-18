@@ -1,0 +1,22 @@
+{
+  "dataset_id": "minimal",
+  "description": "Two valid quote events for fixture loader tests.",
+  "fixture_schema_version": 1,
+  "source": "fixture",
+  "configuration_version": "fixture-v1",
+  "streams": [
+    {
+      "filename": "quotes.ndjson",
+      "data_kind": "quote",
+      "sha256": "5b4a00e498251ff25411cd3d55c2dfe3498b49a199f3423050a817d29efaa247",
+      "event_count": 2
+    }
+  ],
+  "expected_counts": {
+    "accepted": 2,
+    "degraded": 0,
+    "stale": 0,
+    "quarantined": 0,
+    "deduplicated": 0
+  }
+}

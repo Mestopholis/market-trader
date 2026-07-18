@@ -1,0 +1,11 @@
+{
+  "dataset_id": "malformed-json",
+  "description": "Malformed event input for sanitized loader diagnostics.",
+  "fixture_schema_version": 1,
+  "source": "fixture",
+  "configuration_version": "fixture-v1",
+  "streams": [
+    {"filename": "events.ndjson", "data_kind": "quote", "sha256": "df7d223965e2c42e20989203dac4763095b05a7b9bf022f78f20db40125666e1", "event_count": 1}
+  ],
+  "expected_counts": {"accepted": 0, "degraded": 0, "stale": 0, "quarantined": 0, "deduplicated": 0}
+}

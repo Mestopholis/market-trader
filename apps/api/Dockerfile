@@ -8,6 +8,7 @@ COPY pyproject.toml ./
 COPY alembic.ini ./
 COPY migrations ./migrations
 COPY src ./src
+COPY fixtures ./fixtures
 RUN python -m pip install --no-cache-dir .
 
 RUN useradd --create-home --uid 10001 appuser \
