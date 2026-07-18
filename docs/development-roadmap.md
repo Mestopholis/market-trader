@@ -44,6 +44,8 @@ Milestones 5 and 6 may begin independently after Milestone 3, but both must be c
 
 ## Milestone 1: Domain storage and audit foundation
 
+**Status:** Complete.
+
 **Objective:** Establish persistent, versioned domain records without introducing market providers or broker access.
 
 **Depends on:** Completed application foundation.
@@ -63,6 +65,8 @@ Milestones 5 and 6 may begin independently after Milestone 3, but both must be c
 
 ## Milestone 2: Market calendar and scheduling foundation
 
+**Status:** Complete.
+
 **Objective:** Make all time-sensitive behavior exchange-calendar aware and deterministic.
 
 **Depends on:** Milestone 1.
@@ -80,6 +84,8 @@ Milestones 5 and 6 may begin independently after Milestone 3, but both must be c
 **Explicitly excluded:** Live schedules driven by broker data, background trade execution, and automatic orders.
 
 ## Milestone 3: Provider-neutral market data and replay
+
+**Status:** Planning in progress.
 
 **Objective:** Support deterministic development and testing with normalized data contracts before connecting Schwab.
 
@@ -318,7 +324,8 @@ Every milestone specification and implementation plan must identify:
 
 ## Next planning action
 
-Create and approve the Milestone 2 market-calendar-and-scheduling implementation
-plan. It should establish deterministic clock, XNYS calendar, market-state,
-entry-window, and schedule-planning boundaries without adding providers,
-background execution, or broker behavior.
+Create and approve the Milestone 3 provider-neutral market-data and replay
+specification, followed by its implementation plan. It must define normalized
+quotes, candles, option chains, corporate actions, freshness, quarantine, cache,
+rate-limit, fixture, and replay boundaries without adding Schwab credentials,
+real-time Schwab data, account access, or order behavior.
