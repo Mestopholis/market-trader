@@ -5,6 +5,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 COPY pyproject.toml ./
+COPY alembic.ini ./
+COPY migrations ./migrations
 COPY src ./src
 RUN python -m pip install --no-cache-dir .
 
@@ -14,4 +16,4 @@ RUN useradd --create-home --uid 10001 appuser \
 USER appuser
 
 EXPOSE 8000
-CMD ["uvicorn", "market_trader.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["sh", "-c", "alembic upgrade head && exec uvicorn market_trader.main:app --host 0.0.0.0 --port 8000"]
