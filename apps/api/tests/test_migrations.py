@@ -1,14 +1,9 @@
 from pathlib import Path
 
 from alembic import command
-from alembic.config import Config
 from sqlalchemy import create_engine, inspect
 
-
-def alembic_config(database_url: str) -> Config:
-    config = Config("alembic.ini")
-    config.set_main_option("sqlalchemy.url", database_url)
-    return config
+from market_trader.db.migrations import alembic_config
 
 
 def test_initial_migration_creates_domain_tables(tmp_path: Path) -> None:
