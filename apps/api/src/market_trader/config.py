@@ -1,5 +1,6 @@
 from enum import StrEnum
 from functools import lru_cache
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -21,11 +22,16 @@ class Settings(BaseSettings):
     trading_mode: TradingMode = TradingMode.PAPER
     app_version: str = "0.1.0"
     database_url: str = "sqlite:///./data/market_trader.db"
+    display_timezone: str = "America/Chicago"
 
     @model_validator(mode="after")
-    def reject_live_mode_during_foundation(self) -> "Settings":
+    def validate_safety_settings(self) -> "Settings":
         if self.trading_mode is TradingMode.LIVE:
             raise ValueError("Live trading is unavailable in the foundation release")
+        try:
+            ZoneInfo(self.display_timezone)
+        except ZoneInfoNotFoundError as error:
+            raise ValueError("Unknown display timezone") from error
         return self
 
 
