@@ -1,3 +1,4 @@
+import os
 from logging.config import fileConfig
 
 from alembic import context
@@ -7,6 +8,10 @@ from market_trader.db import models  # noqa: F401
 from market_trader.db.base import Base
 
 config = context.config
+
+database_url = os.getenv("MARKET_TRADER_DATABASE_URL")
+if database_url is not None:
+    config.set_main_option("sqlalchemy.url", database_url.replace("%", "%%"))
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
