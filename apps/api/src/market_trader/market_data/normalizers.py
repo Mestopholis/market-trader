@@ -7,10 +7,12 @@ from market_trader.domain.time import ensure_utc
 from market_trader.market_data.models import (
     AdjustmentState,
     CandleInterval,
+    CorporateActionType,
     DataKind,
     DeliverableState,
     NormalizationResult,
     NormalizedCandle,
+    NormalizedCorporateAction,
     NormalizedOptionChain,
     NormalizedOptionContract,
     NormalizedQuote,
@@ -201,6 +203,69 @@ def normalize_option_chain(event: ProviderEvent) -> NormalizationResult[Normaliz
         )
 
 
+def normalize_corporate_action(
+    event: ProviderEvent,
+) -> NormalizationResult[NormalizedCorporateAction]:
+    if event.data_kind is not DataKind.CORPORATE_ACTION:
+        return NormalizationResult(rejection=_rejection(event, "unexpected_data_kind"))
+
+    try:
+        payload = event.payload
+        action_id = _required_string(payload, "action_id")
+        symbol = _required_string(payload, "symbol")
+        action_type = _corporate_action_type(payload.get("action_type"))
+        effective_date = _required_date(payload.get("effective_date"))
+        declaration_date = _optional_date(payload.get("declaration_date"))
+        record_date = _optional_date(payload.get("record_date"))
+        payment_date = _optional_date(payload.get("payment_date"))
+
+        share_ratio: Decimal | None = None
+        cash_amount: Decimal | None = None
+        currency: str | None = None
+        if action_type is CorporateActionType.CASH_DIVIDEND:
+            if payload.get("cash_amount") is None:
+                _fail("missing_cash_amount")
+            cash_amount = _decimal(payload.get("cash_amount"))
+            if cash_amount <= 0:
+                _fail("invalid_cash_amount")
+            currency = _currency(payload.get("currency"))
+            if payload.get("share_ratio") is not None:
+                _fail("conflicting_action_values")
+        else:
+            if payload.get("share_ratio") is None:
+                _fail("missing_share_ratio")
+            share_ratio = _decimal(payload.get("share_ratio"))
+            if share_ratio <= 0:
+                _fail("invalid_share_ratio")
+            if payload.get("cash_amount") is not None or payload.get("currency") is not None:
+                _fail("conflicting_action_values")
+
+        return NormalizationResult(
+            accepted=NormalizedCorporateAction(
+                action_id=action_id,
+                symbol=symbol,
+                action_type=action_type,
+                declaration_date=declaration_date,
+                effective_date=effective_date,
+                record_date=record_date,
+                payment_date=payment_date,
+                share_ratio=share_ratio,
+                cash_amount=cash_amount,
+                currency=currency,
+                metadata=_metadata(event, QualityState.VALID, ()),
+            )
+        )
+    except _NormalizationFailure as error:
+        return NormalizationResult(
+            rejection=_rejection(
+                event,
+                error.reason_code,
+                symbol_identity=_safe_string(event.payload.get("symbol")),
+                instrument_identity=_safe_string(event.payload.get("action_id")),
+            )
+        )
+
+
 def _normalize_option_contract(
     payload: Mapping[str, object],
     session_date: date,
@@ -381,6 +446,10 @@ def _required_date(value: object) -> date:
         _fail("invalid_date")
 
 
+def _optional_date(value: object) -> date | None:
+    return None if value is None else _required_date(value)
+
+
 def _candle_interval(value: object) -> CandleInterval:
     if not isinstance(value, str):
         _fail("unsupported_interval")
@@ -415,6 +484,24 @@ def _deliverable_state(value: object) -> DeliverableState:
         return DeliverableState(value)
     except ValueError:
         _fail("invalid_deliverable")
+
+
+def _corporate_action_type(value: object) -> CorporateActionType:
+    if not isinstance(value, str):
+        _fail("unsupported_action_type")
+    try:
+        return CorporateActionType(value)
+    except ValueError:
+        _fail("unsupported_action_type")
+
+
+def _currency(value: object) -> str:
+    if not isinstance(value, str):
+        _fail("invalid_currency")
+    currency = value.upper()
+    if len(currency) != 3 or not currency.isalpha():
+        _fail("invalid_currency")
+    return currency
 
 
 def _string_tuple(value: object) -> tuple[str, ...]:

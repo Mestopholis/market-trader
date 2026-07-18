@@ -43,6 +43,13 @@ class DeliverableState(StrEnum):
     UNSUPPORTED = "unsupported"
 
 
+class CorporateActionType(StrEnum):
+    SPLIT = "split"
+    REVERSE_SPLIT = "reverse_split"
+    STOCK_DIVIDEND = "stock_dividend"
+    CASH_DIVIDEND = "cash_dividend"
+
+
 @dataclass(frozen=True)
 class ProviderEvent:
     source: str
@@ -141,6 +148,21 @@ class NormalizedOptionChain:
     underlying: str
     is_complete: bool
     contracts: tuple[NormalizedOptionContract, ...]
+    metadata: ObservationMetadata
+
+
+@dataclass(frozen=True)
+class NormalizedCorporateAction:
+    action_id: str
+    symbol: str
+    action_type: CorporateActionType
+    declaration_date: date | None
+    effective_date: date
+    record_date: date | None
+    payment_date: date | None
+    share_ratio: Decimal | None
+    cash_amount: Decimal | None
+    currency: str | None
     metadata: ObservationMetadata
 
 
