@@ -51,6 +51,35 @@ class EntryWindow:
             raise ValueError("entry window must have positive duration")
 
 
+@dataclass(frozen=True)
+class MarketStateSnapshot:
+    market_state: MarketState
+    entry_allowed: bool
+    calendar: str
+    policy_version: str
+    observed_at: datetime
+    valid_until: datetime
+    next_transition: datetime
+    session: ExchangeSession | None
+    entry_window: EntryWindow | None
+    next_session: ExchangeSession
+    calendar_timezone: str
+    display_timezone: str
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "observed_at", ensure_utc(self.observed_at))
+        object.__setattr__(self, "valid_until", ensure_utc(self.valid_until))
+        object.__setattr__(self, "next_transition", ensure_utc(self.next_transition))
+        if self.valid_until < self.observed_at:
+            raise ValueError("market state cannot expire before it is observed")
+        if self.entry_allowed is not (self.market_state is MarketState.ENTRY_OPEN):
+            raise ValueError("entry permission must match market state")
+
+    def is_fresh(self, reference_time: datetime) -> bool:
+        observed = ensure_utc(reference_time)
+        return self.observed_at <= observed <= self.valid_until
+
+
 class ExchangeCalendar(Protocol):
     name: str
     timezone_name: str
