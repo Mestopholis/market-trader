@@ -7,8 +7,8 @@ __pycache__/
 *.py[cod]
 *.egg-info/
 .venv/
+apps/api/data/
 node_modules/
 dist/
 *.tsbuildinfo
 .worktrees/
-
