@@ -2,21 +2,13 @@ from datetime import UTC
 from pathlib import Path
 
 import pytest
-from alembic import command
-from sqlalchemy import Engine, text
+from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from market_trader.db.engine import create_engine_from_url
 from market_trader.domain.time import utc_now
 from market_trader.repositories.audit import AuditEventCreate, AuditRepository
-from tests.test_migrations import alembic_config
-
-
-def migrated_engine(tmp_path: Path) -> Engine:
-    database_url = f"sqlite:///{tmp_path / 'audit.db'}"
-    command.upgrade(alembic_config(database_url), "head")
-    return create_engine_from_url(database_url)
+from tests.db_helpers import migrated_engine
 
 
 def test_appends_and_fetches_journal_event(tmp_path: Path) -> None:
