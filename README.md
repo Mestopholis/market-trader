@@ -15,3 +15,5 @@ The foundation is paper-only and contains no broker credentials or order submiss
 ## Foundation boundary
 
 The foundation milestone proves local startup, paper-only configuration, health-state visibility and CI. Market data, scanning, brokerage authentication, account access and order submission require separate reviewed implementation plans.
+
+See the [development roadmap](docs/development-roadmap.md) for the ordered remaining milestones and their safety gates.
