@@ -22,15 +22,13 @@ from market_trader.market_data.models import (
     QualityState,
     RejectedObservation,
 )
+from market_trader.market_data.quality import FUTURE_TOLERANCE_V1
 
 
 class _NormalizationFailure(ValueError):
     def __init__(self, reason_code: str) -> None:
         self.reason_code = reason_code
         super().__init__(reason_code)
-
-
-_FUTURE_TOLERANCE = timedelta(seconds=5)
 
 
 def normalize_quote(event: ProviderEvent) -> NormalizationResult[NormalizedQuote]:
@@ -99,7 +97,7 @@ def normalize_candle(event: ProviderEvent) -> NormalizationResult[NormalizedCand
             _fail("invalid_time_range")
         if interval is CandleInterval.ONE_MINUTE and end - start != timedelta(minutes=1):
             _fail("invalid_interval_duration")
-        if end > event.ingested_at + _FUTURE_TOLERANCE:
+        if end > event.ingested_at + FUTURE_TOLERANCE_V1:
             _fail("future_timestamp")
 
         open_ = _decimal(payload.get("open"))
