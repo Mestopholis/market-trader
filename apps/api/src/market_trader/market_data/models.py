@@ -23,6 +23,16 @@ class QualityState(StrEnum):
     QUARANTINED = "quarantined"
 
 
+class CandleInterval(StrEnum):
+    ONE_MINUTE = "1m"
+    DAILY = "1d"
+
+
+class AdjustmentState(StrEnum):
+    ADJUSTED = "adjusted"
+    UNADJUSTED = "unadjusted"
+
+
 @dataclass(frozen=True)
 class ProviderEvent:
     source: str
@@ -74,6 +84,23 @@ class NormalizedQuote:
     ask_venue: str | None
     trade_venue: str | None
     condition_codes: tuple[str, ...]
+    metadata: ObservationMetadata
+
+
+@dataclass(frozen=True)
+class NormalizedCandle:
+    symbol: str
+    interval: CandleInterval
+    start: datetime
+    end: datetime
+    open: Decimal
+    high: Decimal
+    low: Decimal
+    close: Decimal
+    volume: int
+    vwap: Decimal | None
+    trade_count: int | None
+    adjustment: AdjustmentState
     metadata: ObservationMetadata
 
 

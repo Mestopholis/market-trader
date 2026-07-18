@@ -1,12 +1,15 @@
 from collections.abc import Mapping
-from datetime import datetime
+from datetime import date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from typing import NoReturn
 
 from market_trader.domain.time import ensure_utc
 from market_trader.market_data.models import (
+    AdjustmentState,
+    CandleInterval,
     DataKind,
     NormalizationResult,
+    NormalizedCandle,
     NormalizedQuote,
     ObservationMetadata,
     ProviderEvent,
@@ -19,6 +22,9 @@ class _NormalizationFailure(ValueError):
     def __init__(self, reason_code: str) -> None:
         self.reason_code = reason_code
         super().__init__(reason_code)
+
+
+_FUTURE_TOLERANCE = timedelta(seconds=5)
 
 
 def normalize_quote(event: ProviderEvent) -> NormalizationResult[NormalizedQuote]:
@@ -73,17 +79,87 @@ def normalize_quote(event: ProviderEvent) -> NormalizationResult[NormalizedQuote
         )
 
 
+def normalize_candle(event: ProviderEvent) -> NormalizationResult[NormalizedCandle]:
+    if event.data_kind is not DataKind.CANDLE:
+        return NormalizationResult(rejection=_rejection(event, "unexpected_data_kind"))
+
+    try:
+        payload = event.payload
+        symbol = _required_string(payload, "symbol")
+        interval = _candle_interval(payload.get("interval"))
+        start = _required_datetime(payload.get("start"))
+        end = _required_datetime(payload.get("end"))
+        if end <= start:
+            _fail("invalid_time_range")
+        if interval is CandleInterval.ONE_MINUTE and end - start != timedelta(minutes=1):
+            _fail("invalid_interval_duration")
+        if end > event.ingested_at + _FUTURE_TOLERANCE:
+            _fail("future_timestamp")
+
+        open_ = _decimal(payload.get("open"))
+        high = _decimal(payload.get("high"))
+        low = _decimal(payload.get("low"))
+        close = _decimal(payload.get("close"))
+        if min(open_, high, low, close) < 0:
+            _fail("negative_value")
+        if high < max(open_, low, close) or low > min(open_, high, close):
+            _fail("inconsistent_ohlc")
+
+        volume = _integer(payload.get("volume"))
+        trade_count = _optional_integer(payload.get("trade_count"))
+        if volume < 0 or (trade_count is not None and trade_count < 0):
+            _fail("negative_value")
+        vwap = _optional_decimal(payload.get("vwap"))
+        if vwap is not None and vwap < 0:
+            _fail("negative_value")
+
+        session_date = _required_date(payload.get("session_date"))
+        adjustment = _adjustment_state(payload.get("adjustment"))
+        return NormalizationResult(
+            accepted=NormalizedCandle(
+                symbol=symbol,
+                interval=interval,
+                start=start,
+                end=end,
+                open=open_,
+                high=high,
+                low=low,
+                close=close,
+                volume=volume,
+                vwap=vwap,
+                trade_count=trade_count,
+                adjustment=adjustment,
+                metadata=_metadata(
+                    event,
+                    QualityState.VALID,
+                    (),
+                    session_date=session_date,
+                ),
+            )
+        )
+    except _NormalizationFailure as error:
+        return NormalizationResult(
+            rejection=_rejection(
+                event,
+                error.reason_code,
+                symbol_identity=_safe_string(event.payload.get("symbol")),
+            )
+        )
+
+
 def _metadata(
     event: ProviderEvent,
     state: QualityState,
     reasons: tuple[str, ...],
+    *,
+    session_date: date | None = None,
 ) -> ObservationMetadata:
     return ObservationMetadata(
         source=event.source,
         event_id=event.event_id,
         observed_at=event.observed_at,
         ingested_at=event.ingested_at,
-        session_date=None,
+        session_date=session_date,
         normalized_schema_version=1,
         configuration_version=event.configuration_version,
         correlation_id=event.correlation_id,
@@ -173,6 +249,40 @@ def _optional_datetime(value: object) -> datetime | None:
         return ensure_utc(datetime.fromisoformat(value))
     except ValueError:
         _fail("invalid_timestamp")
+
+
+def _required_datetime(value: object) -> datetime:
+    result = _optional_datetime(value)
+    if result is None:
+        _fail("missing_field")
+    return result
+
+
+def _required_date(value: object) -> date:
+    if not isinstance(value, str):
+        _fail("missing_field")
+    try:
+        return date.fromisoformat(value)
+    except ValueError:
+        _fail("invalid_date")
+
+
+def _candle_interval(value: object) -> CandleInterval:
+    if not isinstance(value, str):
+        _fail("unsupported_interval")
+    try:
+        return CandleInterval(value)
+    except ValueError:
+        _fail("unsupported_interval")
+
+
+def _adjustment_state(value: object) -> AdjustmentState:
+    if not isinstance(value, str):
+        _fail("invalid_adjustment_state")
+    try:
+        return AdjustmentState(value)
+    except ValueError:
+        _fail("invalid_adjustment_state")
 
 
 def _string_tuple(value: object) -> tuple[str, ...]:
