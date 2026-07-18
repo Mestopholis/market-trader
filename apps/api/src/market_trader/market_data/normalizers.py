@@ -8,11 +8,15 @@ from market_trader.market_data.models import (
     AdjustmentState,
     CandleInterval,
     DataKind,
+    DeliverableState,
     NormalizationResult,
     NormalizedCandle,
+    NormalizedOptionChain,
+    NormalizedOptionContract,
     NormalizedQuote,
     ObservationMetadata,
     ProviderEvent,
+    PutCall,
     QualityState,
     RejectedObservation,
 )
@@ -145,6 +149,116 @@ def normalize_candle(event: ProviderEvent) -> NormalizationResult[NormalizedCand
                 symbol_identity=_safe_string(event.payload.get("symbol")),
             )
         )
+
+
+def normalize_option_chain(event: ProviderEvent) -> NormalizationResult[NormalizedOptionChain]:
+    if event.data_kind is not DataKind.OPTION_CHAIN:
+        return NormalizationResult(rejection=_rejection(event, "unexpected_data_kind"))
+
+    try:
+        payload = event.payload
+        underlying = _required_string(payload, "underlying")
+        session_date = _required_date(payload.get("session_date"))
+        completeness = payload.get("completeness")
+        if completeness not in ("complete", "partial"):
+            _fail("invalid_completeness")
+        raw_contracts = payload.get("contracts")
+        if not isinstance(raw_contracts, list) or not raw_contracts:
+            _fail("missing_contracts")
+
+        contracts: list[NormalizedOptionContract] = []
+        identities: set[str] = set()
+        chain_reasons: set[str] = set()
+        if completeness == "partial":
+            chain_reasons.add("partial_chain")
+        for raw_contract in raw_contracts:
+            if not isinstance(raw_contract, Mapping):
+                _fail("invalid_contract")
+            contract = _normalize_option_contract(raw_contract, session_date)
+            if contract.contract_id in identities:
+                _fail("duplicate_contract")
+            identities.add(contract.contract_id)
+            contracts.append(contract)
+            chain_reasons.update(contract.quality_reasons)
+
+        reasons = tuple(sorted(chain_reasons))
+        state = QualityState.DEGRADED if reasons else QualityState.VALID
+        return NormalizationResult(
+            accepted=NormalizedOptionChain(
+                underlying=underlying,
+                is_complete=completeness == "complete",
+                contracts=tuple(contracts),
+                metadata=_metadata(event, state, reasons, session_date=session_date),
+            )
+        )
+    except _NormalizationFailure as error:
+        return NormalizationResult(
+            rejection=_rejection(
+                event,
+                error.reason_code,
+                symbol_identity=_safe_string(event.payload.get("underlying")),
+            )
+        )
+
+
+def _normalize_option_contract(
+    payload: Mapping[str, object],
+    session_date: date,
+) -> NormalizedOptionContract:
+    raw_contract_id = payload.get("contract_id")
+    if not isinstance(raw_contract_id, str) or not raw_contract_id.strip():
+        _fail("missing_contract_identity")
+    contract_id = raw_contract_id.strip()
+    expiration = _required_date(payload.get("expiration"))
+    if expiration < session_date:
+        _fail("invalid_expiration")
+    strike = _decimal(payload.get("strike"))
+    option_type = _put_call(payload.get("option_type"))
+    deliverable = _deliverable_state(payload.get("deliverable"))
+    bid = _decimal(payload.get("bid"))
+    ask = _decimal(payload.get("ask"))
+    bid_size = _integer(payload.get("bid_size"))
+    ask_size = _integer(payload.get("ask_size"))
+    last = _optional_decimal(payload.get("last"))
+    volume = _optional_integer(payload.get("volume"))
+    open_interest = _optional_integer(payload.get("open_interest"))
+    implied_volatility = _optional_decimal(payload.get("implied_volatility"))
+
+    nonnegative_values = (strike, bid, ask, bid_size, ask_size)
+    if any(value < 0 for value in nonnegative_values):
+        _fail("negative_value")
+    if any(value is not None and value < 0 for value in (last, volume, open_interest)):
+        _fail("negative_value")
+    if implied_volatility is not None and implied_volatility < 0:
+        _fail("negative_value")
+    if ask < bid:
+        _fail("crossed_market")
+
+    reasons: set[str] = set()
+    if ask == bid:
+        reasons.add("locked_market")
+    if deliverable is DeliverableState.UNSUPPORTED:
+        reasons.add("unsupported_deliverable")
+    return NormalizedOptionContract(
+        contract_id=contract_id,
+        expiration=expiration,
+        strike=strike,
+        option_type=option_type,
+        deliverable=deliverable,
+        bid=bid,
+        ask=ask,
+        bid_size=bid_size,
+        ask_size=ask_size,
+        last=last,
+        volume=volume,
+        open_interest=open_interest,
+        implied_volatility=implied_volatility,
+        delta=_optional_decimal(payload.get("delta")),
+        gamma=_optional_decimal(payload.get("gamma")),
+        theta=_optional_decimal(payload.get("theta")),
+        vega=_optional_decimal(payload.get("vega")),
+        quality_reasons=tuple(sorted(reasons)),
+    )
 
 
 def _metadata(
@@ -283,6 +397,24 @@ def _adjustment_state(value: object) -> AdjustmentState:
         return AdjustmentState(value)
     except ValueError:
         _fail("invalid_adjustment_state")
+
+
+def _put_call(value: object) -> PutCall:
+    if not isinstance(value, str):
+        _fail("invalid_option_type")
+    try:
+        return PutCall(value)
+    except ValueError:
+        _fail("invalid_option_type")
+
+
+def _deliverable_state(value: object) -> DeliverableState:
+    if not isinstance(value, str):
+        _fail("invalid_deliverable")
+    try:
+        return DeliverableState(value)
+    except ValueError:
+        _fail("invalid_deliverable")
 
 
 def _string_tuple(value: object) -> tuple[str, ...]:

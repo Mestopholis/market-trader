@@ -33,6 +33,16 @@ class AdjustmentState(StrEnum):
     UNADJUSTED = "unadjusted"
 
 
+class PutCall(StrEnum):
+    PUT = "put"
+    CALL = "call"
+
+
+class DeliverableState(StrEnum):
+    STANDARD = "standard"
+    UNSUPPORTED = "unsupported"
+
+
 @dataclass(frozen=True)
 class ProviderEvent:
     source: str
@@ -101,6 +111,36 @@ class NormalizedCandle:
     vwap: Decimal | None
     trade_count: int | None
     adjustment: AdjustmentState
+    metadata: ObservationMetadata
+
+
+@dataclass(frozen=True)
+class NormalizedOptionContract:
+    contract_id: str
+    expiration: date
+    strike: Decimal
+    option_type: PutCall
+    deliverable: DeliverableState
+    bid: Decimal
+    ask: Decimal
+    bid_size: int
+    ask_size: int
+    last: Decimal | None
+    volume: int | None
+    open_interest: int | None
+    implied_volatility: Decimal | None
+    delta: Decimal | None
+    gamma: Decimal | None
+    theta: Decimal | None
+    vega: Decimal | None
+    quality_reasons: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class NormalizedOptionChain:
+    underlying: str
+    is_complete: bool
+    contracts: tuple[NormalizedOptionContract, ...]
     metadata: ObservationMetadata
 
 
