@@ -1,6 +1,6 @@
 {
   "version": "candidate-scoring-v1",
-  "content_hash": "34fbacfd5e94eb38ee1f3b27be735a048e77a607ea5b1eb4985f664d49e1ac8b",
+  "content_hash": "99ab31d048788ada0029d51498fe4b952ccd55bd35b1dcd527e5b3af3b6d70d2",
   "family_caps": {
     "market_direction": "25",
     "price_structure": "30",
@@ -10,7 +10,9 @@
   },
   "candidate_threshold": "70.000000",
   "score_quantum": "0.000001",
+  "relative_volume_standard_minimum": "1.50",
   "relative_volume_high_minimum": "2.00",
+  "price_extension_minimum": "0.0025",
   "relative_strength_bullish_standard_minimum": "70",
   "relative_strength_bullish_exceptional_minimum": "85",
   "relative_strength_bearish_standard_maximum": "30",

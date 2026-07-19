@@ -56,6 +56,62 @@ _EXPECTED_SYMBOLS = (
     "WMT",
     "COST",
 )
+_EXPECTED_UNIVERSE_METADATA = (
+    ("SPY", "unleveraged_etf", "ARCX", None, "broad_benchmark"),
+    ("QQQ", "unleveraged_etf", "ARCX", None, "broad_benchmark"),
+    ("IWM", "unleveraged_etf", "ARCX", None, "broad_benchmark"),
+    ("DIA", "unleveraged_etf", "ARCX", None, "broad_benchmark"),
+    ("XLB", "unleveraged_etf", "ARCX", "materials", "sector_benchmark"),
+    (
+        "XLC",
+        "unleveraged_etf",
+        "ARCX",
+        "communication_services",
+        "sector_benchmark",
+    ),
+    ("XLE", "unleveraged_etf", "ARCX", "energy", "sector_benchmark"),
+    ("XLF", "unleveraged_etf", "ARCX", "financials", "sector_benchmark"),
+    ("XLI", "unleveraged_etf", "ARCX", "industrials", "sector_benchmark"),
+    (
+        "XLK",
+        "unleveraged_etf",
+        "ARCX",
+        "information_technology",
+        "sector_benchmark",
+    ),
+    (
+        "XLP",
+        "unleveraged_etf",
+        "ARCX",
+        "consumer_staples",
+        "sector_benchmark",
+    ),
+    ("XLRE", "unleveraged_etf", "ARCX", "real_estate", "sector_benchmark"),
+    ("XLU", "unleveraged_etf", "ARCX", "utilities", "sector_benchmark"),
+    ("XLV", "unleveraged_etf", "ARCX", "health_care", "sector_benchmark"),
+    (
+        "XLY",
+        "unleveraged_etf",
+        "ARCX",
+        "consumer_discretionary",
+        "sector_benchmark",
+    ),
+    ("AAPL", "common_stock", "XNAS", "information_technology", "candidate"),
+    ("MSFT", "common_stock", "XNAS", "information_technology", "candidate"),
+    ("NVDA", "common_stock", "XNAS", "information_technology", "candidate"),
+    ("AMZN", "common_stock", "XNAS", "consumer_discretionary", "candidate"),
+    ("META", "common_stock", "XNAS", "communication_services", "candidate"),
+    ("GOOGL", "common_stock", "XNAS", "communication_services", "candidate"),
+    ("TSLA", "common_stock", "XNAS", "consumer_discretionary", "candidate"),
+    ("AMD", "common_stock", "XNAS", "information_technology", "candidate"),
+    ("AVGO", "common_stock", "XNAS", "information_technology", "candidate"),
+    ("JPM", "common_stock", "XNYS", "financials", "candidate"),
+    ("XOM", "common_stock", "XNYS", "energy", "candidate"),
+    ("UNH", "common_stock", "XNYS", "health_care", "candidate"),
+    ("LLY", "common_stock", "XNYS", "health_care", "candidate"),
+    ("WMT", "common_stock", "XNAS", "consumer_staples", "candidate"),
+    ("COST", "common_stock", "XNAS", "consumer_staples", "candidate"),
+)
 _SECTOR_CODES = frozenset(
     {
         "communication_services",
@@ -147,6 +203,7 @@ class StrategyPolicy:
     price_extension_minimum: Decimal
     mixed_direction_minimum: Decimal
     catalyst_lookback_completed_sessions: int
+    news_regime_opposition_block_threshold: Decimal
 
 
 @dataclass(frozen=True)
@@ -155,7 +212,9 @@ class ScoringPolicy:
     family_caps: Mapping[str, Decimal]
     candidate_threshold: Decimal
     score_quantum: Decimal
+    relative_volume_standard_minimum: Decimal
     relative_volume_high_minimum: Decimal
+    price_extension_minimum: Decimal
     relative_strength_bullish_standard_minimum: Decimal
     relative_strength_bullish_exceptional_minimum: Decimal
     relative_strength_bearish_standard_maximum: Decimal
@@ -205,17 +264,24 @@ def load_scanner_configuration(path: Path | str) -> ScannerConfiguration:
     )
     if configuration.versions != _VERSIONS:
         raise ConfigurationError("scanner configuration versions do not match version one")
+    if (
+        configuration.strategies.mixed_direction_minimum
+        != configuration.regime.mixed_strategy_minimum_absolute_total
+    ):
+        raise ConfigurationError("strategy and regime mixed thresholds must match")
+    _validate_version_one(configuration)
     return configuration
 
 
 def _load_document(path: Path) -> tuple[dict[str, object], str]:
     try:
-        raw = json.loads(
-            path.read_text(encoding="utf-8"),
-            object_pairs_hook=_unique_object,
-        )
-    except (OSError, json.JSONDecodeError) as exc:
-        raise ConfigurationError(f"cannot load configuration {path.name}: {exc}") from exc
+        text = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        raise ConfigurationError(f"cannot read configuration {path.name}") from None
+    try:
+        raw = json.loads(text, object_pairs_hook=_unique_object)
+    except json.JSONDecodeError:
+        raise ConfigurationError(f"{path.name} is not valid JSON") from None
     if not isinstance(raw, dict):
         raise ConfigurationError(f"{path.name} must contain a JSON object")
     payload = cast(dict[str, object], raw)
@@ -224,9 +290,11 @@ def _load_document(path: Path) -> tuple[dict[str, object], str]:
         raise ConfigurationError(f"{path.name} content_hash must be 64 lowercase hex characters")
     hash_input = dict(payload)
     del hash_input["content_hash"]
-    calculated_hash = hashlib.sha256(
-        canonical_json(cast(Any, hash_input)).encode("utf-8")
-    ).hexdigest()
+    try:
+        canonical = canonical_json(cast(Any, hash_input))
+    except (TypeError, ValueError):
+        raise ConfigurationError(f"{path.name} has invalid canonical content") from None
+    calculated_hash = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
     if declared_hash != calculated_hash:
         raise ConfigurationError(f"{path.name} content_hash does not match its payload")
     return payload, declared_hash
@@ -297,11 +365,6 @@ def _parse_universe(payload: dict[str, object]) -> UniversePolicy:
                 active_to=active_to,
             )
         )
-    symbols = tuple(entry.display_symbol for entry in entries)
-    if symbols != _EXPECTED_SYMBOLS:
-        raise ConfigurationError("universe entries must match the exact version-one symbol order")
-    if not all(entry.candidate_enabled for entry in entries):
-        raise ConfigurationError("version-one universe must enable candidates for every entry")
     return UniversePolicy(version=_VERSIONS.universe, entries=tuple(entries))
 
 
@@ -327,10 +390,16 @@ def _parse_eligibility(payload: dict[str, object]) -> EligibilityPolicy:
     _require_keys(payload, keys, "eligibility")
     _require_version(payload, _VERSIONS.eligibility, "eligibility")
     allowed_types = _string_tuple(payload["allowed_security_types"], "allowed_security_types")
-    if allowed_types != ("common_stock", "unleveraged_etf"):
+    if len(set(allowed_types)) != len(allowed_types) or not set(allowed_types) <= {
+        "common_stock",
+        "unleveraged_etf",
+    }:
         raise ConfigurationError("eligibility allowed_security_types are invalid")
     quality_states = _string_tuple(payload["permitted_quality_states"], "permitted_quality_states")
-    if quality_states != ("valid", "degraded"):
+    if len(set(quality_states)) != len(quality_states) or not set(quality_states) <= {
+        "valid",
+        "degraded",
+    }:
         raise ConfigurationError("eligibility permitted_quality_states are invalid")
     result = EligibilityPolicy(
         version=_VERSIONS.eligibility,
@@ -372,22 +441,6 @@ def _parse_eligibility(payload: dict[str, object]) -> EligibilityPolicy:
             "unresolved_corporate_action_blocks",
         ),
     )
-    expected = (
-        result.minimum_adjusted_close == Decimal("10.00"),
-        result.maximum_adjusted_close == Decimal("1000.00"),
-        result.price_bounds_inclusive,
-        result.minimum_completed_daily_sessions == 200,
-        result.dollar_volume_window_sessions == 20,
-        result.minimum_median_dollar_volume == Decimal("25000000.00"),
-        result.dollar_volume_minimum_inclusive,
-        result.provider_unavailable_blocks,
-        result.halt_blocks,
-        result.non_updating_quote_blocks,
-        result.unsupported_adjustment_blocks,
-        result.unresolved_corporate_action_blocks,
-    )
-    if not all(expected):
-        raise ConfigurationError("eligibility policy does not match version one")
     return result
 
 
@@ -456,15 +509,6 @@ def _parse_regime(payload: dict[str, object]) -> RegimePolicy:
             payload["volatility_change_minimum"], "volatility_change_minimum"
         ),
     )
-    if result.component_weights != {
-        "broad_trend": Decimal("30"),
-        "breadth": Decimal("20"),
-        "sector_participation": Decimal("15"),
-        "volume_participation": Decimal("10"),
-        "volatility_direction": Decimal("15"),
-        "macro_overlay": Decimal("10"),
-    }:
-        raise ConfigurationError("regime component weights do not match version one")
     return result
 
 
@@ -480,6 +524,7 @@ def _parse_strategies(payload: dict[str, object]) -> StrategyPolicy:
         "price_extension_minimum",
         "mixed_direction_minimum",
         "catalyst_lookback_completed_sessions",
+        "news_regime_opposition_block_threshold",
     }
     _require_keys(payload, keys, "strategies")
     _require_version(payload, _VERSIONS.strategies, "strategies")
@@ -501,15 +546,6 @@ def _parse_strategies(payload: dict[str, object]) -> StrategyPolicy:
                 ),
             )
         )
-    expected_rules = (
-        StrategyRule("bullish_breakout", "bullish"),
-        StrategyRule("bullish_pullback", "bullish"),
-        StrategyRule("bearish_breakdown", "bearish"),
-        StrategyRule("bearish_failed_rally", "bearish"),
-        StrategyRule("news_continuation", "evidence"),
-    )
-    if tuple(rules) != expected_rules:
-        raise ConfigurationError("strategy rules must match the exact version-one order")
     return StrategyPolicy(
         version=_VERSIONS.strategies,
         feature_version=feature_version,
@@ -529,6 +565,10 @@ def _parse_strategies(payload: dict[str, object]) -> StrategyPolicy:
             payload["catalyst_lookback_completed_sessions"],
             "catalyst_lookback_completed_sessions",
         ),
+        news_regime_opposition_block_threshold=_decimal_string(
+            payload["news_regime_opposition_block_threshold"],
+            "news_regime_opposition_block_threshold",
+        ),
     )
 
 
@@ -539,7 +579,9 @@ def _parse_scoring(payload: dict[str, object]) -> ScoringPolicy:
         "family_caps",
         "candidate_threshold",
         "score_quantum",
+        "relative_volume_standard_minimum",
         "relative_volume_high_minimum",
+        "price_extension_minimum",
         "relative_strength_bullish_standard_minimum",
         "relative_strength_bullish_exceptional_minimum",
         "relative_strength_bearish_standard_maximum",
@@ -561,14 +603,6 @@ def _parse_scoring(payload: dict[str, object]) -> ScoringPolicy:
     )
     if sum(caps.values(), Decimal()) != Decimal("100"):
         raise ConfigurationError("scoring family caps must total 100")
-    if caps != {
-        "market_direction": Decimal("25"),
-        "price_structure": Decimal("30"),
-        "participation_liquidity": Decimal("20"),
-        "relative_performance": Decimal("15"),
-        "catalyst": Decimal("10"),
-    }:
-        raise ConfigurationError("scoring family caps do not match version one")
     component_points = _decimal_mapping(
         payload["component_points"],
         {
@@ -593,8 +627,15 @@ def _parse_scoring(payload: dict[str, object]) -> ScoringPolicy:
         family_caps=caps,
         candidate_threshold=_decimal_string(payload["candidate_threshold"], "candidate_threshold"),
         score_quantum=_decimal_string(payload["score_quantum"], "score_quantum"),
+        relative_volume_standard_minimum=_decimal_string(
+            payload["relative_volume_standard_minimum"],
+            "relative_volume_standard_minimum",
+        ),
         relative_volume_high_minimum=_decimal_string(
             payload["relative_volume_high_minimum"], "relative_volume_high_minimum"
+        ),
+        price_extension_minimum=_decimal_string(
+            payload["price_extension_minimum"], "price_extension_minimum"
         ),
         relative_strength_bullish_standard_minimum=_decimal_string(
             payload["relative_strength_bullish_standard_minimum"],
@@ -614,6 +655,135 @@ def _parse_scoring(payload: dict[str, object]) -> ScoringPolicy:
         ),
         component_points=component_points,
     )
+
+
+def _validate_version_one(configuration: ScannerConfiguration) -> None:
+    universe_metadata = tuple(
+        (
+            entry.display_symbol,
+            entry.security_type,
+            entry.exchange_family,
+            entry.sector_code,
+            entry.role,
+        )
+        for entry in configuration.universe.entries
+    )
+    expected_active_from = date(2026, 1, 1)
+    if (
+        universe_metadata != _EXPECTED_UNIVERSE_METADATA
+        or tuple(entry.display_symbol for entry in configuration.universe.entries)
+        != _EXPECTED_SYMBOLS
+        or not all(entry.candidate_enabled for entry in configuration.universe.entries)
+        or not all(
+            entry.active_from == expected_active_from
+            for entry in configuration.universe.entries
+        )
+        or not all(entry.active_to is None for entry in configuration.universe.entries)
+    ):
+        raise ConfigurationError("universe policy does not match version one")
+
+    if configuration.eligibility != EligibilityPolicy(
+        version=_VERSIONS.eligibility,
+        allowed_security_types=("common_stock", "unleveraged_etf"),
+        minimum_adjusted_close=Decimal("10.00"),
+        maximum_adjusted_close=Decimal("1000.00"),
+        price_bounds_inclusive=True,
+        minimum_completed_daily_sessions=200,
+        dollar_volume_window_sessions=20,
+        minimum_median_dollar_volume=Decimal("25000000.00"),
+        dollar_volume_minimum_inclusive=True,
+        permitted_quality_states=("valid", "degraded"),
+        provider_unavailable_blocks=True,
+        halt_blocks=True,
+        non_updating_quote_blocks=True,
+        unsupported_adjustment_blocks=True,
+        unresolved_corporate_action_blocks=True,
+    ):
+        raise ConfigurationError("eligibility policy does not match version one")
+
+    if configuration.regime != RegimePolicy(
+        version=_VERSIONS.regime,
+        component_weights=_immutable_mapping(
+            {
+                "broad_trend": Decimal("30"),
+                "breadth": Decimal("20"),
+                "sector_participation": Decimal("15"),
+                "volume_participation": Decimal("10"),
+                "volatility_direction": Decimal("15"),
+                "macro_overlay": Decimal("10"),
+            }
+        ),
+        bullish_total_minimum=Decimal("35"),
+        bearish_total_maximum=Decimal("-35"),
+        mixed_strategy_minimum_absolute_total=Decimal("20"),
+        breadth_bullish_above_sma_fraction=Decimal("0.60"),
+        breadth_bearish_above_sma_fraction=Decimal("0.40"),
+        participation_bullish_ratio=Decimal("1.50"),
+        participation_bearish_ratio=Decimal("0.67"),
+        sector_alignment_count=7,
+        volatility_change_minimum=Decimal("0.05"),
+    ):
+        raise ConfigurationError("regime policy does not match version one")
+
+    if configuration.strategies != StrategyPolicy(
+        version=_VERSIONS.strategies,
+        feature_version=_VERSIONS.features,
+        evidence_version=_VERSIONS.evidence,
+        rules=(
+            StrategyRule("bullish_breakout", "bullish"),
+            StrategyRule("bullish_pullback", "bullish"),
+            StrategyRule("bearish_breakdown", "bearish"),
+            StrategyRule("bearish_failed_rally", "bearish"),
+            StrategyRule("news_continuation", "evidence"),
+        ),
+        relative_volume_minimum=Decimal("1.50"),
+        pullback_tolerance=Decimal("0.01"),
+        price_extension_minimum=Decimal("0.0025"),
+        mixed_direction_minimum=Decimal("20"),
+        catalyst_lookback_completed_sessions=2,
+        news_regime_opposition_block_threshold=Decimal("35"),
+    ):
+        raise ConfigurationError("strategy policy does not match version one")
+
+    if configuration.scoring != ScoringPolicy(
+        version=_VERSIONS.scoring,
+        family_caps=_immutable_mapping(
+            {
+                "market_direction": Decimal("25"),
+                "price_structure": Decimal("30"),
+                "participation_liquidity": Decimal("20"),
+                "relative_performance": Decimal("15"),
+                "catalyst": Decimal("10"),
+            }
+        ),
+        candidate_threshold=Decimal("70.000000"),
+        score_quantum=Decimal("0.000001"),
+        relative_volume_standard_minimum=Decimal("1.50"),
+        relative_volume_high_minimum=Decimal("2.00"),
+        price_extension_minimum=Decimal("0.0025"),
+        relative_strength_bullish_standard_minimum=Decimal("70"),
+        relative_strength_bullish_exceptional_minimum=Decimal("85"),
+        relative_strength_bearish_standard_maximum=Decimal("30"),
+        relative_strength_bearish_exceptional_maximum=Decimal("15"),
+        component_points=_immutable_mapping(
+            {
+                "established_trend": Decimal("15"),
+                "aligned_regime": Decimal("10"),
+                "neutral_reversal_regime": Decimal("5"),
+                "mixed_compatible_regime": Decimal("5"),
+                "price_trigger": Decimal("20"),
+                "price_extension": Decimal("5"),
+                "correct_vwap_side": Decimal("5"),
+                "eligibility_liquidity": Decimal("5"),
+                "relative_volume_standard": Decimal("10"),
+                "relative_volume_high": Decimal("15"),
+                "relative_strength_standard": Decimal("10"),
+                "relative_strength_exceptional": Decimal("15"),
+                "compatible_catalyst": Decimal("10"),
+            }
+        ),
+    ):
+        raise ConfigurationError("scoring policy does not match version one")
 
 
 def _unique_object(pairs: list[tuple[str, object]]) -> dict[str, object]:

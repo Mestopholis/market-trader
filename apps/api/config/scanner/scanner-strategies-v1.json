@@ -1,6 +1,6 @@
 {
   "version": "scanner-strategies-v1",
-  "content_hash": "435cf5e3be23ec1b00d0ee0c783ce2445b64472b34de1501634467edec1dba2c",
+  "content_hash": "5e2e282153e1113b4e2fa0b6c2e667f2f38b770b80f18fdb1ab7a995f809d409",
   "feature_version": "scanner-features-v1",
   "evidence_version": "scanner-evidence-v1",
   "rules": [
@@ -14,5 +14,6 @@
   "pullback_tolerance": "0.01",
   "price_extension_minimum": "0.0025",
   "mixed_direction_minimum": "20",
-  "catalyst_lookback_completed_sessions": 2
+  "catalyst_lookback_completed_sessions": 2,
+  "news_regime_opposition_block_threshold": "35"
 }
