@@ -37,9 +37,7 @@ class SymbolORM(Base):
 
 class JournalEventORM(Base):
     __tablename__ = "journal_events"
-    __table_args__ = (
-        Index("ix_journal_events_subject", "subject_type", "subject_id"),
-    )
+    __table_args__ = (Index("ix_journal_events_subject", "subject_type", "subject_id"),)
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
     correlation_id: Mapped[str] = mapped_column(String(64), index=True)
@@ -158,9 +156,7 @@ class MarketDataQuarantineORM(Base):
     instrument_identity: Mapped[str | None] = mapped_column(String(160), nullable=True)
     sanitized_payload: Mapped[dict[str, Any]] = mapped_column(JSON)
     payload_digest: Mapped[str] = mapped_column(String(64))
-    reason_codes: Mapped[list[str]] = mapped_column(
-        JSON().with_variant(JSONB(), "postgresql")
-    )
+    reason_codes: Mapped[list[str]] = mapped_column(JSON().with_variant(JSONB(), "postgresql"))
     fixture_schema_version: Mapped[int]
     normalized_schema_version: Mapped[int | None] = mapped_column(nullable=True)
     configuration_version: Mapped[str] = mapped_column(String(80))
@@ -168,10 +164,79 @@ class MarketDataQuarantineORM(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
 
-class SignalORM(Base):
-    __tablename__ = "signals"
+class ScannerRunORM(Base):
+    __tablename__ = "scanner_runs"
+    __table_args__ = (
+        Index("ux_scanner_runs_run_key", "run_key", unique=True),
+        Index("ix_scanner_runs_session_date", "session_date"),
+        Index("ix_scanner_runs_status", "status"),
+        Index("ix_scanner_runs_correlation_id", "correlation_id"),
+    )
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    run_key: Mapped[str] = mapped_column(String(512))
+    as_of: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    session_date: Mapped[date] = mapped_column(Date)
+    input_digest: Mapped[str] = mapped_column(String(64))
+    universe_version: Mapped[str] = mapped_column(String(80))
+    universe_content_hash: Mapped[str] = mapped_column(String(64))
+    policy_versions: Mapped[dict[str, Any]] = mapped_column(JSON)
+    regime_state: Mapped[str] = mapped_column(String(40))
+    regime_score: Mapped[Decimal] = mapped_column(Numeric(12, 6))
+    regime_explanation: Mapped[dict[str, Any]] = mapped_column(JSON)
+    result_counts: Mapped[dict[str, Any]] = mapped_column(JSON)
+    result_digest: Mapped[str] = mapped_column(String(64))
+    status: Mapped[str] = mapped_column(String(40))
+    correlation_id: Mapped[str] = mapped_column(String(64))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class EligibilityDecisionORM(Base):
+    __tablename__ = "eligibility_decisions"
+    __table_args__ = (
+        UniqueConstraint(
+            "scanner_run_id",
+            "symbol_id",
+            name="uq_eligibility_decisions_run_symbol",
+        ),
+        Index("ux_eligibility_decisions_decision_key", "decision_key", unique=True),
+        Index("ix_eligibility_decisions_scanner_run_id", "scanner_run_id"),
+        Index("ix_eligibility_decisions_symbol_id", "symbol_id"),
+        Index("ix_eligibility_decisions_status", "status"),
+        Index(
+            "ix_eligibility_decisions_reason_codes",
+            "reason_codes",
+            postgresql_using="gin",
+        ),
+        Index("ix_eligibility_decisions_correlation_id", "correlation_id"),
+    )
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    decision_key: Mapped[str] = mapped_column(String(512))
+    scanner_run_id: Mapped[str] = mapped_column(ForeignKey("scanner_runs.id"))
+    symbol_id: Mapped[str] = mapped_column(ForeignKey("symbols.id"))
+    status: Mapped[str] = mapped_column(String(40))
+    reason_codes: Mapped[list[str]] = mapped_column(JSON().with_variant(JSONB(), "postgresql"))
+    observed_payload: Mapped[dict[str, Any]] = mapped_column(JSON)
+    input_digest: Mapped[str] = mapped_column(String(64))
+    policy_version: Mapped[str] = mapped_column(String(80))
+    correlation_id: Mapped[str] = mapped_column(String(64))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class SignalORM(Base):
+    __tablename__ = "signals"
+    __table_args__ = (
+        Index("ux_signals_signal_key", "signal_key", unique=True),
+        Index("ix_signals_scanner_run_id", "scanner_run_id"),
+    )
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    signal_key: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    scanner_run_id: Mapped[str | None] = mapped_column(
+        ForeignKey("scanner_runs.id", name="fk_signals_scanner_run_id"), nullable=True
+    )
+    strategy_id: Mapped[str | None] = mapped_column(String(80), nullable=True)
     strategy_version: Mapped[str] = mapped_column(String(80))
     symbol_id: Mapped[str] = mapped_column(ForeignKey("symbols.id"), index=True)
     instrument_id: Mapped[str | None] = mapped_column(ForeignKey("instruments.id"))
@@ -179,6 +244,15 @@ class SignalORM(Base):
     score: Mapped[Decimal | None] = mapped_column(Numeric(12, 6))
     status: Mapped[str | None] = mapped_column(String(40))
     input_snapshot_id: Mapped[str] = mapped_column(ForeignKey("market_data_snapshots.id"))
+    input_digest: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    reason_codes: Mapped[list[str] | None] = mapped_column(
+        JSON().with_variant(JSONB(), "postgresql"), nullable=True
+    )
+    gate_payload: Mapped[list[dict[str, Any]] | None] = mapped_column(JSON, nullable=True)
+    component_score_payload: Mapped[list[dict[str, Any]] | None] = mapped_column(
+        JSON, nullable=True
+    )
+    scoring_policy_version: Mapped[str | None] = mapped_column(String(80), nullable=True)
     explanation_payload: Mapped[dict[str, Any]] = mapped_column(JSON)
     explanation_schema_version: Mapped[int]
     correlation_id: Mapped[str] = mapped_column(String(64), index=True)
@@ -187,13 +261,25 @@ class SignalORM(Base):
 
 class CandidateORM(Base):
     __tablename__ = "candidates"
+    __table_args__ = (
+        Index("ux_candidates_candidate_key", "candidate_key", unique=True),
+        Index("ix_candidates_scanner_run_id", "scanner_run_id"),
+    )
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    candidate_key: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    scanner_run_id: Mapped[str | None] = mapped_column(
+        ForeignKey("scanner_runs.id", name="fk_candidates_scanner_run_id"), nullable=True
+    )
+    strategy_id: Mapped[str | None] = mapped_column(String(80), nullable=True)
     signal_id: Mapped[str] = mapped_column(ForeignKey("signals.id"), index=True)
     symbol_id: Mapped[str] = mapped_column(ForeignKey("symbols.id"), index=True)
     instrument_id: Mapped[str | None] = mapped_column(ForeignKey("instruments.id"))
+    direction: Mapped[str | None] = mapped_column(String(20), nullable=True)
     status: Mapped[str] = mapped_column(String(40))
     score: Mapped[Decimal | None] = mapped_column(Numeric(12, 6))
+    input_digest: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    scoring_policy_version: Mapped[str | None] = mapped_column(String(80), nullable=True)
     explanation_payload: Mapped[dict[str, Any]] = mapped_column(JSON)
     explanation_schema_version: Mapped[int]
     correlation_id: Mapped[str] = mapped_column(String(64), index=True)

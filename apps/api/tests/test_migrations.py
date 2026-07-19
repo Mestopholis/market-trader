@@ -105,6 +105,109 @@ def test_market_data_migration_upgrades_existing_snapshot(tmp_path: Path) -> Non
         engine.dispose()
 
 
+def test_scanner_migration_preserves_existing_decisions(tmp_path: Path) -> None:
+    database_url = f"sqlite:///{tmp_path / 'scanner-upgrade.db'}"
+    config = alembic_config(database_url)
+    command.upgrade(config, "20260718_0002")
+
+    engine = create_engine(database_url)
+    try:
+        with engine.begin() as connection:
+            connection.execute(
+                text(
+                    """
+                    INSERT INTO symbols (
+                        id, display_symbol, instrument_type, exchange, is_active,
+                        first_observed_at, last_observed_at, metadata_payload,
+                        metadata_schema_version, correlation_id
+                    ) VALUES (
+                        'sym_existing', 'SPY', 'equity', 'ARCX', 1,
+                        '2026-07-17 14:30:00', '2026-07-17 14:30:00', '{}', 1, 'corr-setup'
+                    )
+                    """
+                )
+            )
+            connection.execute(
+                text(
+                    """
+                    INSERT INTO market_data_snapshots (
+                        id, ingestion_key, payload_digest, source, data_kind, symbol_id,
+                        instrument_id, observed_at, ingested_at, session_date, quality_state,
+                        configuration_version_id, payload, payload_schema_version,
+                        correlation_id
+                    ) VALUES (
+                        'mds_existing', 'fixture:quote:SPY', 'digest-existing', 'fixture',
+                        'quote', 'sym_existing', NULL, '2026-07-17 14:30:00',
+                        '2026-07-17 14:30:00', '2026-07-17', 'valid', NULL, '{}', 1,
+                        'corr-existing'
+                    )
+                    """
+                )
+            )
+            connection.execute(
+                text(
+                    """
+                    INSERT INTO signals (
+                        id, strategy_version, symbol_id, instrument_id, direction, score,
+                        status, input_snapshot_id, explanation_payload,
+                        explanation_schema_version, correlation_id, created_at
+                    ) VALUES (
+                        'sig_existing', 'legacy-v1', 'sym_existing', NULL, 'long', 80,
+                        'observed', 'mds_existing', '{}', 1, 'corr-existing',
+                        '2026-07-17 14:30:00'
+                    )
+                    """
+                )
+            )
+            connection.execute(
+                text(
+                    """
+                    INSERT INTO candidates (
+                        id, signal_id, symbol_id, instrument_id, status, score,
+                        explanation_payload, explanation_schema_version, correlation_id,
+                        created_at
+                    ) VALUES (
+                        'can_existing', 'sig_existing', 'sym_existing', NULL, 'stored', 80,
+                        '{}', 1, 'corr-existing', '2026-07-17 14:30:00'
+                    )
+                    """
+                )
+            )
+    finally:
+        engine.dispose()
+
+    command.upgrade(config, "head")
+
+    engine = create_engine(database_url)
+    try:
+        inspector = inspect(engine)
+        assert {"scanner_runs", "eligibility_decisions"}.issubset(inspector.get_table_names())
+        with engine.connect() as connection:
+            signal = connection.execute(
+                text(
+                    """
+                    SELECT signal_key, scanner_run_id, strategy_id, input_digest,
+                           reason_codes, gate_payload, component_score_payload,
+                           scoring_policy_version
+                    FROM signals WHERE id = 'sig_existing'
+                    """
+                )
+            ).one()
+            candidate = connection.execute(
+                text(
+                    """
+                    SELECT candidate_key, scanner_run_id, strategy_id, direction,
+                           input_digest, scoring_policy_version
+                    FROM candidates WHERE id = 'can_existing'
+                    """
+                )
+            ).one()
+        assert signal == (None,) * 8
+        assert candidate == (None,) * 6
+    finally:
+        engine.dispose()
+
+
 def test_quarantine_reason_index_uses_postgresql_gin() -> None:
     index = next(
         index
