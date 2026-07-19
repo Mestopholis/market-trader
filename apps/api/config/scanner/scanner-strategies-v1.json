@@ -1,0 +1,18 @@
+{
+  "version": "scanner-strategies-v1",
+  "content_hash": "435cf5e3be23ec1b00d0ee0c783ce2445b64472b34de1501634467edec1dba2c",
+  "feature_version": "scanner-features-v1",
+  "evidence_version": "scanner-evidence-v1",
+  "rules": [
+    {"strategy_id": "bullish_breakout", "direction": "bullish"},
+    {"strategy_id": "bullish_pullback", "direction": "bullish"},
+    {"strategy_id": "bearish_breakdown", "direction": "bearish"},
+    {"strategy_id": "bearish_failed_rally", "direction": "bearish"},
+    {"strategy_id": "news_continuation", "direction": "evidence"}
+  ],
+  "relative_volume_minimum": "1.50",
+  "pullback_tolerance": "0.01",
+  "price_extension_minimum": "0.0025",
+  "mixed_direction_minimum": "20",
+  "catalyst_lookback_completed_sessions": 2
+}

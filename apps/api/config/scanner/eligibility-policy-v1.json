@@ -1,0 +1,18 @@
+{
+  "version": "eligibility-policy-v1",
+  "content_hash": "c16a581213a840e8d83e17d371cee619f1e73b18a0ce0939bc307f497777880f",
+  "allowed_security_types": ["common_stock", "unleveraged_etf"],
+  "minimum_adjusted_close": "10.00",
+  "maximum_adjusted_close": "1000.00",
+  "price_bounds_inclusive": true,
+  "minimum_completed_daily_sessions": 200,
+  "dollar_volume_window_sessions": 20,
+  "minimum_median_dollar_volume": "25000000.00",
+  "dollar_volume_minimum_inclusive": true,
+  "permitted_quality_states": ["valid", "degraded"],
+  "provider_unavailable_blocks": true,
+  "halt_blocks": true,
+  "non_updating_quote_blocks": true,
+  "unsupported_adjustment_blocks": true,
+  "unresolved_corporate_action_blocks": true
+}

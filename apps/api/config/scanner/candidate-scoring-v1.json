@@ -1,0 +1,33 @@
+{
+  "version": "candidate-scoring-v1",
+  "content_hash": "34fbacfd5e94eb38ee1f3b27be735a048e77a607ea5b1eb4985f664d49e1ac8b",
+  "family_caps": {
+    "market_direction": "25",
+    "price_structure": "30",
+    "participation_liquidity": "20",
+    "relative_performance": "15",
+    "catalyst": "10"
+  },
+  "candidate_threshold": "70.000000",
+  "score_quantum": "0.000001",
+  "relative_volume_high_minimum": "2.00",
+  "relative_strength_bullish_standard_minimum": "70",
+  "relative_strength_bullish_exceptional_minimum": "85",
+  "relative_strength_bearish_standard_maximum": "30",
+  "relative_strength_bearish_exceptional_maximum": "15",
+  "component_points": {
+    "established_trend": "15",
+    "aligned_regime": "10",
+    "neutral_reversal_regime": "5",
+    "mixed_compatible_regime": "5",
+    "price_trigger": "20",
+    "price_extension": "5",
+    "correct_vwap_side": "5",
+    "eligibility_liquidity": "5",
+    "relative_volume_standard": "10",
+    "relative_volume_high": "15",
+    "relative_strength_standard": "10",
+    "relative_strength_exceptional": "15",
+    "compatible_catalyst": "10"
+  }
+}
