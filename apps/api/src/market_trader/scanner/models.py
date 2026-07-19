@@ -301,6 +301,7 @@ class ScanResult:
     candidates: tuple[CandidateResult, ...]
     counts: ScanCounts
     result_digest: str
+    configuration_hashes: Mapping[str, str] = MappingProxyType({})
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "as_of", ensure_utc(self.as_of))
@@ -341,6 +342,11 @@ class ScanResult:
                     ),
                 )
             ),
+        )
+        object.__setattr__(
+            self,
+            "configuration_hashes",
+            _immutable_mapping(self.configuration_hashes),
         )
 
 
@@ -403,9 +409,7 @@ def _evidence_sort_key(value: EvidenceRef) -> tuple[str, str, str, str, str, str
 
 def _freeze_value(value: object) -> object:
     if isinstance(value, Mapping):
-        return MappingProxyType(
-            {str(key): _freeze_value(item) for key, item in value.items()}
-        )
+        return MappingProxyType({str(key): _freeze_value(item) for key, item in value.items()})
     if isinstance(value, (list, tuple)):
         return tuple(_freeze_value(item) for item in value)
     if is_dataclass(value) and not isinstance(value, type):

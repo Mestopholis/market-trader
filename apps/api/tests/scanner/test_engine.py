@@ -300,6 +300,7 @@ def test_candidates_trace_only_to_passing_signals_and_versioned_stable_keys() ->
     assert configuration.versions.scoring in result.run_key
     assert result.input_digest
     assert result.result_digest
+    assert dict(result.configuration_hashes) == dict(configuration.content_hashes)
     assert result.candidates
     for candidate in result.candidates:
         signal = strategies[candidate.signal_key]

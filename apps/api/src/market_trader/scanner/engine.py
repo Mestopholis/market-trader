@@ -166,6 +166,7 @@ class ScannerEngine:
             candidates=tuple(candidates),
             counts=counts,
             result_digest=result_digest,
+            configuration_hashes=effective.configuration_hashes,
         )
 
     def _validate_configuration(self, scanner_input: ScannerInput) -> None:
