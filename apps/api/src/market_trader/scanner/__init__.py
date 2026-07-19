@@ -1,5 +1,9 @@
 """Deterministic scanner domain contracts."""
 
+from market_trader.scanner.eligibility import (
+    EligibilityEvaluator,
+    EligibilityQuality,
+)
 from market_trader.scanner.evidence import (
     BreadthEvidence,
     CatalystDirection,
@@ -52,6 +56,8 @@ __all__ = [
     "Direction",
     "EligibilityResult",
     "EligibilityStatus",
+    "EligibilityEvaluator",
+    "EligibilityQuality",
     "EvidenceRef",
     "EvidenceValidationError",
     "FeatureSet",
