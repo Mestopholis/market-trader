@@ -47,7 +47,7 @@ select an option, size a position, create an order intent, or reach a broker.
 - Represent company news, earnings, SEC filings, economic releases, and authorized
   social observations through project-owned immutable contracts.
 - Attribute every observation and decision to a source reference, publication
-  time, ingestion time, stable event identity, and payload digest.
+  time, ingestion time, stable event identity, and authoritative payload digest.
 - Normalize and quarantine provider events through deterministic, versioned rules.
 - Classify event family, category, materiality, direction, confirmation state, and
   event-risk state without inspecting prose.
@@ -175,9 +175,11 @@ Every source adapter produces a `CatalystProviderEvent` with:
 - Correlation identifier.
 
 The canonical ingestion key is derived from source ID, provider event ID, and
-provider schema version. A separate SHA-256 digest covers the sanitized canonical
-payload. The same key and digest is an exact duplicate; the same key with another
-digest is an identity conflict.
+provider schema version. An authoritative SHA-256 digest covers attribution,
+timestamps, structured facts, and policy-relevant metadata; a separate external-
+text digest covers bounded display text. The same key with another authoritative
+digest is an identity conflict. A display-text-only difference returns the existing
+authoritative observation and cannot create a conflict or another decision input.
 
 ### Provider Protocols
 
@@ -203,7 +205,9 @@ The initial SEC adapter uses only fixed HTTPS resources under `data.sec.gov`:
 
 The adapter does not use EDGAR filer APIs, tokens, submission endpoints, browser
 automation, filing-document links, or arbitrary archive URLs. CIK values come from
-versioned local symbol configuration and are rendered as ten digits.
+versioned local symbol configuration and are rendered as ten digits. Version one
+configures the 15 operating-company symbols in the Milestone 4 universe and marks
+the 15 fund symbols explicitly unsupported for company-filing classification.
 
 SEC public data requires no API key. Requests include a configured application
 name and contact email in `User-Agent`, use fixed `Accept` and encoding headers,
@@ -266,7 +270,7 @@ Official API references reviewed for this design:
 
 An accepted `CatalystObservation` contains:
 
-- Stable observation key and payload digest.
+- Stable observation key, authoritative payload digest, and external-text digest.
 - Source ID, authority class, event family, and event category.
 - Provider event ID and canonical source reference.
 - Optional symbol ID and external symbol identity.
@@ -449,12 +453,13 @@ Changing a reason's meaning requires a new applicable policy version.
 ## Cited Summary Contract
 
 A `CitedSummary` contains a stable summary ID, summary-provider ID, generated time,
-bounded plain text, sorted observation keys, sorted source references, summary
-policy version, and content digest.
+an ordered tuple of summary segments, summary policy version, and content digest.
+Each segment contains bounded plain text plus nonempty sorted observation keys and
+source references. The concatenated text is capped at 2,048 characters.
 
-Every factual statement represented by a summary fixture must reference at least
-one accepted observation. Unknown or quarantined references reject the summary.
-Summary text is capped at 2,048 characters and treated as opaque display data.
+Every segment must reference at least one accepted observation. Unknown or
+quarantined references reject the complete summary. Segment text remains opaque
+display data; citation validation does not attempt to infer whether prose is true.
 
 Summaries are persisted separately and are excluded from observation digests,
 catalyst decision inputs, materiality, direction, confirmation, event-risk state,
@@ -491,11 +496,12 @@ correlation ID, and creation time. Run key is unique.
 
 ### Observations
 
-`catalyst_observations` records observation key, ingestion key, payload digest,
-source and provider identities, authority class, event family/category, symbol ID,
-publication/ingestion/scheduled/valid-until times, canonical source reference,
-structured facts, bounded external text, quality reasons, schema versions,
-correlation ID, and creation time. Observation and ingestion keys are unique.
+`catalyst_observations` records observation key, ingestion key, authoritative
+payload digest, external-text digest, source and provider identities, authority
+class, event family/category, symbol ID, publication/ingestion/scheduled/valid-until
+times, canonical source reference, structured facts, bounded external text, quality
+reasons, schema versions, correlation ID, and creation time. Observation and
+ingestion keys are unique.
 
 Rows are immutable through repository APIs. SQLite update and delete triggers
 enforce append-only behavior; PostgreSQL-compatible migration definitions and
