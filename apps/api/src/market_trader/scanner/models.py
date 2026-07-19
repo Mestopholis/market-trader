@@ -122,7 +122,12 @@ class ScannerInput:
         object.__setattr__(
             self,
             "symbols",
-            tuple(sorted(self.symbols, key=_stable_sort_key)),
+            tuple(
+                sorted(
+                    self.symbols,
+                    key=lambda item: (item.symbol, _stable_sort_key(item)),
+                )
+            ),
         )
         object.__setattr__(
             self,
@@ -224,11 +229,25 @@ class StrategyResult:
     score: Decimal | None = None
 
     def __post_init__(self) -> None:
-        object.__setattr__(self, "gates", tuple(sorted(self.gates, key=_stable_sort_key)))
+        object.__setattr__(
+            self,
+            "gates",
+            tuple(
+                sorted(
+                    self.gates,
+                    key=lambda item: (item.name, _stable_sort_key(item)),
+                )
+            ),
+        )
         object.__setattr__(
             self,
             "components",
-            tuple(sorted(self.components, key=_stable_sort_key)),
+            tuple(
+                sorted(
+                    self.components,
+                    key=lambda item: (item.family, _stable_sort_key(item)),
+                )
+            ),
         )
         object.__setattr__(self, "reasons", _ordered_unique(self.reasons))
         object.__setattr__(self, "lineage", _ordered_unique(self.lineage))
@@ -288,17 +307,40 @@ class ScanResult:
         object.__setattr__(
             self,
             "eligibility",
-            tuple(sorted(self.eligibility, key=_stable_sort_key)),
+            tuple(
+                sorted(
+                    self.eligibility,
+                    key=lambda item: (item.symbol, _stable_sort_key(item)),
+                )
+            ),
         )
         object.__setattr__(
             self,
             "strategies",
-            tuple(sorted(self.strategies, key=_stable_sort_key)),
+            tuple(
+                sorted(
+                    self.strategies,
+                    key=lambda item: (
+                        item.symbol,
+                        item.strategy_id,
+                        _stable_sort_key(item),
+                    ),
+                )
+            ),
         )
         object.__setattr__(
             self,
             "candidates",
-            tuple(sorted(self.candidates, key=_stable_sort_key)),
+            tuple(
+                sorted(
+                    self.candidates,
+                    key=lambda item: (
+                        item.symbol,
+                        item.strategy_id,
+                        _stable_sort_key(item),
+                    ),
+                )
+            ),
         )
 
 
@@ -326,7 +368,16 @@ def _freeze_value(value: object) -> object:
         )
     if isinstance(value, (list, tuple)):
         return tuple(_freeze_value(item) for item in value)
-    return value
+    if is_dataclass(value) and not isinstance(value, type):
+        return MappingProxyType(
+            {item.name: _freeze_value(getattr(value, item.name)) for item in fields(value)}
+        )
+    if value is None or isinstance(
+        value,
+        (bool, int, float, str, bytes, Decimal, date, datetime, Enum),
+    ):
+        return value
+    raise TypeError(f"unsupported mutable scanner value: {type(value).__name__}")
 
 
 def _stable_sort_key(value: object) -> str:
@@ -336,6 +387,10 @@ def _stable_sort_key(value: object) -> str:
 def _structural_value(value: object) -> object:
     if isinstance(value, Enum):
         return value.value
+    if isinstance(value, datetime):
+        return ensure_utc(value).isoformat()
+    if isinstance(value, date):
+        return value.isoformat()
     if is_dataclass(value) and not isinstance(value, type):
         return {item.name: _structural_value(getattr(value, item.name)) for item in fields(value)}
     if isinstance(value, Mapping):

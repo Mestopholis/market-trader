@@ -1,6 +1,6 @@
 from collections.abc import Mapping
-from dataclasses import replace
-from datetime import UTC, date, datetime, timedelta
+from dataclasses import dataclass, replace
+from datetime import UTC, date, datetime, timedelta, timezone
 from decimal import Decimal
 from typing import cast
 
@@ -37,6 +37,11 @@ from market_trader.scanner.models import (
 from market_trader.scanner.serialization import stable_digest
 
 AS_OF = datetime(2026, 7, 17, 15, 30, tzinfo=UTC)
+
+
+@dataclass
+class MutablePayload:
+    labels: list[str]
 
 
 def _reference(lineage_id: str = "lineage-1") -> EvidenceRef:
@@ -195,6 +200,23 @@ def test_nested_mapping_inputs_cannot_mutate_records_or_digests() -> None:
         frozen_quality["states"] = ()  # type: ignore[index]
 
 
+def test_mutable_dataclass_values_are_recursively_owned_and_immutable() -> None:
+    payload = MutablePayload(labels=["valid"])
+    symbol = SymbolInput(symbol="SPY", attributes={"payload": payload})
+    original_digest = stable_digest(symbol)
+
+    payload.labels.append("changed")
+
+    frozen_payload = cast(Mapping[str, object], symbol.attributes["payload"])
+    assert frozen_payload["labels"] == ("valid",)
+    assert stable_digest(symbol) == original_digest
+
+
+def test_unsupported_mutable_values_are_rejected() -> None:
+    with pytest.raises(TypeError, match="unsupported mutable scanner value: bytearray"):
+        SymbolInput(symbol="SPY", attributes={"payload": bytearray(b"mutable")})
+
+
 def test_tied_evidence_and_market_observations_have_total_order() -> None:
     metadata = ObservationMetadata(
         source="fixture",
@@ -286,6 +308,140 @@ def test_tied_symbols_gates_and_components_have_total_order() -> None:
 
     assert stable_digest(scanner_left) == stable_digest(scanner_right)
     assert stable_digest(strategy_left) == stable_digest(strategy_right)
+
+
+def test_collections_preserve_semantic_primary_order() -> None:
+    versions = PolicyVersions()
+    symbols = (
+        SymbolInput(symbol="SPY", attributes={"priority": "a"}),
+        SymbolInput(symbol="AAPL", attributes={"priority": "z"}),
+    )
+    gates = (
+        GateResult(name="z_gate", passed=True, observed={"priority": "a"}),
+        GateResult(name="a_gate", passed=True, observed={"priority": "z"}),
+    )
+    components = (
+        ComponentScore(
+            family="z_family",
+            pre_cap=Decimal("1"),
+            cap=Decimal("1"),
+            final=Decimal("1"),
+        ),
+        ComponentScore(
+            family="a_family",
+            pre_cap=Decimal("9"),
+            cap=Decimal("9"),
+            final=Decimal("9"),
+        ),
+    )
+    strategy_aapl = StrategyResult(
+        signal_key="signal-z",
+        symbol="AAPL",
+        strategy_id="z_strategy",
+        policy_version=versions.strategies,
+        direction=Direction.BULLISH,
+        status=StrategyStatus.PASSED,
+        gates=gates,
+        components=components,
+    )
+    strategy_spy = replace(
+        strategy_aapl,
+        signal_key="signal-a",
+        symbol="SPY",
+        strategy_id="a_strategy",
+    )
+    eligibility = (
+        EligibilityResult(
+            symbol="SPY",
+            status=EligibilityStatus.ELIGIBLE,
+            policy_version=versions.eligibility,
+            observed={"priority": "a"},
+        ),
+        EligibilityResult(
+            symbol="AAPL",
+            status=EligibilityStatus.ELIGIBLE,
+            policy_version=versions.eligibility,
+            observed={"priority": "z"},
+        ),
+    )
+    candidate_aapl = CandidateResult(
+        candidate_key="candidate-z",
+        signal_key="signal-z",
+        symbol="AAPL",
+        strategy_id="z_strategy",
+        direction=Direction.BULLISH,
+        score=Decimal("70"),
+    )
+    candidate_spy = replace(
+        candidate_aapl,
+        candidate_key="candidate-a",
+        signal_key="signal-a",
+        symbol="SPY",
+        strategy_id="a_strategy",
+    )
+    scanner_input = ScannerInput(
+        as_of=AS_OF,
+        session_date=date(2026, 7, 17),
+        versions=versions,
+        symbols=symbols,
+    )
+    result = ScanResult(
+        run_key="run",
+        as_of=AS_OF,
+        session_date=date(2026, 7, 17),
+        versions=versions,
+        input_digest="a" * 64,
+        regime=RegimeResult(
+            state=RegimeState.NEUTRAL,
+            signed_score=Decimal("0"),
+            policy_version=versions.regime,
+        ),
+        eligibility=eligibility,
+        strategies=(strategy_spy, strategy_aapl),
+        candidates=(candidate_spy, candidate_aapl),
+        counts=ScanCounts(eligible=2, signals=2, candidates=2),
+        result_digest="b" * 64,
+    )
+
+    assert [item.symbol for item in scanner_input.symbols] == ["AAPL", "SPY"]
+    assert [item.name for item in strategy_aapl.gates] == ["a_gate", "z_gate"]
+    assert [item.family for item in strategy_aapl.components] == ["a_family", "z_family"]
+    assert [item.symbol for item in result.eligibility] == ["AAPL", "SPY"]
+    assert [(item.symbol, item.strategy_id) for item in result.strategies] == [
+        ("AAPL", "z_strategy"),
+        ("SPY", "a_strategy"),
+    ]
+    assert [(item.symbol, item.strategy_id) for item in result.candidates] == [
+        ("AAPL", "z_strategy"),
+        ("SPY", "a_strategy"),
+    ]
+
+
+def test_tie_breakers_normalize_equivalent_datetime_offsets() -> None:
+    offset = timezone(timedelta(hours=-5))
+    gate_a = GateResult(
+        name="timestamp_gate",
+        passed=True,
+        observed={"at": AS_OF, "id": "a"},
+    )
+    gate_z = GateResult(
+        name="timestamp_gate",
+        passed=True,
+        observed={"at": AS_OF.astimezone(offset), "id": "z"},
+    )
+    left = StrategyResult(
+        signal_key="signal",
+        symbol="SPY",
+        strategy_id="breakout",
+        policy_version="scanner-strategies-v1",
+        direction=Direction.BULLISH,
+        status=StrategyStatus.PASSED,
+        gates=(gate_z, gate_a),
+    )
+    right = replace(left, gates=(gate_a, gate_z))
+
+    assert [gate.observed["id"] for gate in left.gates] == ["a", "z"]
+    assert stable_digest(left) == stable_digest(right)
 
 
 def test_tied_scan_results_have_total_order() -> None:
