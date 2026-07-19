@@ -1,9 +1,11 @@
 from pathlib import Path
+from typing import cast
 
 from alembic import command
 from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.schema import CreateIndex
+from sqlalchemy.sql.schema import Table
 
 from market_trader.db.migrations import alembic_config
 from market_trader.db.models import MarketDataQuarantineORM
@@ -32,6 +34,11 @@ def test_initial_migration_creates_domain_tables(tmp_path: Path) -> None:
             "journal_events",
             "configuration_versions",
             "market_data_quarantine",
+            "catalyst_source_runs",
+            "catalyst_observations",
+            "catalyst_quarantine",
+            "catalyst_decisions",
+            "catalyst_summaries",
         }.issubset(set(inspector.get_table_names()))
         snapshot_columns = {
             column["name"] for column in inspector.get_columns("market_data_snapshots")
@@ -209,12 +216,33 @@ def test_scanner_migration_preserves_existing_decisions(tmp_path: Path) -> None:
 
 
 def test_quarantine_reason_index_uses_postgresql_gin() -> None:
+    table = cast(Table, MarketDataQuarantineORM.__table__)
     index = next(
         index
-        for index in MarketDataQuarantineORM.__table__.indexes
+        for index in table.indexes
         if index.name == "ix_market_data_quarantine_reason_codes"
     )
 
-    statement = str(CreateIndex(index).compile(dialect=postgresql.dialect()))
+    statement = str(
+        CreateIndex(index).compile(
+            dialect=postgresql.dialect()  # type: ignore[no-untyped-call]
+        )
+    )
 
     assert "USING gin" in statement
+
+
+def test_catalyst_migration_downgrade_preserves_prior_milestones(tmp_path: Path) -> None:
+    database_url = f"sqlite:///{tmp_path / 'catalyst-downgrade.db'}"
+    config = alembic_config(database_url)
+    command.upgrade(config, "head")
+
+    command.downgrade(config, "20260719_0003")
+
+    engine = create_engine(database_url)
+    try:
+        tables = set(inspect(engine).get_table_names())
+        assert not any(name.startswith("catalyst_") for name in tables)
+        assert {"symbols", "scanner_runs", "eligibility_decisions"}.issubset(tables)
+    finally:
+        engine.dispose()

@@ -1,0 +1,24 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Bureau of Labor Statistics//Release Calendar//EN
+BEGIN:VEVENT
+UID:cpi-july-2026
+DTSTART;TZID=America/New_York:20260714T083000
+SUMMARY:Consumer Price Index
+END:VEVENT
+BEGIN:VEVENT
+UID:cpi-july-2026
+DTSTART;TZID=America/New_York:20260714T083000
+SUMMARY:Consumer Price Index
+END:VEVENT
+BEGIN:VEVENT
+UID:empsit-december-2026
+DTSTART;TZID=America/New_York:20261204T083000
+SUMMARY:The Employment Situation
+END:VEVENT
+BEGIN:VEVENT
+UID:unknown-release
+DTSTART;TZID=America/New_York:20260720T100000
+SUMMARY:Unknown Statistical Release
+END:VEVENT
+END:VCALENDAR

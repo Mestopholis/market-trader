@@ -1,0 +1,40 @@
+{
+  "as_of": "2026-07-17T15:00:00+00:00",
+  "dataset_id": "minimal-catalysts",
+  "description": "Minimal deterministic catalyst fixture.",
+  "expected_reason_digest": null,
+  "expected_result_digest": null,
+  "fixture_schema_version": 1,
+  "policy_hashes": {
+    "classification": "da4760dd97565b32b123caa4a3978990c28038acf23fddfbe28ecc2d592b99d6",
+    "risk": "7d92af5ae286896e254790f51fb4c017f61576273ccae025a840df861ccb4dde",
+    "sources": "e1105793df337d0be98c92bcfa398782980cfd966278f091782663723af70d66",
+    "summary": "41fe228c9ec1060d5eb6f073b05ae2c961986b154ba82dcc05027be56970e287"
+  },
+  "policy_versions": {
+    "classification": "catalyst-classification-policy-v1",
+    "fixture": "catalyst-fixture-v1",
+    "risk": "event-risk-policy-v1",
+    "source": "catalyst-source-policy-v1",
+    "summary": "catalyst-summary-policy-v1"
+  },
+  "scenarios": [
+    "minimal"
+  ],
+  "streams": [
+    {
+      "byte_count": 486,
+      "filename": "events.ndjson",
+      "kind": "provider_events",
+      "record_count": 1,
+      "sha256": "c187c445086b1d66f14187a334bede31a8d1dc3c15a7b83b37ee5a950ec10ce2"
+    },
+    {
+      "byte_count": 184,
+      "filename": "bls-calendar.ics",
+      "kind": "bls_calendar",
+      "record_count": 1,
+      "sha256": "c36b7576f57e0294c010b071ace81e9ac95c697598c5439b1a576b03b27dc87c"
+    }
+  ]
+}

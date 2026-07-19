@@ -1,0 +1,13 @@
+{
+  "content_hash": "7d92af5ae286896e254790f51fb4c017f61576273ccae025a840df861ccb4dde",
+  "earnings_sessions_before": 2,
+  "high_impact_macro": [
+    "consumer_price_index",
+    "employment_situation",
+    "fomc_rate_decision"
+  ],
+  "macro_minutes_after": 30,
+  "macro_minutes_before": 60,
+  "require_full_session_after": true,
+  "version": "event-risk-policy-v1"
+}

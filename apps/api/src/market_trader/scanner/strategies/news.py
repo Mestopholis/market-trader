@@ -58,6 +58,21 @@ class NewsContinuationEvaluator:
                 lineage,
             )
 
+        blocked = next((item for item in catalysts if item.blocked), None)
+        if blocked is not None:
+            return self._terminal_result(
+                features,
+                regime,
+                Direction.BULLISH,
+                StrategyStatus.BLOCKED,
+                (
+                    blocked.reason_codes[0]
+                    if blocked.reason_codes
+                    else "catalyst_decision_blocked"
+                ),
+                lineage,
+            )
+
         malformed_reason = self._malformed_reason(catalysts, evidence.as_of)
         if malformed_reason is not None:
             return self._terminal_result(

@@ -1,0 +1,49 @@
+{
+  "as_of": "2026-07-17T16:00:00+00:00",
+  "dataset_id": "company-and-earnings",
+  "description": "Deterministic company-and-earnings catalyst conformance fixture.",
+  "expected_reason_digest": "24738e98015e30c29197c06db1c86d840a099563eef987d26b3c3e2651e192d1",
+  "expected_result_digest": "36cc09ed4cd21a85bf158109c7f111ab9d092055569db5676ccab977acba89d8",
+  "fixture_schema_version": 1,
+  "policy_hashes": {
+    "classification": "da4760dd97565b32b123caa4a3978990c28038acf23fddfbe28ecc2d592b99d6",
+    "risk": "7d92af5ae286896e254790f51fb4c017f61576273ccae025a840df861ccb4dde",
+    "sources": "e1105793df337d0be98c92bcfa398782980cfd966278f091782663723af70d66",
+    "summary": "41fe228c9ec1060d5eb6f073b05ae2c961986b154ba82dcc05027be56970e287"
+  },
+  "policy_versions": {
+    "classification": "catalyst-classification-policy-v1",
+    "fixture": "catalyst-fixture-v1",
+    "risk": "event-risk-policy-v1",
+    "source": "catalyst-source-policy-v1",
+    "summary": "catalyst-summary-policy-v1"
+  },
+  "scenarios": [
+    "company:acquisition_announced",
+    "company:bankruptcy_filing",
+    "company:buyback_authorized",
+    "company:cyber_incident",
+    "company:dividend_cut",
+    "company:dividend_increase",
+    "company:executive_change",
+    "company:going_concern",
+    "company:regulatory_approval",
+    "company:regulatory_denial",
+    "earnings:positive-threshold",
+    "earnings:negative-threshold",
+    "earnings:before-market",
+    "earnings:after-market",
+    "earnings:unknown-time",
+    "identity:exact-rerun",
+    "identity:changed-input"
+  ],
+  "streams": [
+    {
+      "byte_count": 11166,
+      "filename": "events.ndjson",
+      "kind": "provider_events",
+      "record_count": 20,
+      "sha256": "5b1ec3cc1b39c4d766827daf77c082e3d4a8fcebb09f8eb8876609f25e1c876e"
+    }
+  ]
+}

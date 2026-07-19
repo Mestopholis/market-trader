@@ -20,10 +20,12 @@ from market_trader.scanner.features import (
 )
 from market_trader.scanner.models import (
     EligibilityStatus,
+    GateResult,
     ScanCounts,
     ScannerInput,
     ScanResult,
     StrategyResult,
+    StrategyStatus,
     SymbolInput,
 )
 from market_trader.scanner.regime import RegimeClassifier
@@ -120,6 +122,7 @@ class ScannerEngine:
             for rule in self._configuration.strategies.rules:
                 evaluator = self._evaluators[rule.strategy_id]
                 evaluated = evaluator.evaluate(feature, regime, evidence)
+                evaluated = _apply_symbol_catalyst_block(evaluated, evidence)
                 identified = replace(
                     evaluated,
                     signal_key=(
@@ -307,6 +310,38 @@ def _empty_evidence(scanner_input: ScannerInput) -> SupplementalEvidence:
         volatility=(),
         macro=(),
         catalysts=(),
+    )
+
+
+def _apply_symbol_catalyst_block(
+    result: StrategyResult,
+    evidence: SupplementalEvidence,
+) -> StrategyResult:
+    block = next(
+        (
+            catalyst
+            for catalyst in evidence.catalysts
+            if catalyst.symbol == result.symbol
+            and catalyst.category == "earnings"
+            and catalyst.blocked
+        ),
+        None,
+    )
+    if block is None:
+        return result
+    reasons = block.reason_codes or ("earnings_risk_blocked",)
+    gate = GateResult(
+        name="earnings_risk",
+        passed=None,
+        reasons=reasons,
+        observed={"category": block.category},
+    )
+    return replace(
+        result,
+        status=StrategyStatus.BLOCKED,
+        gates=(*result.gates, gate),
+        reasons=(*result.reasons, *reasons),
+        lineage=(*result.lineage, block.lineage_id, *block.observation_keys),
     )
 
 

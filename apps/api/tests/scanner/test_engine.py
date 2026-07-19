@@ -23,6 +23,9 @@ from market_trader.scanner.configuration import (
 )
 from market_trader.scanner.evidence import (
     BreadthEvidence,
+    CatalystDirection,
+    CatalystEvidence,
+    CatalystMateriality,
     EvidenceMetadata,
     MacroEvidence,
     MacroState,
@@ -288,6 +291,67 @@ def test_emits_one_eligibility_per_member_and_five_signals_per_eligible_symbol()
     assert result.counts.ineligible == 1
     assert result.counts.blocked == 0
     assert result.counts.signals == 5
+
+
+def test_earnings_risk_blocks_every_strategy_for_symbol() -> None:
+    supplemental = _supplemental()
+    earnings_block = CatalystEvidence(
+        **_evidence_metadata("earnings-risk-lineage").__dict__,
+        evidence_id="earnings-risk",
+        symbol="AAPL",
+        source_reference="decision:earnings-risk",
+        published_at=AS_OF,
+        materiality=CatalystMateriality.NON_MATERIAL,
+        direction=CatalystDirection.UNCLEAR,
+        category="earnings",
+        blocked=True,
+        reason_codes=("earnings_window_active",),
+    )
+    scanner_input = replace(
+        _scanner_input(),
+        supplemental_evidence=replace(
+            supplemental,
+            catalysts=(earnings_block,),
+        ),
+    )
+
+    result = ScannerEngine(_configuration()).scan(scanner_input)
+
+    assert len(result.strategies) == 5
+    assert all(item.status is StrategyStatus.BLOCKED for item in result.strategies)
+    assert all("earnings_window_active" in item.reasons for item in result.strategies)
+    assert result.candidates == ()
+
+
+def test_catalyst_risk_participates_in_scan_identity_without_mutating_prior_run() -> None:
+    engine = ScannerEngine(_configuration())
+    scanner_input = _scanner_input()
+    original = engine.scan(scanner_input)
+    repeated = engine.scan(scanner_input)
+    risk = CatalystEvidence(
+        **_evidence_metadata("earnings-risk-lineage").__dict__,
+        evidence_id="earnings-risk",
+        symbol="AAPL",
+        source_reference="decision:earnings-risk",
+        published_at=AS_OF,
+        materiality=CatalystMateriality.NON_MATERIAL,
+        direction=CatalystDirection.UNCLEAR,
+        category="earnings",
+        blocked=True,
+        reason_codes=("earnings_window_active",),
+    )
+    changed_input = replace(
+        scanner_input,
+        supplemental_evidence=replace(_supplemental(), catalysts=(risk,)),
+    )
+
+    changed = engine.scan(changed_input)
+
+    assert repeated.run_key == original.run_key
+    assert repeated.input_digest == original.input_digest
+    assert changed.run_key != original.run_key
+    assert changed.input_digest != original.input_digest
+    assert original.strategies == repeated.strategies
 
 
 def test_candidates_trace_only_to_passing_signals_and_versioned_stable_keys() -> None:
