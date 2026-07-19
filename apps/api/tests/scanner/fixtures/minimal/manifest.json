@@ -1,0 +1,50 @@
+{
+  "dataset_id": "scanner-minimal",
+  "description": "Minimal scanner fixture loader dataset.",
+  "scanner_fixture_schema_version": "scanner-fixture-v1",
+  "as_of": "2026-07-17T15:35:00+00:00",
+  "session_date": "2026-07-17",
+  "source": "fixture",
+  "market_configuration_version": "fixture-v1",
+  "versions": {
+    "universe": "eligible-universe-v1",
+    "eligibility": "eligibility-policy-v1",
+    "features": "scanner-features-v1",
+    "regime": "market-regime-v1",
+    "strategies": "scanner-strategies-v1",
+    "scoring": "candidate-scoring-v1",
+    "evidence": "scanner-evidence-v1",
+    "fixture": "scanner-fixture-v1"
+  },
+  "configuration_hashes": {
+    "universe": "44eae3aa12fd93398a9d60455bd25b94868a426f19ba7128926ba2a533f8810a",
+    "eligibility": "c16a581213a840e8d83e17d371cee619f1e73b18a0ce0939bc307f497777880f",
+    "regime": "39157b670beca5624b6f4f124218947068965341a0c36d6e243ba06a91ca5b14",
+    "strategies": "5e2e282153e1113b4e2fa0b6c2e667f2f38b770b80f18fdb1ab7a995f809d409",
+    "scoring": "99ab31d048788ada0029d51498fe4b952ccd55bd35b1dcd527e5b3af3b6d70d2"
+  },
+  "market_streams": [
+    {
+      "filename": "market.ndjson",
+      "data_kind": "quote",
+      "sha256": "07e291721779cd7720a90a4c4c3620751b16ea742f174ca6803d561846f945cc",
+      "event_count": 1
+    }
+  ],
+  "supplemental": {
+    "filename": "supplemental.ndjson",
+    "sha256": "3157f671c5a94cb690fdacac3c3d3ec97770b87d4ac148303230165cba6a7d88",
+    "record_count": 1
+  },
+  "expected": {
+    "regime_state": "blocked",
+    "regime_score": "0.000000",
+    "eligible": 0,
+    "ineligible": 0,
+    "blocked": 30,
+    "signals": 0,
+    "candidates": 0,
+    "reason_summary": {"missing_required_input": 30},
+    "result_digest": "0000000000000000000000000000000000000000000000000000000000000000"
+  }
+}

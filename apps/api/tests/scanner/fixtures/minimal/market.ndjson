@@ -1,0 +1,1 @@
+{"event_id":"quote-1","data_kind":"quote","observed_at":"2026-07-17T15:34:50+00:00","ingested_at":"2026-07-17T15:34:55+00:00","payload":{"schema_version":1,"symbol":"SPY","bid":"625.10","ask":"625.20","bid_size":100,"ask_size":200,"last":"625.15","last_size":10,"last_at":"2026-07-17T15:34:50+00:00","condition_codes":["R"]}}
