@@ -194,6 +194,31 @@ def test_constructs_fixed_sec_reference_from_allowlisted_identity() -> None:
     )
 
 
+def test_constructs_fixed_sec_companyfact_reference() -> None:
+    result = normalize_event(
+        _event(
+            family=EventFamily.SEC_FILING,
+            source_id="sec-edgar-public-v1",
+            structured_fields={
+                "event_category": "sec_filing",
+                "accession_number": "0000320193-26-000003",
+                "cik": "0000320193",
+                "fact_name": "RevenueFromContractWithCustomerExcludingAssessedTax",
+                "form": "10-Q",
+                "value": "94000000000",
+            },
+        ),
+        as_of=AS_OF,
+        configuration=CONFIGURATION,
+    )
+
+    assert result.observation is not None
+    assert result.observation.source_reference == (
+        "https://data.sec.gov/api/xbrl/companyfacts/CIK0000320193.json"
+        "#RevenueFromContractWithCustomerExcludingAssessedTax"
+    )
+
+
 def test_external_text_is_separate_and_has_no_authoritative_effect() -> None:
     left_event = _event(external_text={"headline": "Recorded result"})
     right_event = _event(
@@ -363,4 +388,3 @@ def test_watermark_rejects_out_of_order_and_authoritative_conflicts() -> None:
     assert older.quarantine.reasons == ("out_of_order",)
     assert conflict.quarantine is not None
     assert conflict.quarantine.reasons == ("event_identity_conflict",)
-

@@ -89,7 +89,12 @@ class ProviderBatch:
         object.__setattr__(
             self,
             "events",
-            tuple(sorted(self.events, key=lambda event: event.provider_event_id)),
+            tuple(
+                sorted(
+                    self.events,
+                    key=lambda event: (event.published_at, event.provider_event_id),
+                )
+            ),
         )
 
 
@@ -138,4 +143,3 @@ def _identity(
     if not normalized or any(not value or len(value) > 128 for value in normalized):
         raise ValueError(f"{label} allowlist must contain bounded nonempty values")
     return tuple(sorted(set(normalized)))
-

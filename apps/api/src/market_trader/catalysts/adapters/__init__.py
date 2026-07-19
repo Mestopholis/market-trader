@@ -1,0 +1,1 @@
+"""Official catalyst source adapters."""

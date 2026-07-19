@@ -1,0 +1,24 @@
+{
+  "cik": 320193,
+  "entityName": "Apple Inc.",
+  "facts": {
+    "us-gaap": {
+      "RevenueFromContractWithCustomerExcludingAssessedTax": {
+        "description": "Revenue recognized from contracts with customers.",
+        "label": "Revenue",
+        "units": {
+          "USD": [
+            {
+              "accn": "0000320193-26-000003",
+              "filed": "2026-07-15",
+              "form": "10-Q",
+              "fp": "Q2",
+              "fy": 2026,
+              "val": 94000000000
+            }
+          ]
+        }
+      }
+    }
+  }
+}

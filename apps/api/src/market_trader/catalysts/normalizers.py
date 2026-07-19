@@ -282,9 +282,15 @@ def _source_reference(
     source = configuration.sources.by_id[event.source_id]
     if event.source_id == "sec-edgar-public-v1":
         cik = cast(str, facts["cik"])
-        accession = cast(str, facts["accession_number"])
         if source.origins != ("https://data.sec.gov",):
             _fail("invalid_source_origin")
+        fact_name = facts.get("fact_name")
+        if isinstance(fact_name, str) and fact_name:
+            return (
+                f"{source.origins[0]}/api/xbrl/companyfacts/CIK{cik}.json"
+                f"#{fact_name}"
+            )
+        accession = cast(str, facts["accession_number"])
         return f"{source.origins[0]}/submissions/CIK{cik}.json#{accession}"
     if event.source_id == "bls-public-v1":
         origin = "https://api.bls.gov" if "series_id" in facts else "https://www.bls.gov"
