@@ -41,6 +41,10 @@ def _canonical_value(value: object, *, field_name: str | None = None) -> object:
         return {
             item.name: _canonical_value(getattr(value, item.name), field_name=item.name)
             for item in fields(value)
+            if not (
+                item.metadata.get("canonical_omit_default", False)
+                and getattr(value, item.name) == item.default
+            )
         }
     if isinstance(value, Mapping):
         return {

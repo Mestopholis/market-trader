@@ -30,6 +30,8 @@ def _catalyst(
     published_at: datetime = LOOKBACK_CUTOFF,
     valid_until: datetime = AS_OF,
     source_reference: str = "https://example.test/filing",
+    blocked: bool = False,
+    reason_codes: tuple[str, ...] = (),
 ) -> CatalystEvidence:
     return CatalystEvidence(
         schema_version="scanner-evidence-v1",
@@ -46,6 +48,8 @@ def _catalyst(
         materiality=materiality,
         direction=direction,
         category="earnings_guidance",
+        blocked=blocked,
+        reason_codes=reason_codes,
     )
 
 
@@ -114,6 +118,23 @@ def test_no_catalyst_is_not_applicable() -> None:
 
     assert result.status is StrategyStatus.NOT_APPLICABLE
     assert result.reasons == ("catalyst_missing",)
+
+
+def test_blocked_catalyst_blocks_news_gate() -> None:
+    result = NewsContinuationEvaluator(POLICY).evaluate(
+        _features(Direction.BULLISH),
+        _regime(),
+        _evidence(
+            _catalyst(
+                CatalystDirection.UNCLEAR,
+                blocked=True,
+                reason_codes=("conflicting_catalyst_direction",),
+            )
+        ),
+    )
+
+    assert result.status is StrategyStatus.BLOCKED
+    assert result.reasons == ("conflicting_catalyst_direction",)
 
 
 def test_non_material_is_not_applicable_but_unclear_material_fails() -> None:

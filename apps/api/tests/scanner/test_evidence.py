@@ -121,8 +121,14 @@ def test_parses_all_evidence_types_into_immutable_typed_values() -> None:
     assert result.volatility[0].direction is VolatilityDirection.FALLING
     assert result.macro[0].state is MacroState.RISK_ON
     assert result.macro[0].reason_codes == ("credit_spreads_stable", "rates_stable")
+    assert result.macro[0].observation_keys == ()
+    assert result.macro[0].policy_versions == ()
     assert result.catalysts[0].materiality is CatalystMateriality.MATERIAL
     assert result.catalysts[0].direction is CatalystDirection.POSITIVE
+    assert result.catalysts[0].blocked is False
+    assert result.catalysts[0].reason_codes == ()
+    assert result.catalysts[0].observation_keys == ()
+    assert result.catalysts[0].policy_versions == ()
     assert result.breadth[0].is_current(AS_OF)
     assert isinstance(result.sector_by_symbol, MappingProxyType)
     with pytest.raises(TypeError):

@@ -1,5 +1,5 @@
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
 from enum import StrEnum
@@ -147,6 +147,12 @@ class VolatilityEvidence(EvidenceMetadata):
 class MacroEvidence(EvidenceMetadata):
     state: MacroState
     reason_codes: tuple[str, ...]
+    observation_keys: tuple[str, ...] = field(
+        default=(), metadata={"canonical_omit_default": True}
+    )
+    policy_versions: tuple[str, ...] = field(
+        default=(), metadata={"canonical_omit_default": True}
+    )
 
 
 @dataclass(frozen=True)
@@ -158,6 +164,16 @@ class CatalystEvidence(EvidenceMetadata):
     materiality: CatalystMateriality
     direction: CatalystDirection
     category: str
+    blocked: bool = field(default=False, metadata={"canonical_omit_default": True})
+    reason_codes: tuple[str, ...] = field(
+        default=(), metadata={"canonical_omit_default": True}
+    )
+    observation_keys: tuple[str, ...] = field(
+        default=(), metadata={"canonical_omit_default": True}
+    )
+    policy_versions: tuple[str, ...] = field(
+        default=(), metadata={"canonical_omit_default": True}
+    )
 
 
 @dataclass(frozen=True)
