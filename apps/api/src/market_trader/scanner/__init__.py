@@ -1,5 +1,20 @@
 """Deterministic scanner domain contracts."""
 
+from market_trader.scanner.evidence import (
+    BreadthEvidence,
+    CatalystDirection,
+    CatalystEvidence,
+    CatalystMateriality,
+    EvidenceValidationError,
+    MacroEvidence,
+    MacroState,
+    SectorEvidence,
+    SectorObservation,
+    SupplementalEvidence,
+    VolatilityDirection,
+    VolatilityEvidence,
+    parse_supplemental_evidence,
+)
 from market_trader.scanner.models import (
     CandidateResult,
     ComponentScore,
@@ -22,23 +37,36 @@ from market_trader.scanner.models import (
 from market_trader.scanner.serialization import canonical_record, stable_digest
 
 __all__ = [
+    "BreadthEvidence",
     "CandidateResult",
+    "CatalystDirection",
+    "CatalystEvidence",
+    "CatalystMateriality",
     "ComponentScore",
     "Direction",
     "EligibilityResult",
     "EligibilityStatus",
     "EvidenceRef",
+    "EvidenceValidationError",
     "FeatureSet",
     "GateResult",
+    "MacroEvidence",
+    "MacroState",
     "PolicyVersions",
     "RegimeResult",
     "RegimeState",
     "ScanCounts",
     "ScanResult",
     "ScannerInput",
+    "SectorEvidence",
+    "SectorObservation",
     "StrategyResult",
     "StrategyStatus",
+    "SupplementalEvidence",
     "SymbolInput",
+    "VolatilityDirection",
+    "VolatilityEvidence",
     "canonical_record",
+    "parse_supplemental_evidence",
     "stable_digest",
 ]

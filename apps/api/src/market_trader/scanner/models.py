@@ -14,6 +14,7 @@ from market_trader.market_data.models import (
     NormalizedQuote,
 )
 from market_trader.market_data.sanitization import canonical_json, sanitize_payload
+from market_trader.scanner.evidence import SupplementalEvidence
 
 _SCORE_QUANTUM = Decimal("0.000001")
 
@@ -118,7 +119,7 @@ class ScannerInput:
     session_date: date
     versions: PolicyVersions
     symbols: tuple[SymbolInput, ...]
-    supplemental_evidence: tuple[EvidenceRef, ...] = ()
+    supplemental_evidence: SupplementalEvidence | None = None
     configuration_hashes: Mapping[str, str] = MappingProxyType({})
 
     def __post_init__(self) -> None:
@@ -132,11 +133,6 @@ class ScannerInput:
                     key=lambda item: (item.symbol, _stable_sort_key(item)),
                 )
             ),
-        )
-        object.__setattr__(
-            self,
-            "supplemental_evidence",
-            _sorted_evidence(self.supplemental_evidence),
         )
         object.__setattr__(
             self,

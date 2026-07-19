@@ -6,6 +6,7 @@ from market_trader.market_data.sanitization import (
     MAX_STRING_LENGTH,
     canonical_json,
 )
+from market_trader.scanner.evidence import parse_supplemental_evidence
 from market_trader.scanner.models import (
     Direction,
     EvidenceRef,
@@ -44,7 +45,7 @@ def test_differently_ordered_inputs_have_identical_json_and_digest() -> None:
             SymbolInput(symbol="SPY", evidence=(_reference("z", 2), _reference("a", 1))),
             SymbolInput(symbol="AAPL", attributes={"role": "candidate", "exchange": "XNYS"}),
         ),
-        supplemental_evidence=(_reference("macro-z", 4), _reference("breadth-a", 3)),
+        supplemental_evidence=parse_supplemental_evidence([], as_of=AS_OF),
         configuration_hashes={"universe": "u", "scoring": "s"},
     )
     right = ScannerInput(
@@ -55,7 +56,7 @@ def test_differently_ordered_inputs_have_identical_json_and_digest() -> None:
             SymbolInput(symbol="AAPL", attributes={"exchange": "XNYS", "role": "candidate"}),
             SymbolInput(symbol="SPY", evidence=(_reference("a", 1), _reference("z", 2))),
         ),
-        supplemental_evidence=(_reference("breadth-a", 3), _reference("macro-z", 4)),
+        supplemental_evidence=parse_supplemental_evidence([], as_of=AS_OF),
         configuration_hashes={"scoring": "s", "universe": "u"},
     )
 
