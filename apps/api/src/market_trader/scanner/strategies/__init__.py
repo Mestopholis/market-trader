@@ -5,9 +5,15 @@ from market_trader.scanner.strategies.momentum import (
     BearishBreakdownEvaluator,
     BullishBreakoutEvaluator,
 )
+from market_trader.scanner.strategies.reversal import (
+    BearishFailedRallyEvaluator,
+    BullishPullbackEvaluator,
+)
 
 __all__ = [
     "BearishBreakdownEvaluator",
+    "BearishFailedRallyEvaluator",
     "BullishBreakoutEvaluator",
+    "BullishPullbackEvaluator",
     "StrategyEvaluator",
 ]
