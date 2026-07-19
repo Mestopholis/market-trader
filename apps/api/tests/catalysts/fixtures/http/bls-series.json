@@ -1,0 +1,44 @@
+{
+  "Results": {
+    "series": [
+      {
+        "data": [
+          {
+            "footnotes": [{}],
+            "period": "M06",
+            "periodName": "June",
+            "value": "325.100",
+            "year": "2026"
+          }
+        ],
+        "seriesID": "CUSR0000SA0"
+      },
+      {
+        "data": [
+          {
+            "footnotes": [{}],
+            "period": "M06",
+            "periodName": "June",
+            "value": "159850",
+            "year": "2026"
+          }
+        ],
+        "seriesID": "CES0000000001"
+      },
+      {
+        "data": [
+          {
+            "footnotes": [{}],
+            "period": "M06",
+            "periodName": "June",
+            "value": "4.1",
+            "year": "2026"
+          }
+        ],
+        "seriesID": "LNS14000000"
+      }
+    ]
+  },
+  "message": [],
+  "status": "REQUEST_SUCCEEDED"
+}

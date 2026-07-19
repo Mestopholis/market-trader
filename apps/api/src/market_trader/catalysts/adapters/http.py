@@ -35,6 +35,16 @@ class HttpFailure:
 
 
 @dataclass(frozen=True)
+class ByteFetchResult:
+    payload: bytes | None = None
+    failure: HttpFailure | None = None
+
+    def __post_init__(self) -> None:
+        if (self.payload is None) == (self.failure is None):
+            raise ValueError("byte fetch result requires exactly one outcome")
+
+
+@dataclass(frozen=True)
 class JsonFetchResult:
     payload: object | None = None
     failure: HttpFailure | None = None
@@ -44,7 +54,7 @@ class JsonFetchResult:
             raise ValueError("JSON fetch result requires exactly one outcome")
 
 
-class BoundedJsonFetcher:
+class BoundedByteFetcher:
     def __init__(
         self,
         *,
@@ -63,9 +73,16 @@ class BoundedJsonFetcher:
         self._sleeper = sleeper
         self._max_response_bytes = max_response_bytes
 
-    def get(self, url: str, *, headers: Mapping[str, str]) -> JsonFetchResult:
-        if _origin(url) not in self._allowed_origins:
-            return JsonFetchResult(
+    def request(
+        self,
+        method: str,
+        url: str,
+        *,
+        headers: Mapping[str, str],
+        json_payload: Mapping[str, object] | None = None,
+    ) -> ByteFetchResult:
+        if method not in ("GET", "POST") or _origin(url) not in self._allowed_origins:
+            return ByteFetchResult(
                 failure=HttpFailure(
                     SourceFailureKind.SECURITY_REJECTED,
                     HttpFailureCode.REDIRECT_REJECTED,
@@ -73,19 +90,24 @@ class BoundedJsonFetcher:
             )
         for attempt in range(MAX_RETRIES + 1):
             if not self._limiter.acquire(self._source_id):
-                return JsonFetchResult(
+                return ByteFetchResult(
                     failure=HttpFailure(
                         SourceFailureKind.THROTTLED,
                         HttpFailureCode.LOCAL_RATE_LIMIT,
                     )
                 )
             try:
-                result = self._request(url, headers=headers)
+                result = self._request_once(
+                    method,
+                    url,
+                    headers=headers,
+                    json_payload=json_payload,
+                )
             except httpx.TimeoutException:
                 if attempt < MAX_RETRIES:
                     self._sleeper(_retry_delay(None, attempt))
                     continue
-                return JsonFetchResult(
+                return ByteFetchResult(
                     failure=HttpFailure(
                         SourceFailureKind.UNAVAILABLE,
                         HttpFailureCode.TIMEOUT,
@@ -103,10 +125,22 @@ class BoundedJsonFetcher:
             return result
         raise AssertionError("unreachable bounded retry state")
 
-    def _request(self, url: str, *, headers: Mapping[str, str]) -> JsonFetchResult:
-        with self._client.stream("GET", url, headers=headers) as response:
+    def _request_once(
+        self,
+        method: str,
+        url: str,
+        *,
+        headers: Mapping[str, str],
+        json_payload: Mapping[str, object] | None,
+    ) -> ByteFetchResult:
+        with self._client.stream(
+            method,
+            url,
+            headers=headers,
+            json=json_payload,
+        ) as response:
             if 300 <= response.status_code <= 399:
-                return JsonFetchResult(
+                return ByteFetchResult(
                     failure=HttpFailure(
                         SourceFailureKind.SECURITY_REJECTED,
                         HttpFailureCode.REDIRECT_REJECTED,
@@ -119,7 +153,7 @@ class BoundedJsonFetcher:
                     if response.status_code == 429
                     else SourceFailureKind.UNAVAILABLE
                 )
-                result = JsonFetchResult(
+                return ByteFetchResult(
                     failure=HttpFailure(
                         kind,
                         HttpFailureCode.HTTP_STATUS,
@@ -127,19 +161,64 @@ class BoundedJsonFetcher:
                         response.headers.get("Retry-After"),
                     )
                 )
-                return result
             body = bytearray()
             for chunk in response.iter_bytes():
                 body.extend(chunk)
                 if len(body) > self._max_response_bytes:
-                    return JsonFetchResult(
+                    return ByteFetchResult(
                         failure=HttpFailure(
                             SourceFailureKind.SECURITY_REJECTED,
                             HttpFailureCode.RESPONSE_TOO_LARGE,
                         )
                     )
+        return ByteFetchResult(payload=bytes(body))
+
+
+class BoundedJsonFetcher:
+    def __init__(
+        self,
+        *,
+        client: httpx.Client,
+        source_id: str,
+        allowed_origins: tuple[str, ...],
+        limiter: RequestLimiter,
+        sleeper: Callable[[float], None],
+        max_response_bytes: int,
+    ) -> None:
+        self._bytes = BoundedByteFetcher(
+            client=client,
+            source_id=source_id,
+            allowed_origins=allowed_origins,
+            limiter=limiter,
+            sleeper=sleeper,
+            max_response_bytes=max_response_bytes,
+        )
+
+    def get(self, url: str, *, headers: Mapping[str, str]) -> JsonFetchResult:
+        return self._json(self._bytes.request("GET", url, headers=headers))
+
+    def post(
+        self,
+        url: str,
+        *,
+        headers: Mapping[str, str],
+        json_payload: Mapping[str, object],
+    ) -> JsonFetchResult:
+        return self._json(
+            self._bytes.request(
+                "POST",
+                url,
+                headers=headers,
+                json_payload=json_payload,
+            )
+        )
+
+    @staticmethod
+    def _json(result: ByteFetchResult) -> JsonFetchResult:
+        if result.failure is not None:
+            return JsonFetchResult(failure=result.failure)
         try:
-            return JsonFetchResult(payload=json.loads(body))
+            return JsonFetchResult(payload=json.loads(result.payload or b""))
         except (UnicodeDecodeError, json.JSONDecodeError):
             return JsonFetchResult(
                 failure=HttpFailure(
