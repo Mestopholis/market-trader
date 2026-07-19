@@ -36,3 +36,13 @@ class TechnicalReference:
             raise ValueError("technical reference prices must be finite")
         if len(self.snapshot_digest) != 64:
             raise ValueError("technical reference requires a SHA-256 snapshot digest")
+
+
+@dataclass(frozen=True)
+class ContractEvaluation:
+    contract_id: str
+    state: EvaluationState
+    reasons: tuple[str, ...]
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "reasons", tuple(sorted(set(self.reasons))))
