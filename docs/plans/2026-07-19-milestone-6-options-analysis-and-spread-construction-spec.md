@@ -76,7 +76,7 @@ approval, or order imports.
 
 1. `AnalysisInputResolver` accepts a qualified scanner candidate, its immutable
    scanner lineage, the matching current catalyst decision, an option chain, and
-   an explicit `as_of`.
+   an explicit technical reference and `as_of`.
 2. `ContractValidator` verifies chain completeness, freshness, standard
    deliverables, contract timestamps, pricing sanity, liquidity, DTE, and delta
    eligibility. It returns accepted contracts and reason-coded rejections.
@@ -111,6 +111,10 @@ An analysis request requires all of the following:
   analysis.
 - A `NormalizedOptionChain` from Milestone 3 for the same display symbol, with a
   current valid `ObservationMetadata` record.
+- A `TechnicalReference` tied to that candidate, containing the authoritative
+  underlying mark, technical-stop price, source market-data snapshot digest, and
+  observed-at timestamp. It is a structured analysis input; it does not alter the
+  historical scanner candidate or imply an order instruction.
 - A loaded `OptionsAnalysisPolicy` with an exact version and content hash.
 
 No raw news text, generated summary text, chain provider payload, account data,
@@ -178,11 +182,11 @@ validation follow the same rules.
 - Break-even: `K_long - debit`.
 - Net delta, gamma, theta, and vega: long-leg Greek minus short-leg Greek.
 
-The technical-stop reference is derived from the source candidate's immutable
-technical invalidation price. For bullish spreads it is the candidate stop below
-the underlying; for bearish spreads it is the candidate stop above the underlying.
-Missing, nonpositive, or directionally inconsistent stops block the candidate.
-It is reference information only and never represents an order instruction.
+The technical-stop reference comes from the explicit immutable
+`TechnicalReference` input. For bullish spreads its stop must be below the
+underlying mark; for bearish spreads it must be above it. Missing, nonpositive, or
+directionally inconsistent references block the candidate. It is reference
+information only and never represents an order instruction.
 
 ## Liquidity And Execution Quality
 
