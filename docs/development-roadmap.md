@@ -135,6 +135,13 @@ and [operator runbook](milestone-4-scanner-and-scoring.md).
 
 ## Milestone 5: Catalysts, events, news, and filings
 
+**Status:** Complete.
+
+**Completion:** Delivered by the approved
+[specification](plans/2026-07-19-milestone-5-catalysts-events-news-and-filings-spec.md),
+[implementation plan](plans/2026-07-19-milestone-5-catalysts-events-news-and-filings-implementation-plan.md),
+and [operator runbook](milestone-5-catalysts-events-news-and-filings.md).
+
 **Objective:** Add verified event context without allowing untrusted text or language-model output to control trading decisions.
 
 **Depends on:** Milestone 3. Integrates with Milestone 4.
@@ -152,6 +159,8 @@ and [operator runbook](milestone-4-scanner-and-scoring.md).
 **Explicitly excluded:** Automated sentiment trading, uncited summaries, and model-driven eligibility or scoring.
 
 ## Milestone 6: Options analysis and spread construction
+
+**Status:** Next planning action.
 
 **Objective:** Analyze standard option contracts and construct defined-risk candidates without placing orders.
 

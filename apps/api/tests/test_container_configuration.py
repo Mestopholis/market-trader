@@ -21,6 +21,14 @@ def test_api_container_packages_offline_scanner_assets_as_non_root() -> None:
     assert "USER appuser" in dockerfile
 
 
+def test_api_container_packages_offline_catalyst_assets_as_non_root() -> None:
+    dockerfile = (Path(__file__).resolve().parents[1] / "Dockerfile").read_text()
+
+    assert "COPY config ./config" in dockerfile
+    assert "COPY fixtures ./fixtures" in dockerfile
+    assert "USER appuser" in dockerfile
+
+
 def test_migrations_use_the_configured_database_url() -> None:
     migration_environment = (
         Path(__file__).resolve().parents[1] / "migrations" / "env.py"
@@ -55,3 +63,27 @@ def test_smoke_verification_checks_the_market_state_contract() -> None:
     assert "/app/fixtures/scanner/bullish" in verification_script
     assert "SCHWAB" not in verification_script.upper()
     assert "PROVIDER_URL" not in verification_script.upper()
+
+
+def test_smoke_verification_validates_catalysts_offline_without_sensitive_inputs() -> None:
+    verification_script = (
+        REPOSITORY_ROOT / "scripts" / "verify-foundation.sh"
+    ).read_text()
+
+    assert "market_trader.catalysts.cli validate" in verification_script
+    assert (
+        "/app/fixtures/catalysts/company-and-earnings" in verification_script
+    )
+    for prohibited in (
+        "SEC_CONTACT",
+        "SCHWAB",
+        "FRED",
+        "BEA",
+        "NEWS_API",
+        "SOCIAL_TOKEN",
+        "MODEL_API",
+        "ACCOUNT_ID",
+        "APPROVAL_ID",
+        "ORDER_ID",
+    ):
+        assert prohibited not in verification_script.upper()
