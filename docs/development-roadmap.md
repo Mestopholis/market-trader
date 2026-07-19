@@ -110,6 +110,13 @@ and [operator runbook](milestone-3-market-data-replay.md).
 
 ## Milestone 4: Eligible universe, regime, scanner, and scoring
 
+**Status:** Complete.
+
+**Completion:** Delivered by the approved
+[specification](plans/2026-07-19-milestone-4-eligible-universe-regime-scanner-and-scoring-spec.md),
+[implementation plan](plans/2026-07-19-milestone-4-eligible-universe-regime-scanner-and-scoring-implementation-plan.md),
+and [operator runbook](milestone-4-scanner-and-scoring.md).
+
 **Objective:** Generate explainable bullish and bearish candidates from deterministic market inputs.
 
 **Depends on:** Milestones 1–3.
@@ -329,6 +336,7 @@ Every milestone specification and implementation plan must identify:
 
 ## Next planning action
 
-Create and approve the Milestone 4 eligible-universe, regime, scanner, and
-scoring specification, followed by its implementation plan. Do not begin
-Milestone 4 implementation until both documents are reviewed and approved.
+Create and approve the Milestone 5 catalysts, events, news, and filings
+specification, followed by its implementation plan. Milestone 5 must preserve the
+Milestone 4 rule that external text and model output cannot directly control
+eligibility, scores, approvals, or orders.

@@ -18,7 +18,7 @@ from market_trader.db.models import (
     SignalORM,
 )
 from market_trader.repositories.symbols import SymbolCreate, SymbolRepository
-from market_trader.scanner.cli import main
+from market_trader.scanner.cli import _DEFAULT_CONFIGURATION, main
 from market_trader.scanner.configuration import load_scanner_configuration
 
 API_ROOT = Path(__file__).parents[2]
@@ -26,6 +26,10 @@ FIXTURES = API_ROOT / "fixtures" / "scanner"
 BULLISH = FIXTURES / "bullish"
 CONFIGURATION = API_ROOT / "config" / "scanner"
 OBSERVED = datetime(2026, 7, 17, 15, 35, tzinfo=UTC)
+
+
+def test_default_configuration_path_is_independent_of_source_install_location() -> None:
+    assert Path("config/scanner") == _DEFAULT_CONFIGURATION
 
 
 def test_validate_prints_deterministic_expected_summary(

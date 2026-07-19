@@ -13,6 +13,14 @@ def test_api_container_runs_migrations_before_startup() -> None:
     assert "alembic upgrade head && exec uvicorn" in dockerfile
 
 
+def test_api_container_packages_offline_scanner_assets_as_non_root() -> None:
+    dockerfile = (Path(__file__).resolve().parents[1] / "Dockerfile").read_text()
+
+    assert "COPY config ./config" in dockerfile
+    assert "COPY fixtures ./fixtures" in dockerfile
+    assert "USER appuser" in dockerfile
+
+
 def test_migrations_use_the_configured_database_url() -> None:
     migration_environment = (
         Path(__file__).resolve().parents[1] / "migrations" / "env.py"
@@ -43,3 +51,7 @@ def test_smoke_verification_checks_the_market_state_contract() -> None:
     assert '"trading_mode"' in verification_script
     assert "market_trader.market_data.cli validate" in verification_script
     assert "/app/fixtures/market_data/regular-session" in verification_script
+    assert "market_trader.scanner.cli validate" in verification_script
+    assert "/app/fixtures/scanner/bullish" in verification_script
+    assert "SCHWAB" not in verification_script.upper()
+    assert "PROVIDER_URL" not in verification_script.upper()

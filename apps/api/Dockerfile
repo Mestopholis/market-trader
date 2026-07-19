@@ -8,6 +8,7 @@ COPY pyproject.toml ./
 COPY alembic.ini ./
 COPY migrations ./migrations
 COPY src ./src
+COPY config ./config
 COPY fixtures ./fixtures
 RUN python -m pip install --no-cache-dir .
 

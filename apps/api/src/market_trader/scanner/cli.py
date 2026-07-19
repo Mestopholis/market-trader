@@ -42,8 +42,7 @@ from market_trader.scanner.fixtures import (
 from market_trader.scanner.models import ScanResult
 from market_trader.scanner.serialization import canonical_record
 
-_API_ROOT = Path(__file__).resolve().parents[3]
-_DEFAULT_CONFIGURATION = _API_ROOT / "config" / "scanner"
+_DEFAULT_CONFIGURATION = Path("config/scanner")
 
 
 def main(argv: Sequence[str] | None = None) -> int:
