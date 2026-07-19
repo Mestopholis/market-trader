@@ -15,6 +15,12 @@ from market_trader.scanner.evidence import (
     VolatilityEvidence,
     parse_supplemental_evidence,
 )
+from market_trader.scanner.features import (
+    FeatureCalculator,
+    FeatureResult,
+    FiveMinuteBar,
+    assign_relative_performance_percentiles,
+)
 from market_trader.scanner.models import (
     CandidateResult,
     ComponentScore,
@@ -49,6 +55,9 @@ __all__ = [
     "EvidenceRef",
     "EvidenceValidationError",
     "FeatureSet",
+    "FeatureCalculator",
+    "FeatureResult",
+    "FiveMinuteBar",
     "GateResult",
     "MacroEvidence",
     "MacroState",
@@ -67,6 +76,7 @@ __all__ = [
     "VolatilityDirection",
     "VolatilityEvidence",
     "canonical_record",
+    "assign_relative_performance_percentiles",
     "parse_supplemental_evidence",
     "stable_digest",
 ]
