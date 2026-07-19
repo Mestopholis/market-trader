@@ -4,6 +4,7 @@ from market_trader.scanner.eligibility import (
     EligibilityEvaluator,
     EligibilityQuality,
 )
+from market_trader.scanner.engine import ScannerEngine
 from market_trader.scanner.evidence import (
     BreadthEvidence,
     CatalystDirection,
@@ -75,6 +76,7 @@ __all__ = [
     "ScanCounts",
     "ScanResult",
     "ScannerInput",
+    "ScannerEngine",
     "SectorEvidence",
     "SectorObservation",
     "StrategyResult",
