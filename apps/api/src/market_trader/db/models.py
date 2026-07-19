@@ -164,6 +164,183 @@ class MarketDataQuarantineORM(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
 
+class CatalystSourceRunORM(Base):
+    __tablename__ = "catalyst_source_runs"
+    __table_args__ = (
+        Index("ux_catalyst_source_runs_run_key", "run_key", unique=True),
+        Index("ix_catalyst_source_runs_source_as_of", "source_id", "as_of"),
+        Index("ix_catalyst_source_runs_state", "state"),
+        Index(
+            "ix_catalyst_source_runs_reasons",
+            "reasons",
+            postgresql_using="gin",
+        ),
+        Index("ix_catalyst_source_runs_correlation_id", "correlation_id"),
+    )
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    run_key: Mapped[str] = mapped_column(String(512))
+    source_id: Mapped[str] = mapped_column(String(128))
+    as_of: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    state: Mapped[str] = mapped_column(String(40))
+    policy_versions: Mapped[dict[str, Any]] = mapped_column(JSON)
+    policy_hashes: Mapped[dict[str, Any]] = mapped_column(JSON)
+    result_counts: Mapped[dict[str, Any]] = mapped_column(JSON)
+    reasons: Mapped[list[str]] = mapped_column(JSON().with_variant(JSONB(), "postgresql"))
+    result_digest: Mapped[str] = mapped_column(String(64))
+    correlation_id: Mapped[str] = mapped_column(String(64))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class CatalystObservationORM(Base):
+    __tablename__ = "catalyst_observations"
+    __table_args__ = (
+        Index("ux_catalyst_observations_observation_key", "observation_key", unique=True),
+        Index("ux_catalyst_observations_ingestion_key", "ingestion_key", unique=True),
+        Index(
+            "ix_catalyst_observations_source_published",
+            "source_id",
+            "published_at",
+        ),
+        Index(
+            "ix_catalyst_observations_symbol_published",
+            "symbol_id",
+            "published_at",
+        ),
+        Index(
+            "ix_catalyst_observations_family_category",
+            "event_family",
+            "event_category",
+        ),
+        Index("ix_catalyst_observations_correlation_id", "correlation_id"),
+    )
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    observation_key: Mapped[str] = mapped_column(String(512))
+    source_run_id: Mapped[str] = mapped_column(ForeignKey("catalyst_source_runs.id"))
+    ingestion_key: Mapped[str] = mapped_column(String(512))
+    authoritative_digest: Mapped[str] = mapped_column(String(64))
+    external_text_digest: Mapped[str] = mapped_column(String(64))
+    source_id: Mapped[str] = mapped_column(String(128))
+    authority_class: Mapped[str] = mapped_column(String(40))
+    event_family: Mapped[str] = mapped_column(String(40))
+    event_category: Mapped[str] = mapped_column(String(128))
+    provider_event_id: Mapped[str] = mapped_column(String(512))
+    source_reference: Mapped[str] = mapped_column(String(2048))
+    symbol_id: Mapped[str | None] = mapped_column(ForeignKey("symbols.id"), nullable=True)
+    published_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    ingested_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    scheduled_for: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    valid_until: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    structured_facts: Mapped[dict[str, Any]] = mapped_column(JSON)
+    external_text: Mapped[dict[str, Any]] = mapped_column(JSON)
+    source_schema_version: Mapped[int]
+    normalization_schema_version: Mapped[int]
+    configuration_version: Mapped[str] = mapped_column(String(128))
+    correlation_id: Mapped[str] = mapped_column(String(64))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class CatalystQuarantineORM(Base):
+    __tablename__ = "catalyst_quarantine"
+    __table_args__ = (
+        Index("ux_catalyst_quarantine_ingestion_key", "ingestion_key", unique=True),
+        Index("ix_catalyst_quarantine_source_ingested", "source_id", "ingested_at"),
+        Index(
+            "ix_catalyst_quarantine_reasons",
+            "reasons",
+            postgresql_using="gin",
+        ),
+        Index("ix_catalyst_quarantine_correlation_id", "correlation_id"),
+    )
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    source_run_id: Mapped[str] = mapped_column(ForeignKey("catalyst_source_runs.id"))
+    ingestion_key: Mapped[str] = mapped_column(String(512))
+    sanitized_payload_digest: Mapped[str] = mapped_column(String(64))
+    source_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    provider_event_id: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    ingested_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    reasons: Mapped[list[str]] = mapped_column(JSON().with_variant(JSONB(), "postgresql"))
+    sanitized_payload: Mapped[dict[str, Any]] = mapped_column(JSON)
+    source_schema_version: Mapped[int | None] = mapped_column(nullable=True)
+    normalization_schema_version: Mapped[int | None] = mapped_column(nullable=True)
+    correlation_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class CatalystDecisionORM(Base):
+    __tablename__ = "catalyst_decisions"
+    __table_args__ = (
+        Index("ux_catalyst_decisions_decision_key", "decision_key", unique=True),
+        Index("ix_catalyst_decisions_source_run_id", "source_run_id"),
+        Index("ix_catalyst_decisions_symbol_as_of", "symbol_id", "as_of"),
+        Index("ix_catalyst_decisions_as_of", "as_of"),
+        Index(
+            "ix_catalyst_decisions_reasons",
+            "reasons",
+            postgresql_using="gin",
+        ),
+        Index(
+            "ix_catalyst_decisions_observation_keys",
+            "observation_keys",
+            postgresql_using="gin",
+        ),
+        Index("ix_catalyst_decisions_correlation_id", "correlation_id"),
+    )
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    decision_key: Mapped[str] = mapped_column(String(512))
+    source_run_id: Mapped[str] = mapped_column(ForeignKey("catalyst_source_runs.id"))
+    scope: Mapped[str] = mapped_column(String(40))
+    symbol_id: Mapped[str | None] = mapped_column(ForeignKey("symbols.id"), nullable=True)
+    as_of: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    materiality: Mapped[str] = mapped_column(String(40))
+    direction: Mapped[str] = mapped_column(String(40))
+    confirmation: Mapped[str] = mapped_column(String(40))
+    risk_state: Mapped[str] = mapped_column(String(40))
+    reasons: Mapped[list[str]] = mapped_column(JSON().with_variant(JSONB(), "postgresql"))
+    observation_keys: Mapped[list[str]] = mapped_column(
+        JSON().with_variant(JSONB(), "postgresql")
+    )
+    policy_versions: Mapped[dict[str, Any]] = mapped_column(JSON)
+    input_digest: Mapped[str] = mapped_column(String(64))
+    explanation: Mapped[dict[str, Any]] = mapped_column(JSON)
+    correlation_id: Mapped[str] = mapped_column(String(64))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class CatalystSummaryORM(Base):
+    __tablename__ = "catalyst_summaries"
+    __table_args__ = (
+        Index("ux_catalyst_summaries_summary_key", "summary_key", unique=True),
+        Index("ix_catalyst_summaries_source_run_id", "source_run_id"),
+        Index("ix_catalyst_summaries_generated_at", "generated_at"),
+        Index(
+            "ix_catalyst_summaries_segments",
+            "segments",
+            postgresql_using="gin",
+        ),
+        Index("ix_catalyst_summaries_correlation_id", "correlation_id"),
+    )
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    summary_key: Mapped[str] = mapped_column(String(512))
+    source_run_id: Mapped[str] = mapped_column(ForeignKey("catalyst_source_runs.id"))
+    provider_id: Mapped[str] = mapped_column(String(128))
+    generated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    segments: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSON().with_variant(JSONB(), "postgresql")
+    )
+    policy_version: Mapped[str] = mapped_column(String(128))
+    content_digest: Mapped[str] = mapped_column(String(64))
+    correlation_id: Mapped[str] = mapped_column(String(64))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
 class ScannerRunORM(Base):
     __tablename__ = "scanner_runs"
     __table_args__ = (
