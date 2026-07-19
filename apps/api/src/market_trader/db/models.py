@@ -238,15 +238,11 @@ class CatalystObservationORM(Base):
     symbol_id: Mapped[str | None] = mapped_column(ForeignKey("symbols.id"), nullable=True)
     published_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     ingested_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
-    scheduled_for: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    scheduled_for: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     valid_until: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     structured_facts: Mapped[dict[str, Any]] = mapped_column(JSON)
     external_text: Mapped[dict[str, Any]] = mapped_column(JSON)
-    quality_reasons: Mapped[list[str]] = mapped_column(
-        JSON().with_variant(JSONB(), "postgresql")
-    )
+    quality_reasons: Mapped[list[str]] = mapped_column(JSON().with_variant(JSONB(), "postgresql"))
     source_schema_version: Mapped[int]
     normalization_schema_version: Mapped[int]
     configuration_version: Mapped[str] = mapped_column(String(128))
@@ -314,9 +310,7 @@ class CatalystDecisionORM(Base):
     confirmation: Mapped[str] = mapped_column(String(40))
     risk_state: Mapped[str] = mapped_column(String(40))
     reasons: Mapped[list[str]] = mapped_column(JSON().with_variant(JSONB(), "postgresql"))
-    observation_keys: Mapped[list[str]] = mapped_column(
-        JSON().with_variant(JSONB(), "postgresql")
-    )
+    observation_keys: Mapped[list[str]] = mapped_column(JSON().with_variant(JSONB(), "postgresql"))
     policy_versions: Mapped[dict[str, Any]] = mapped_column(JSON)
     input_digest: Mapped[str] = mapped_column(String(64))
     explanation: Mapped[dict[str, Any]] = mapped_column(JSON)
@@ -349,6 +343,96 @@ class CatalystSummaryORM(Base):
     policy_version: Mapped[str] = mapped_column(String(128))
     content_digest: Mapped[str] = mapped_column(String(64))
     correlation_id: Mapped[str] = mapped_column(String(64))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class OptionsAnalysisRunORM(Base):
+    __tablename__ = "options_analysis_runs"
+    __table_args__ = (
+        Index("ux_options_analysis_runs_run_key", "run_key", unique=True),
+        Index("ix_options_analysis_runs_candidate_as_of", "candidate_id", "as_of"),
+        Index("ix_options_analysis_runs_symbol_as_of", "symbol_id", "as_of"),
+        Index(
+            "ix_options_analysis_runs_reason_summary",
+            "reason_summary",
+            postgresql_using="gin",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    run_key: Mapped[str] = mapped_column(String(512))
+    scanner_run_id: Mapped[str] = mapped_column(ForeignKey("scanner_runs.id"))
+    candidate_id: Mapped[str] = mapped_column(ForeignKey("candidates.id"))
+    symbol_id: Mapped[str] = mapped_column(ForeignKey("symbols.id"))
+    input_digest: Mapped[str] = mapped_column(String(64))
+    result_digest: Mapped[str] = mapped_column(String(64))
+    policy_version: Mapped[str] = mapped_column(String(128))
+    policy_hash: Mapped[str] = mapped_column(String(64))
+    as_of: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    result_counts: Mapped[dict[str, Any]] = mapped_column(JSON)
+    reason_summary: Mapped[dict[str, Any]] = mapped_column(
+        JSON().with_variant(JSONB(), "postgresql")
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class OptionContractEvaluationORM(Base):
+    __tablename__ = "option_contract_evaluations"
+    __table_args__ = (
+        Index("ux_option_contract_evaluations_evaluation_key", "evaluation_key", unique=True),
+        Index("ix_option_contract_evaluations_run_id", "run_id"),
+        Index("ix_option_contract_evaluations_reasons", "reasons", postgresql_using="gin"),
+    )
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    evaluation_key: Mapped[str] = mapped_column(String(512))
+    run_id: Mapped[str] = mapped_column(ForeignKey("options_analysis_runs.id"))
+    contract_id: Mapped[str] = mapped_column(String(512))
+    state: Mapped[str] = mapped_column(String(40))
+    reasons: Mapped[list[str]] = mapped_column(JSON().with_variant(JSONB(), "postgresql"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class OptionSpreadCandidateORM(Base):
+    __tablename__ = "option_spread_candidates"
+    __table_args__ = (
+        Index("ux_option_spread_candidates_spread_key", "spread_key", unique=True),
+        Index("ix_option_spread_candidates_run_id", "run_id"),
+        Index(
+            "ix_option_spread_candidates_calculations",
+            "calculations",
+            postgresql_using="gin",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    spread_key: Mapped[str] = mapped_column(String(512))
+    run_id: Mapped[str] = mapped_column(ForeignKey("options_analysis_runs.id"))
+    strategy: Mapped[str] = mapped_column(String(40))
+    long_contract_id: Mapped[str] = mapped_column(String(512))
+    short_contract_id: Mapped[str] = mapped_column(String(512))
+    expiration: Mapped[date] = mapped_column(Date)
+    blocked: Mapped[bool] = mapped_column(Boolean)
+    calculations: Mapped[dict[str, Any]] = mapped_column(JSON().with_variant(JSONB(), "postgresql"))
+    warning_keys: Mapped[list[str]] = mapped_column(JSON().with_variant(JSONB(), "postgresql"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class OptionSpreadWarningORM(Base):
+    __tablename__ = "option_spread_warnings"
+    __table_args__ = (
+        Index("ux_option_spread_warnings_warning_key", "warning_key", unique=True),
+        Index("ix_option_spread_warnings_spread_id", "spread_id"),
+        Index("ix_option_spread_warnings_facts", "facts", postgresql_using="gin"),
+    )
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    warning_key: Mapped[str] = mapped_column(String(512))
+    spread_id: Mapped[str] = mapped_column(ForeignKey("option_spread_candidates.id"))
+    code: Mapped[str] = mapped_column(String(128))
+    severity: Mapped[str] = mapped_column(String(40))
+    facts: Mapped[dict[str, Any]] = mapped_column(JSON().with_variant(JSONB(), "postgresql"))
+    source_keys: Mapped[list[str]] = mapped_column(JSON().with_variant(JSONB(), "postgresql"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
 
