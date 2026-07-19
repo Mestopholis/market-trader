@@ -1,9 +1,10 @@
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, fields, is_dataclass
 from datetime import date, datetime
 from decimal import Decimal
-from enum import StrEnum
+from enum import Enum, StrEnum
 from types import MappingProxyType
+from typing import cast
 
 from market_trader.domain.time import ensure_utc
 from market_trader.market_data.models import (
@@ -12,6 +13,7 @@ from market_trader.market_data.models import (
     NormalizedProviderState,
     NormalizedQuote,
 )
+from market_trader.market_data.sanitization import canonical_json, sanitize_payload
 
 _SCORE_QUANTUM = Decimal("0.000001")
 
@@ -84,28 +86,23 @@ class SymbolInput:
         object.__setattr__(
             self,
             "daily_candles",
-            tuple(sorted(self.daily_candles, key=_candle_key)),
+            tuple(sorted(self.daily_candles, key=_stable_sort_key)),
         )
         object.__setattr__(
             self,
             "intraday_candles",
-            tuple(sorted(self.intraday_candles, key=_candle_key)),
+            tuple(sorted(self.intraday_candles, key=_stable_sort_key)),
         )
-        object.__setattr__(self, "quotes", tuple(sorted(self.quotes, key=_observation_key)))
+        object.__setattr__(self, "quotes", tuple(sorted(self.quotes, key=_stable_sort_key)))
         object.__setattr__(
             self,
             "provider_states",
-            tuple(sorted(self.provider_states, key=_observation_key)),
+            tuple(sorted(self.provider_states, key=_stable_sort_key)),
         )
         object.__setattr__(
             self,
             "corporate_actions",
-            tuple(
-                sorted(
-                    self.corporate_actions,
-                    key=lambda item: (item.effective_date, item.action_id),
-                )
-            ),
+            tuple(sorted(self.corporate_actions, key=_stable_sort_key)),
         )
         object.__setattr__(self, "evidence", _sorted_evidence(self.evidence))
         object.__setattr__(self, "attributes", _immutable_mapping(self.attributes))
@@ -125,7 +122,7 @@ class ScannerInput:
         object.__setattr__(
             self,
             "symbols",
-            tuple(sorted(self.symbols, key=lambda item: item.symbol)),
+            tuple(sorted(self.symbols, key=_stable_sort_key)),
         )
         object.__setattr__(
             self,
@@ -227,11 +224,11 @@ class StrategyResult:
     score: Decimal | None = None
 
     def __post_init__(self) -> None:
-        object.__setattr__(self, "gates", tuple(sorted(self.gates, key=lambda item: item.name)))
+        object.__setattr__(self, "gates", tuple(sorted(self.gates, key=_stable_sort_key)))
         object.__setattr__(
             self,
             "components",
-            tuple(sorted(self.components, key=lambda item: item.family)),
+            tuple(sorted(self.components, key=_stable_sort_key)),
         )
         object.__setattr__(self, "reasons", _ordered_unique(self.reasons))
         object.__setattr__(self, "lineage", _ordered_unique(self.lineage))
@@ -291,17 +288,17 @@ class ScanResult:
         object.__setattr__(
             self,
             "eligibility",
-            tuple(sorted(self.eligibility, key=lambda item: item.symbol)),
+            tuple(sorted(self.eligibility, key=_stable_sort_key)),
         )
         object.__setattr__(
             self,
             "strategies",
-            tuple(sorted(self.strategies, key=lambda item: (item.symbol, item.strategy_id))),
+            tuple(sorted(self.strategies, key=_stable_sort_key)),
         )
         object.__setattr__(
             self,
             "candidates",
-            tuple(sorted(self.candidates, key=lambda item: (item.symbol, item.strategy_id))),
+            tuple(sorted(self.candidates, key=_stable_sort_key)),
         )
 
 
@@ -314,29 +311,38 @@ def _ordered_unique(values: tuple[str, ...]) -> tuple[str, ...]:
 
 
 def _immutable_mapping[T](values: Mapping[str, T]) -> Mapping[str, T]:
-    return MappingProxyType(dict(values))
+    frozen = {key: _freeze_value(value) for key, value in values.items()}
+    return cast(Mapping[str, T], MappingProxyType(frozen))
 
 
 def _sorted_evidence(values: tuple[EvidenceRef, ...]) -> tuple[EvidenceRef, ...]:
-    return tuple(
-        sorted(
-            values,
-            key=lambda item: (
-                item.lineage_id,
-                item.source,
-                item.event_id,
-                item.ingestion_key,
-                item.payload_digest,
-            ),
+    return tuple(sorted(values, key=_stable_sort_key))
+
+
+def _freeze_value(value: object) -> object:
+    if isinstance(value, Mapping):
+        return MappingProxyType(
+            {str(key): _freeze_value(item) for key, item in value.items()}
         )
-    )
+    if isinstance(value, (list, tuple)):
+        return tuple(_freeze_value(item) for item in value)
+    return value
 
 
-def _candle_key(value: NormalizedCandle) -> tuple[datetime, datetime, str, str]:
-    return (value.start, value.end, value.interval.value, value.metadata.event_id)
+def _stable_sort_key(value: object) -> str:
+    return canonical_json(sanitize_payload(_structural_value(value)))
 
 
-def _observation_key(
-    value: NormalizedQuote | NormalizedProviderState,
-) -> tuple[datetime, datetime, str]:
-    return (value.metadata.observed_at, value.metadata.ingested_at, value.metadata.event_id)
+def _structural_value(value: object) -> object:
+    if isinstance(value, Enum):
+        return value.value
+    if is_dataclass(value) and not isinstance(value, type):
+        return {item.name: _structural_value(getattr(value, item.name)) for item in fields(value)}
+    if isinstance(value, Mapping):
+        return {
+            str(key): _structural_value(item)
+            for key, item in sorted(value.items(), key=lambda pair: str(pair[0]))
+        }
+    if isinstance(value, (list, tuple)):
+        return [_structural_value(item) for item in value]
+    return value

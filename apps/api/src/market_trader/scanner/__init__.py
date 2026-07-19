@@ -42,4 +42,3 @@ __all__ = [
     "canonical_record",
     "stable_digest",
 ]
-

@@ -17,18 +17,18 @@ _SCORE_QUANTUM = Decimal("0.000001")
 
 def canonical_record(value: object) -> SanitizedValue:
     """Convert a scanner value to its stable, sanitized JSON representation."""
-    return _canonical_value(value)
+    return sanitize_payload(_canonical_value(value))
 
 
 def stable_digest(value: object) -> str:
     return canonical_digest(canonical_record(value))
 
 
-def _canonical_value(value: object, *, field_name: str | None = None) -> SanitizedValue:
-    if value is None or isinstance(value, (bool, int, str)):
-        return value
+def _canonical_value(value: object, *, field_name: str | None = None) -> object:
     if isinstance(value, Enum):
         return _canonical_value(value.value)
+    if value is None or isinstance(value, (bool, int, str)):
+        return value
     if isinstance(value, Decimal):
         if field_name in _SCORE_FIELDS:
             return format(value.quantize(_SCORE_QUANTUM), "f")
@@ -49,5 +49,4 @@ def _canonical_value(value: object, *, field_name: str | None = None) -> Sanitiz
         }
     if isinstance(value, (tuple, list)):
         return [_canonical_value(item) for item in value]
-    return sanitize_payload(value)
-
+    return value

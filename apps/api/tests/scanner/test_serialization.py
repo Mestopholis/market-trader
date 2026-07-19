@@ -1,7 +1,11 @@
 from datetime import UTC, date, datetime, timedelta, timezone
 from decimal import Decimal
 
-from market_trader.market_data.sanitization import canonical_json
+from market_trader.market_data.sanitization import (
+    MAX_COLLECTION_ITEMS,
+    MAX_STRING_LENGTH,
+    canonical_json,
+)
 from market_trader.scanner.models import (
     Direction,
     EvidenceRef,
@@ -96,3 +100,31 @@ def test_serialization_sorts_mapping_keys_reasons_and_feature_values() -> None:
         '"reasons":["a_reason","z_reason"],"symbol":"SPY",'
         '"values":{"a_value":3,"z_value":"2.5"}}'
     )
+
+
+def test_canonical_record_applies_sensitive_key_redaction() -> None:
+    record = canonical_record(
+        {
+            "authorization": "Bearer secret",
+            "nested": {"api_key": "secret-key", "safe": "visible"},
+        }
+    )
+
+    assert record == {
+        "authorization": "[REDACTED]",
+        "nested": {"api_key": "[REDACTED]", "safe": "visible"},
+    }
+
+
+def test_canonical_record_bounds_long_strings_and_collections() -> None:
+    record = canonical_record(
+        {
+            "description": "x" * (MAX_STRING_LENGTH + 1),
+            "items": list(range(MAX_COLLECTION_ITEMS + 1)),
+        }
+    )
+
+    assert isinstance(record, dict)
+    assert record["description"] == "x" * MAX_STRING_LENGTH
+    assert isinstance(record["items"], list)
+    assert len(record["items"]) == MAX_COLLECTION_ITEMS
