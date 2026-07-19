@@ -1,7 +1,7 @@
 # Milestone 4 Eligible Universe, Regime, Scanner, And Scoring Specification
 
 Date: July 19, 2026  
-Status: Approved design; written specification awaiting review  
+Status: Approved specification
 Depends on: Milestones 1-3  
 Roadmap milestone: 4
 
