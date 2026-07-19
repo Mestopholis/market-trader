@@ -1,0 +1,48 @@
+{
+  "categories": {
+    "acquisition_announced": {
+      "direction": "unclear",
+      "materiality": "material"
+    },
+    "bankruptcy_filing": {
+      "direction": "negative",
+      "materiality": "material"
+    },
+    "buyback_authorized": {
+      "direction": "positive",
+      "materiality": "material"
+    },
+    "cyber_incident": {
+      "direction": "unclear",
+      "materiality": "material"
+    },
+    "dividend_cut": {
+      "direction": "negative",
+      "materiality": "material"
+    },
+    "dividend_increase": {
+      "direction": "positive",
+      "materiality": "material"
+    },
+    "executive_change": {
+      "direction": "unclear",
+      "materiality": "contextual"
+    },
+    "going_concern": {
+      "direction": "negative",
+      "materiality": "material"
+    },
+    "regulatory_approval": {
+      "direction": "positive",
+      "materiality": "material"
+    },
+    "regulatory_denial": {
+      "direction": "negative",
+      "materiality": "material"
+    }
+  },
+  "content_hash": "da4760dd97565b32b123caa4a3978990c28038acf23fddfbe28ecc2d592b99d6",
+  "earnings_surprise_threshold": "2.000000",
+  "social_freshness_minutes": 30,
+  "version": "catalyst-classification-policy-v1"
+}
