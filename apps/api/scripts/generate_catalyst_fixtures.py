@@ -98,6 +98,8 @@ def _company_events() -> list[dict[str, object]]:
             facts.update(old_amount="1.00", new_amount="1.10")
         if category == "dividend_cut":
             facts.update(old_amount="1.00", new_amount="0.50")
+        if category == "buyback_authorized":
+            facts.update(amount="1000000", authorized_at="2026-07-17")
         events.append(
             _event(
                 f"company-{category}",
@@ -111,29 +113,87 @@ def _company_events() -> list[dict[str, object]]:
 
 
 def _earnings_events() -> list[dict[str, object]]:
-    result = _event(
-        "earnings-positive",
+    events = [
+        _earnings_result("earnings-positive", "1.20", "1.00", minute=10),
+        _earnings_result("earnings-negative", "0.80", "1.00", minute=11),
+        _earnings_result("earnings-inside", "1.01", "1.00", minute=12),
+        _guidance("guidance-raised", "guidance_raised", "12", "14", "10", "11", 13),
+        _guidance("guidance-lowered", "guidance_lowered", "7", "8", "9", "10", 14),
+    ]
+    for minute, timing, scheduled_for in (
+        (15, "before_market", "2026-07-20T12:00:00+00:00"),
+        (16, "after_market", "2026-07-20T21:00:00+00:00"),
+        (17, "unknown", "2026-07-20T16:00:00+00:00"),
+    ):
+        schedule = _event(
+            f"earnings-{timing}",
+            "recorded-earnings-v1",
+            "earnings",
+            {"event_category": "earnings_schedule", "session_timing": timing},
+            minute=minute,
+        )
+        schedule["scheduled_for"] = scheduled_for
+        events.append(schedule)
+    duplicate = dict(events[0])
+    duplicate["ingested_at"] = "2026-07-17T15:58:00+00:00"
+    conflict = dict(events[0])
+    conflict["published_at"] = "2026-07-17T15:59:00+00:00"
+    conflict["ingested_at"] = "2026-07-17T15:59:00+00:00"
+    conflict["structured_fields"] = {
+        **cast(dict[str, object], conflict["structured_fields"]),
+        "actual": "1.30",
+    }
+    return [*events, duplicate, conflict]
+
+
+def _earnings_result(
+    event_id: str,
+    actual: str,
+    consensus: str,
+    *,
+    minute: int,
+) -> dict[str, object]:
+    return _event(
+        event_id,
         "recorded-earnings-v1",
         "earnings",
         {
             "event_category": "earnings_result",
-            "actual": "1.20",
-            "consensus": "1.00",
+            "actual": actual,
+            "consensus": consensus,
             "currency": "USD",
             "period": "2026-Q2",
             "unit": "per_share",
         },
-        minute=15,
+        minute=minute,
     )
-    schedule = _event(
-        "earnings-schedule",
+
+
+def _guidance(
+    event_id: str,
+    category: str,
+    low: str,
+    high: str,
+    prior_low: str,
+    prior_high: str,
+    minute: int,
+) -> dict[str, object]:
+    return _event(
+        event_id,
         "recorded-earnings-v1",
         "earnings",
-        {"event_category": "earnings_schedule", "session_timing": "unknown"},
-        minute=16,
+        {
+            "event_category": category,
+            "guidance_low": low,
+            "guidance_high": high,
+            "prior_guidance_low": prior_low,
+            "prior_guidance_high": prior_high,
+            "currency": "USD",
+            "period": "2026-Q3",
+            "unit": "per_share",
+        },
+        minute=minute,
     )
-    schedule["scheduled_for"] = "2026-07-20T12:00:00+00:00"
-    return [result, schedule]
 
 
 def _sec_events() -> list[dict[str, object]]:
@@ -170,6 +230,16 @@ def _macro_events() -> list[dict[str, object]]:
         )
         event["scheduled_for"] = "2026-07-17T15:30:00+00:00"
         events.append(event)
+    fomc = _event(
+        "macro-fomc",
+        "recorded-macro-v1",
+        "economic_release",
+        {"event_category": "fomc_rate_decision"},
+        minute=2,
+        symbol=None,
+    )
+    fomc["scheduled_for"] = "2026-07-17T15:30:00+00:00"
+    events.append(fomc)
     return events
 
 
@@ -196,12 +266,50 @@ def _social_group(
         configuration=configuration,
     ).observation
     assert observation is not None
-    failure: dict[str, object] = {
-        "kind": "unavailable",
-        "occurred_at": "2026-07-17T15:00:00+00:00",
-        "reasons": ["recorded_source_unavailable"],
-        "source_id": "recorded-social-v1",
+    failures: tuple[dict[str, object], ...] = tuple(
+        {
+            "kind": kind,
+            "occurred_at": f"2026-07-17T15:0{index}:00+00:00",
+            "reasons": [f"recorded_source_{kind}"],
+            "source_id": "recorded-social-v1",
+        }
+        for index, kind in enumerate(("unavailable", "throttled", "partial", "malformed"))
+    )
+    stale = _event(
+        "social-stale",
+        "recorded-social-v1",
+        "social",
+        {"event_category": "social_post", "attribution_id": "company-aapl"},
+        minute=-26,
+    )
+    stale["published_at"] = "2026-07-17T14:00:00+00:00"
+    stale["ingested_at"] = "2026-07-17T15:04:00+00:00"
+    future = _event(
+        "social-future",
+        "recorded-social-v1",
+        "social",
+        {"event_category": "social_post", "attribution_id": "company-aapl"},
+        minute=-25,
+    )
+    future["published_at"] = "2026-07-17T15:20:00+00:00"
+    future["ingested_at"] = "2026-07-17T15:05:00+00:00"
+    out_of_order = _event(
+        "social-out-of-order",
+        "recorded-social-v1",
+        "social",
+        {"event_category": "social_post", "attribution_id": "company-aapl"},
+        minute=11,
+    )
+    out_of_order["published_at"] = "2026-07-17T15:35:00+00:00"
+    conflict = dict(event)
+    conflict["ingested_at"] = "2026-07-17T15:42:00+00:00"
+    conflict["published_at"] = "2026-07-17T15:42:00+00:00"
+    conflict["structured_fields"] = {
+        "event_category": "social_post",
+        "attribution_id": "company-aapl-changed",
     }
+    duplicate = dict(event)
+    duplicate["ingested_at"] = "2026-07-17T15:41:00+00:00"
     summary: dict[str, object] = {
         "generated_at": "2026-07-17T15:50:00+00:00",
         "provider_id": "recorded-summary-v1",
@@ -222,7 +330,12 @@ def _social_group(
         "identity:duplicate",
         "identity:conflict",
     )
-    return (event,), (failure,), (summary,), scenarios
+    return (
+        (stale, future, event, out_of_order, duplicate, conflict),
+        failures,
+        (summary,),
+        scenarios,
+    )
 
 
 def _event(

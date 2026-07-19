@@ -8,6 +8,7 @@ import pytest
 
 from market_trader.catalysts.configuration import load_catalyst_configuration
 from market_trader.catalysts.fixtures import CatalystFixtureDataset
+from market_trader.catalysts.models import CatalystDirection
 from market_trader.catalysts.replay import (
     CatalystReplayEngine,
     CatalystReplayResult,
@@ -108,6 +109,40 @@ def test_macro_fixture_renders_chicago_time_without_changing_identity() -> None:
     assert ends_at is not None and ends_at.tzinfo is not None
     assert str(starts_at.tzinfo) == str(ends_at.tzinfo) == "America/Chicago"
     assert window == original
+
+
+def test_production_inputs_exercise_declared_replay_behaviors() -> None:
+    company = _replay(
+        CatalystFixtureDataset.load(FIXTURE_ROOT / "company-and-earnings")
+    )
+    macro = _replay(CatalystFixtureDataset.load(FIXTURE_ROOT / "macro-risk-windows"))
+    social = _replay(
+        CatalystFixtureDataset.load(FIXTURE_ROOT / "social-summary-and-failures")
+    )
+    company_categories = {
+        item.observation.event_category for item in company.classifications
+    }
+    company_directions = {item.classification.direction for item in company.classifications}
+
+    assert {"earnings_result", "guidance_raised", "guidance_lowered"} <= company_categories
+    assert {
+        CatalystDirection.POSITIVE,
+        CatalystDirection.NEGATIVE,
+        CatalystDirection.NEUTRAL,
+    } <= company_directions
+    assert (company.deduplicated, company.quarantined) == (1, 1)
+    assert {item.category for item in macro.risk_windows} == {
+        "consumer_price_index",
+        "employment_situation",
+        "fomc_rate_decision",
+    }
+    assert (
+        social.source_failures,
+        social.source_recoveries,
+        social.quarantined,
+        social.deduplicated,
+        len(social.summaries),
+    ) == (4, 1, 4, 1, 1)
 
 
 def _replay(dataset: CatalystFixtureDataset) -> CatalystReplayResult:

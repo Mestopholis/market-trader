@@ -3,12 +3,12 @@
   "dataset_id": "macro-risk-windows",
   "description": "Deterministic macro-risk-windows catalyst conformance fixture.",
   "expected_reason_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
-  "expected_result_digest": "60170c96472af1c80616c4cdea3ab4afd0cfe64fa022afe44a53c4ac80a668b1",
+  "expected_result_digest": "5185f1f7de7e10bf2a8b20d949fe30ad088bca5af5ddd499fb92d9588046b65c",
   "fixture_schema_version": 1,
   "policy_hashes": {
     "classification": "da4760dd97565b32b123caa4a3978990c28038acf23fddfbe28ecc2d592b99d6",
     "risk": "7d92af5ae286896e254790f51fb4c017f61576273ccae025a840df861ccb4dde",
-    "sources": "a534f6d31664372fdde5290ec2a0e622d534ae2e19bd323f698a270524615359",
+    "sources": "e1105793df337d0be98c92bcfa398782980cfd966278f091782663723af70d66",
     "summary": "41fe228c9ec1060d5eb6f073b05ae2c961986b154ba82dcc05027be56970e287"
   },
   "policy_versions": {
@@ -32,11 +32,11 @@
   ],
   "streams": [
     {
-      "byte_count": 1116,
+      "byte_count": 1609,
       "filename": "events.ndjson",
       "kind": "provider_events",
-      "record_count": 2,
-      "sha256": "70b9e3885c073cc5b59b3b5da7dcc48de376677a211ca81f105df07e32b2b686"
+      "record_count": 3,
+      "sha256": "f911f7b753e78cc584ffd2ed1b54fcede5da99a4d506c64be415ea9a32a09820"
     }
   ]
 }

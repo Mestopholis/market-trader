@@ -9,8 +9,11 @@ from alembic.util.exc import CommandError
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from market_trader.catalysts.cli import main
-from market_trader.catalysts.models import SourceFailure, SourceFailureKind
+from market_trader.catalysts.cli import PolicyRequestLimiter, _parser, main
+from market_trader.catalysts.configuration import SourceDefinition
+from market_trader.catalysts.fixtures import CatalystFixtureDataset
+from market_trader.catalysts.models import AuthorityClass, SourceFailure, SourceFailureKind
+from market_trader.catalysts.providers import ProviderBatch
 from market_trader.db.engine import create_engine_from_url
 from market_trader.db.migrations import upgrade_to_head
 from market_trader.db.models import CatalystSourceRunORM
@@ -92,13 +95,22 @@ def test_dataset_and_database_errors_are_sanitized(
     assert "must-not-leak" not in database_error.err
 
 
-def test_fetch_requires_explicit_source_and_as_of_and_maps_source_failure_to_four(
+@pytest.mark.parametrize(
+    ("kind", "expected_code"),
+    (
+        (SourceFailureKind.UNAVAILABLE, 3),
+        (SourceFailureKind.SECURITY_REJECTED, 4),
+    ),
+)
+def test_fetch_maps_source_and_security_failures_to_distinct_exit_codes(
+    kind: SourceFailureKind,
+    expected_code: int,
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     failure = SourceFailure(
         source_id="sec-edgar-public-v1",
-        kind=SourceFailureKind.UNAVAILABLE,
+        kind=kind,
         occurred_at=AS_OF,
         reasons=("sec_unavailable",),
     )
@@ -107,12 +119,147 @@ def test_fetch_requires_explicit_source_and_as_of_and_maps_source_failure_to_fou
     code = main(["fetch", "sec", "--as-of", AS_OF.isoformat()])
 
     captured = capsys.readouterr()
-    assert code == 4
+    assert code == expected_code
     assert captured.out == ""
     assert json.loads(captured.err) == {
         "error": "source_error",
         "message": "catalyst source unavailable",
     }
+
+
+def test_fetch_persists_sanitized_source_failure_when_enabled(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    database_url = f"sqlite:///{tmp_path / 'failure.db'}"
+    failure = SourceFailure(
+        source_id="bls-public-v1",
+        kind=SourceFailureKind.UNAVAILABLE,
+        occurred_at=AS_OF,
+        reasons=("source_unavailable",),
+    )
+    monkeypatch.setattr("market_trader.catalysts.cli._fetch_source", lambda *args: failure)
+
+    code = main(
+        [
+            "fetch",
+            "bls",
+            "--as-of",
+            AS_OF.isoformat(),
+            "--database-url",
+            database_url,
+        ]
+    )
+
+    assert code == 3
+    assert json.loads(capsys.readouterr().err)["error"] == "source_error"
+    assert _run_count(database_url) == 1
+    assert _run_state(database_url) == "unavailable"
+
+
+def test_fetch_parser_accepts_optional_database_url() -> None:
+    arguments = _parser().parse_args(
+        [
+            "fetch",
+            "bls",
+            "--as-of",
+            AS_OF.isoformat(),
+            "--database-url",
+            "sqlite:///catalysts.db",
+        ]
+    )
+
+    assert arguments.database_url == "sqlite:///catalysts.db"
+
+
+def test_policy_request_limiter_enforces_rolling_and_daily_limits() -> None:
+    monotonic_values = iter((0.0, 0.5, 0.5, 1.0, 1.0))
+    dates = iter((AS_OF, AS_OF, AS_OF, AS_OF, AS_OF))
+    definition = SourceDefinition(
+        source_id="source-v1",
+        authority_class=AuthorityClass.OFFICIAL_STRUCTURED,
+        origins=("https://example.test",),
+        max_requests=2,
+        rate_period_seconds=1,
+        daily_request_limit=3,
+        max_response_bytes=1024,
+        allow_redirects=False,
+    )
+    limiter = PolicyRequestLimiter(
+        {definition.source_id: definition},
+        monotonic=lambda: next(monotonic_values),
+        now=lambda: next(dates),
+    )
+
+    assert limiter.acquire("source-v1")
+    assert limiter.acquire("source-v1")
+    assert not limiter.acquire("source-v1")
+    assert limiter.acquire("source-v1")
+    assert not limiter.acquire("source-v1")
+
+
+def test_policy_request_limiter_can_pace_until_rolling_capacity() -> None:
+    monotonic_values = iter((0.0, 0.0, 1.0))
+    sleeps: list[float] = []
+    definition = SourceDefinition(
+        source_id="source-v1",
+        authority_class=AuthorityClass.OFFICIAL_STRUCTURED,
+        origins=("https://example.test",),
+        max_requests=1,
+        rate_period_seconds=1,
+        daily_request_limit=None,
+        max_response_bytes=1024,
+        allow_redirects=False,
+    )
+    limiter = PolicyRequestLimiter(
+        {definition.source_id: definition},
+        monotonic=lambda: next(monotonic_values),
+        now=lambda: AS_OF,
+        sleeper=sleeps.append,
+        block=True,
+    )
+
+    assert limiter.acquire("source-v1")
+    assert limiter.acquire("source-v1")
+    assert sleeps == [1.0]
+
+
+def test_fetch_can_persist_a_complete_batch_idempotently(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    database_url = f"sqlite:///{tmp_path / 'fetch.db'}"
+    macro_event = next(
+        event
+        for event in CatalystFixtureDataset.load(MINIMAL).events
+        if event.source_id == "bls-public-v1"
+    )
+    batch = ProviderBatch(
+        source_id="bls-public-v1",
+        as_of=AS_OF,
+        events=(macro_event,),
+    )
+    monkeypatch.setattr("market_trader.catalysts.cli._fetch_source", lambda *args: batch)
+    arguments = [
+        "fetch",
+        "bls",
+        "--as-of",
+        AS_OF.isoformat(),
+        "--database-url",
+        database_url,
+    ]
+
+    assert main(arguments) == 0
+    first = json.loads(capsys.readouterr().out)
+    assert main(arguments) == 0
+    second = json.loads(capsys.readouterr().out)
+
+    assert first == second
+    assert first["persistence"] == "database"
+    assert first["accepted"] == 1
+    assert _run_count(database_url) == 1
 
 
 def _seed_symbol(database_url: str) -> None:
@@ -142,5 +289,14 @@ def _run_count(database_url: str) -> int:
     try:
         with Session(engine) as session:
             return session.scalar(select(func.count()).select_from(CatalystSourceRunORM)) or 0
+    finally:
+        engine.dispose()
+
+
+def _run_state(database_url: str) -> str | None:
+    engine = create_engine_from_url(database_url)
+    try:
+        with Session(engine) as session:
+            return session.scalar(select(CatalystSourceRunORM.state))
     finally:
         engine.dispose()

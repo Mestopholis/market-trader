@@ -181,6 +181,9 @@ class CatalystSourceRunORM(Base):
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
     run_key: Mapped[str] = mapped_column(String(512))
     source_id: Mapped[str] = mapped_column(String(128))
+    capability: Mapped[str] = mapped_column(String(80))
+    request_digest: Mapped[str] = mapped_column(String(64))
+    source_policy_version: Mapped[str] = mapped_column(String(128))
     as_of: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     state: Mapped[str] = mapped_column(String(40))
     policy_versions: Mapped[dict[str, Any]] = mapped_column(JSON)
@@ -212,6 +215,11 @@ class CatalystObservationORM(Base):
             "event_family",
             "event_category",
         ),
+        Index(
+            "ix_catalyst_observations_quality_reasons",
+            "quality_reasons",
+            postgresql_using="gin",
+        ),
         Index("ix_catalyst_observations_correlation_id", "correlation_id"),
     )
 
@@ -236,6 +244,9 @@ class CatalystObservationORM(Base):
     valid_until: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     structured_facts: Mapped[dict[str, Any]] = mapped_column(JSON)
     external_text: Mapped[dict[str, Any]] = mapped_column(JSON)
+    quality_reasons: Mapped[list[str]] = mapped_column(
+        JSON().with_variant(JSONB(), "postgresql")
+    )
     source_schema_version: Mapped[int]
     normalization_schema_version: Mapped[int]
     configuration_version: Mapped[str] = mapped_column(String(128))

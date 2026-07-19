@@ -38,6 +38,9 @@ class PersistedCatalystSourceRun:
     id: str
     run_key: str
     source_id: str
+    capability: str
+    request_digest: str
+    source_policy_version: str
     result_digest: str
     correlation_id: str
     created_at: datetime
@@ -67,10 +70,13 @@ class CatalystRepository:
             id=new_domain_id("csr"),
             run_key=result.run_key,
             source_id=result.source_id,
+            capability=result.capability,
+            request_digest=result.request_digest,
+            source_policy_version=result.source_policy_version,
             as_of=ensure_utc(result.as_of),
             state=result.state.value,
             policy_versions=_json_object(versions),
-            policy_hashes={},
+            policy_hashes=dict(result.policy_hashes),
             result_counts={
                 "observations": len(result.observations),
                 "quarantined": len(result.quarantined),
@@ -133,6 +139,7 @@ class CatalystRepository:
             valid_until=value.valid_until,
             structured_facts=_json_object(value.structured_facts),
             external_text=_json_object(value.external_text),
+            quality_reasons=list(value.quality_reasons),
             source_schema_version=value.source_schema_version,
             normalization_schema_version=value.normalization_schema_version,
             configuration_version=value.configuration_version,
@@ -143,7 +150,7 @@ class CatalystRepository:
         self._session.flush()
         self._audit_new(
             record,
-            "catalyst_observation.recorded",
+            "catalyst_observation.stored",
             "catalyst_observation",
             value.ingested_at,
             {"observation_key": value.observation_key, "source_id": value.source_id},
@@ -192,7 +199,7 @@ class CatalystRepository:
         self._session.flush()
         self._audit_new(
             record,
-            "catalyst_quarantine.recorded",
+            "catalyst_observation.quarantined",
             "catalyst_quarantine",
             value.ingested_at,
             {"ingestion_key": value.ingestion_key, "reasons": list(value.reasons)},
@@ -279,7 +286,7 @@ class CatalystRepository:
         self._session.flush()
         self._audit_new(
             record,
-            "catalyst_summary.recorded",
+            "catalyst_summary.stored",
             "catalyst_summary",
             value.generated_at,
             {"summary_key": value.summary_key, "content_digest": value.content_digest},
@@ -325,6 +332,9 @@ def _source_run(record: CatalystSourceRunORM) -> PersistedCatalystSourceRun:
         record.id,
         record.run_key,
         record.source_id,
+        record.capability,
+        record.request_digest,
+        record.source_policy_version,
         record.result_digest,
         record.correlation_id,
         stored_utc(record.created_at),
@@ -356,6 +366,7 @@ def _observation(record: CatalystObservationORM, symbol: str | None) -> Catalyst
         normalization_schema_version=record.normalization_schema_version,
         configuration_version=record.configuration_version,
         correlation_id=record.correlation_id,
+        quality_reasons=tuple(record.quality_reasons),
     )
 
 

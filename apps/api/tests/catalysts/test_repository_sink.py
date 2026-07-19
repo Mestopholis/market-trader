@@ -65,9 +65,24 @@ def test_persists_complete_result_and_maps_every_domain_record(tmp_path: Path) -
             assert repository.get_quarantine("qua-1") == result.quarantined[0]
             assert repository.get_decision("dec-1") == result.decisions[0]
             assert repository.get_summary("sum-1") == result.summaries[0]
+            source_run = session.scalar(select(CatalystSourceRunORM))
+            observation = session.scalar(select(CatalystObservationORM))
 
         assert counts == (1, 1, 1, 1, 1, 6)
-        assert len(catalyst_audits) == 5
+        assert source_run is not None
+        assert source_run.capability == result.capability
+        assert source_run.request_digest == result.request_digest
+        assert source_run.source_policy_version == result.source_policy_version
+        assert source_run.policy_hashes == dict(result.policy_hashes)
+        assert observation is not None
+        assert observation.quality_reasons == ["source_partial"]
+        assert {event.event_type for event in catalyst_audits} == {
+            "catalyst_source_run.recorded",
+            "catalyst_observation.stored",
+            "catalyst_observation.quarantined",
+            "catalyst_decision.recorded",
+            "catalyst_summary.stored",
+        }
         assert "Recorded" not in str(tuple(event.payload for event in catalyst_audits))
     finally:
         engine.dispose()
@@ -234,6 +249,7 @@ def _result() -> SourceRunResult:
         normalization_schema_version=1,
         configuration_version="catalyst-source-policy-v1",
         correlation_id="corr-run",
+        quality_reasons=("source_partial",),
     )
     quarantine = QuarantinedObservation(
         ingestion_key="qua-1",
@@ -274,6 +290,10 @@ def _result() -> SourceRunResult:
     return SourceRunResult(
         run_key="run-key",
         source_id="recorded-company-news-v1",
+        capability="company_news",
+        request_digest="1" * 64,
+        source_policy_version="catalyst-source-policy-v1",
+        policy_hashes={"sources": "2" * 64},
         as_of=AS_OF,
         state=SourceState.AVAILABLE,
         observations=(observation,),

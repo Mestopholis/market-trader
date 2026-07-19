@@ -214,14 +214,26 @@ class CatalystReplayEngine:
             "deduplicated": counts.deduplicated,
             "source_failures": counts.source_failures,
             "source_recoveries": counts.source_recoveries,
-            "observations": observations,
+            "observations": tuple(
+                {
+                    "observation_key": observation.observation_key,
+                    "authoritative_digest": observation.authoritative_digest,
+                    "quality_reasons": observation.quality_reasons,
+                }
+                for observation in observations
+            ),
             "quarantines": tuple(
                 sorted(self._sink.quarantined.values(), key=lambda item: item.ingestion_key)
             ),
-            "classifications": classifications,
+            "classifications": tuple(
+                {
+                    "observation_key": item.observation.observation_key,
+                    "classification": item.classification,
+                }
+                for item in classifications
+            ),
             "risk_windows": windows,
             "decisions": decisions,
-            "summaries": tuple(sorted(summaries, key=lambda item: item.summary_key)),
             "reason_digest": reason_digest,
             "policy_versions": dataset.manifest.policy_versions,
             "policy_hashes": dataset.manifest.policy_hashes,

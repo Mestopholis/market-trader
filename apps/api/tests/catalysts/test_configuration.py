@@ -55,6 +55,7 @@ def test_loads_exact_versioned_source_policy() -> None:
         "bls-public-v1",
         "recorded-company-news-v1",
         "recorded-earnings-v1",
+        "recorded-macro-v1",
         "recorded-social-v1",
         "recorded-summary-v1",
         "sec-edgar-public-v1",

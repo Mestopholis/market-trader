@@ -1,1 +1,4 @@
 {"kind":"unavailable","occurred_at":"2026-07-17T15:00:00+00:00","reasons":["recorded_source_unavailable"],"source_id":"recorded-social-v1"}
+{"kind":"throttled","occurred_at":"2026-07-17T15:01:00+00:00","reasons":["recorded_source_throttled"],"source_id":"recorded-social-v1"}
+{"kind":"partial","occurred_at":"2026-07-17T15:02:00+00:00","reasons":["recorded_source_partial"],"source_id":"recorded-social-v1"}
+{"kind":"malformed","occurred_at":"2026-07-17T15:03:00+00:00","reasons":["recorded_source_malformed"],"source_id":"recorded-social-v1"}

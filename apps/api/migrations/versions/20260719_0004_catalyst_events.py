@@ -53,6 +53,9 @@ def _create_source_runs() -> None:
         sa.Column("id", sa.String(length=64), primary_key=True),
         sa.Column("run_key", sa.String(length=512), nullable=False),
         sa.Column("source_id", sa.String(length=128), nullable=False),
+        sa.Column("capability", sa.String(length=80), nullable=False),
+        sa.Column("request_digest", sa.String(length=64), nullable=False),
+        sa.Column("source_policy_version", sa.String(length=128), nullable=False),
         sa.Column("as_of", sa.DateTime(timezone=True), nullable=False),
         sa.Column("state", sa.String(length=40), nullable=False),
         sa.Column("policy_versions", sa.JSON(), nullable=False),
@@ -114,6 +117,11 @@ def _create_observations() -> None:
         sa.Column("valid_until", sa.DateTime(timezone=True), nullable=False),
         sa.Column("structured_facts", sa.JSON(), nullable=False),
         sa.Column("external_text", sa.JSON(), nullable=False),
+        sa.Column(
+            "quality_reasons",
+            sa.JSON().with_variant(postgresql.JSONB(), "postgresql"),
+            nullable=False,
+        ),
         sa.Column("source_schema_version", sa.Integer(), nullable=False),
         sa.Column("normalization_schema_version", sa.Integer(), nullable=False),
         sa.Column("configuration_version", sa.String(length=128), nullable=False),
@@ -148,6 +156,12 @@ def _create_observations() -> None:
         "ix_catalyst_observations_family_category",
         "catalyst_observations",
         ["event_family", "event_category"],
+    )
+    op.create_index(
+        "ix_catalyst_observations_quality_reasons",
+        "catalyst_observations",
+        ["quality_reasons"],
+        postgresql_using="gin",
     )
     op.create_index(
         "ix_catalyst_observations_correlation_id",

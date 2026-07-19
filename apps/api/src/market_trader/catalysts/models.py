@@ -245,6 +245,10 @@ class CitedSummary:
 class SourceRunResult:
     run_key: str
     source_id: str
+    capability: str
+    request_digest: str
+    source_policy_version: str
+    policy_hashes: Mapping[str, str]
     as_of: datetime
     state: SourceState
     observations: tuple[CatalystObservation, ...]
@@ -256,6 +260,11 @@ class SourceRunResult:
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "as_of", ensure_utc(self.as_of))
+        object.__setattr__(
+            self,
+            "policy_hashes",
+            MappingProxyType(dict(sorted(self.policy_hashes.items()))),
+        )
         object.__setattr__(
             self,
             "observations",

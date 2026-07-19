@@ -193,8 +193,8 @@ def _classify_company(
             amount = _decimal(observation.structured_facts, "amount")
         except _FactFailure as error:
             return _blocked(observation, policy, error.reason)
-        authorization_date = observation.structured_facts.get("authorization_date")
-        if amount <= 0 or not isinstance(authorization_date, str) or not authorization_date:
+        authorized_at = observation.structured_facts.get("authorized_at")
+        if amount <= 0 or not isinstance(authorized_at, str) or not authorized_at:
             return _blocked(observation, policy, "structured_fact_missing")
     reasons = (
         ("direction_unclear",)

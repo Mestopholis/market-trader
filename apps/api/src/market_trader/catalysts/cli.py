@@ -4,9 +4,11 @@ import io
 import json
 import sys
 import time
-from collections.abc import Sequence
-from datetime import UTC, datetime, timedelta
+from collections import deque
+from collections.abc import Callable, Mapping, Sequence
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
+from threading import Lock
 from typing import TextIO
 
 import httpx
@@ -18,13 +20,21 @@ from market_trader.catalysts.adapters.bls import BlsPublicAdapter
 from market_trader.catalysts.adapters.sec import SecEdgarAdapter
 from market_trader.catalysts.configuration import (
     CatalystConfiguration,
+    SourceDefinition,
     load_catalyst_configuration,
 )
 from market_trader.catalysts.fixtures import (
     CatalystFixtureDataset,
+    CatalystFixtureManifest,
     CatalystFixtureValidationError,
 )
-from market_trader.catalysts.models import SourceFailure, SourceRunResult, SourceState
+from market_trader.catalysts.models import (
+    CatalystPolicyVersions,
+    SourceFailure,
+    SourceFailureKind,
+    SourceRunResult,
+    SourceState,
+)
 from market_trader.catalysts.providers import (
     EconomicReleaseRequest,
     ProviderBatch,
@@ -45,6 +55,8 @@ from market_trader.market_calendar.adapter import XNYSCalendarAdapter
 from market_trader.repositories.catalysts import CatalystPersistenceConflict
 
 _DEFAULT_CONFIGURATION = Path("config/catalysts")
+_LIMITER_REGISTRY_LOCK = Lock()
+_LIMITERS: dict[tuple[tuple[str, int, int, int | None], ...], "PolicyRequestLimiter"] = {}
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -54,9 +66,31 @@ def main(argv: Sequence[str] | None = None) -> int:
         if arguments.command == "fetch":
             outcome = _fetch_source(arguments, configuration)
             if isinstance(outcome, SourceFailure):
+                if arguments.database_url is not None:
+                    _persist_source_result(
+                        _failure_source_result(arguments, outcome, configuration),
+                        arguments.database_url,
+                    )
                 _print_error("source_error", "catalyst source unavailable")
-                return 4
-            _print_json(_fetch_payload(arguments.source, outcome), stream=sys.stdout)
+                return 4 if outcome.kind is SourceFailureKind.SECURITY_REJECTED else 3
+            dataset = _fetch_dataset(arguments.source, outcome, configuration)
+            result = _replay(dataset, configuration)
+            persistence = "memory"
+            if arguments.database_url is not None:
+                _persist(
+                    dataset,
+                    result,
+                    arguments.database_url,
+                    run_key=_fetch_run_key(arguments, configuration),
+                    source_id=outcome.source_id,
+                    capability=f"{arguments.source}_fetch",
+                    request_digest=_fetch_request_digest(arguments, configuration),
+                )
+                persistence = "database"
+            payload = _result_payload(result)
+            payload.update(_fetch_payload(arguments.source, outcome))
+            payload["persistence"] = persistence
+            _print_json(payload, stream=sys.stdout)
             return 0
         dataset = CatalystFixtureDataset.load(arguments.dataset)
         result = _replay(dataset, configuration)
@@ -106,6 +140,7 @@ def _parser() -> argparse.ArgumentParser:
     fetch.add_argument("source", choices=("sec", "bls"))
     fetch.add_argument("--as-of", required=True, type=_aware_datetime)
     fetch.add_argument("--config", type=Path, default=_DEFAULT_CONFIGURATION)
+    fetch.add_argument("--database-url")
     fetch.add_argument("--symbols", nargs="+")
     fetch.add_argument("--sec-contact")
     return parser
@@ -131,39 +166,125 @@ def _persist(
     dataset: CatalystFixtureDataset,
     result: CatalystReplayResult,
     database_url: str,
+    *,
+    run_key: str | None = None,
+    source_id: str | None = None,
+    capability: str = "fixture_replay",
+    request_digest: str | None = None,
 ) -> None:
+    source_result = SourceRunResult(
+        run_key=run_key
+        or f"catalyst:{dataset.manifest.dataset_id}:{result.result_digest}",
+        source_id=source_id or f"fixture:{dataset.manifest.dataset_id}",
+        capability=capability,
+        request_digest=request_digest
+        or stable_digest(
+            {
+                "as_of": dataset.manifest.as_of,
+                "dataset_id": dataset.manifest.dataset_id,
+                "fixture_version": dataset.manifest.policy_versions.fixture,
+            }
+        ),
+        source_policy_version=dataset.manifest.policy_versions.source,
+        policy_hashes=dataset.manifest.policy_hashes,
+        as_of=dataset.manifest.as_of,
+        state=SourceState.AVAILABLE,
+        observations=result.observations,
+        quarantined=result.quarantined_outcomes,
+        decisions=result.decisions,
+        summaries=result.summaries,
+        reasons=tuple(reason for reason, _count in result.reasons),
+        result_digest=result.result_digest,
+    )
+    _persist_source_result(source_result, database_url)
+
+
+def _persist_source_result(result: SourceRunResult, database_url: str) -> None:
     with contextlib.redirect_stderr(io.StringIO()):
         upgrade_to_head(database_url)
     engine = create_engine_from_url(database_url)
     try:
-        source_result = SourceRunResult(
-            run_key=f"catalyst:{dataset.manifest.dataset_id}:{result.result_digest}",
-            source_id=f"fixture:{dataset.manifest.dataset_id}",
-            as_of=dataset.manifest.as_of,
-            state=SourceState.AVAILABLE,
-            observations=result.observations,
-            quarantined=result.quarantined_outcomes,
-            decisions=result.decisions,
-            summaries=result.summaries,
-            reasons=tuple(reason for reason, _count in result.reasons),
-            result_digest=result.result_digest,
-        )
         with Session(engine) as session, session.begin():
-            RepositoryCatalystSink(session).persist(source_result)
+            RepositoryCatalystSink(session).persist(result)
     finally:
         engine.dispose()
 
 
-class _AllowLimiter:
+class PolicyRequestLimiter:
+    def __init__(
+        self,
+        definitions: Mapping[str, SourceDefinition],
+        *,
+        monotonic: Callable[[], float] = time.monotonic,
+        now: Callable[[], datetime] = lambda: datetime.now(UTC),
+        sleeper: Callable[[float], None] = time.sleep,
+        block: bool = False,
+    ) -> None:
+        self._definitions = dict(definitions)
+        self._monotonic = monotonic
+        self._now = now
+        self._sleeper = sleeper
+        self._block = block
+        self._requests: dict[str, deque[float]] = {}
+        self._daily: dict[str, tuple[date, int]] = {}
+        self._lock = Lock()
+
     def acquire(self, source_id: str) -> bool:
-        return bool(source_id)
+        definition = self._definitions.get(source_id)
+        if definition is None or definition.max_requests <= 0:
+            return False
+        while True:
+            timestamp = self._monotonic()
+            utc_date = self._now().astimezone(UTC).date()
+            with self._lock:
+                requests = self._requests.setdefault(source_id, deque())
+                boundary = timestamp - definition.rate_period_seconds
+                while requests and requests[0] <= boundary:
+                    requests.popleft()
+                daily_date, daily_count = self._daily.get(source_id, (utc_date, 0))
+                if daily_date != utc_date:
+                    daily_count = 0
+                limit = definition.daily_request_limit
+                if limit is not None and daily_count >= limit:
+                    return False
+                if len(requests) < definition.max_requests:
+                    requests.append(timestamp)
+                    self._daily[source_id] = (utc_date, daily_count + 1)
+                    return True
+                if not self._block:
+                    return False
+                delay = max(
+                    requests[0] + definition.rate_period_seconds - timestamp,
+                    0.0,
+                )
+            self._sleeper(delay)
+
+
+def _policy_limiter(configuration: CatalystConfiguration) -> PolicyRequestLimiter:
+    definitions = configuration.sources.by_id
+    key = tuple(
+        (
+            source_id,
+            definition.max_requests,
+            definition.rate_period_seconds,
+            definition.daily_request_limit,
+        )
+        for source_id, definition in sorted(definitions.items())
+    )
+    with _LIMITER_REGISTRY_LOCK:
+        return _LIMITERS.setdefault(
+            key,
+            PolicyRequestLimiter(definitions, block=True),
+        )
 
 
 def _fetch_source(
     arguments: argparse.Namespace,
     configuration: CatalystConfiguration,
 ) -> ProviderBatch | SourceFailure:
-    with httpx.Client(follow_redirects=False, timeout=15.0) as client:
+    limiter = _policy_limiter(configuration)
+    timeout = httpx.Timeout(20.0, connect=10.0)
+    with httpx.Client(follow_redirects=False, timeout=timeout) as client:
         if arguments.source == "sec":
             contact = arguments.sec_contact
             if not isinstance(contact, str) or "@" not in contact:
@@ -173,13 +294,13 @@ def _fetch_source(
                 client=client,
                 configuration=configuration,
                 user_agent=f"Market-Trader/0.1 {contact}",
-                limiter=_AllowLimiter(),
+                limiter=limiter,
                 sleeper=time.sleep,
             ).sec_filings(SecFilingRequest(as_of=arguments.as_of, symbols=symbols))
         return BlsPublicAdapter(
             client=client,
             configuration=configuration,
-            limiter=_AllowLimiter(),
+            limiter=limiter,
             sleeper=time.sleep,
         ).economic_releases(
             EconomicReleaseRequest(
@@ -210,9 +331,85 @@ def _fetch_payload(source: str, outcome: ProviderBatch) -> dict[str, object]:
         "as_of": outcome.as_of.isoformat(),
         "command": "fetch",
         "event_count": len(outcome.events),
-        "result_digest": stable_digest(outcome),
         "source": source,
     }
+
+
+def _fetch_dataset(
+    source: str,
+    outcome: ProviderBatch,
+    configuration: CatalystConfiguration,
+) -> CatalystFixtureDataset:
+    return CatalystFixtureDataset(
+        path=Path(f"<fetch:{source}>"),
+        manifest=CatalystFixtureManifest(
+            dataset_id=f"fetch-{source}",
+            description=f"Explicit {source} catalyst fetch.",
+            fixture_schema_version=1,
+            as_of=outcome.as_of,
+            policy_versions=CatalystPolicyVersions(),
+            policy_hashes=configuration.content_hashes,
+            scenarios=(f"fetch:{source}",),
+            streams=(),
+            expected_result_digest=None,
+            expected_reason_digest=None,
+        ),
+        records=outcome.events,
+    )
+
+
+def _fetch_run_key(
+    arguments: argparse.Namespace,
+    configuration: CatalystConfiguration,
+) -> str:
+    return f"catalyst-fetch:{_fetch_request_digest(arguments, configuration)}"
+
+
+def _fetch_request_digest(
+    arguments: argparse.Namespace,
+    configuration: CatalystConfiguration,
+) -> str:
+    parameters = (
+        tuple(arguments.symbols or configuration.sources.company_ciks)
+        if arguments.source == "sec"
+        else tuple(configuration.sources.bls_series.values())
+    )
+    return stable_digest({
+        'as_of': arguments.as_of,
+        'fixture_version': CatalystPolicyVersions().fixture,
+        'parameters': parameters,
+        'source': arguments.source,
+        'source_policy_version': configuration.sources.version,
+    })
+
+
+def _failure_source_result(
+    arguments: argparse.Namespace,
+    failure: SourceFailure,
+    configuration: CatalystConfiguration,
+) -> SourceRunResult:
+    state = SourceState.UNAVAILABLE
+    if failure.kind is SourceFailureKind.PARTIAL:
+        state = SourceState.DEGRADED
+    elif failure.kind is SourceFailureKind.MALFORMED:
+        state = SourceState.MALFORMED
+    request_digest = _fetch_request_digest(arguments, configuration)
+    return SourceRunResult(
+        run_key=f"catalyst-fetch:{request_digest}",
+        source_id=failure.source_id,
+        capability=f"{arguments.source}_fetch",
+        request_digest=request_digest,
+        source_policy_version=configuration.sources.version,
+        policy_hashes=configuration.content_hashes,
+        as_of=arguments.as_of,
+        state=state,
+        observations=(),
+        quarantined=(),
+        decisions=(),
+        summaries=(),
+        reasons=failure.reasons,
+        result_digest=stable_digest(failure),
+    )
 
 
 def _aware_datetime(value: str) -> datetime:

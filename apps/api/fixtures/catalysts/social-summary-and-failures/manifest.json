@@ -2,13 +2,13 @@
   "as_of": "2026-07-17T16:00:00+00:00",
   "dataset_id": "social-summary-and-failures",
   "description": "Deterministic social-summary-and-failures catalyst conformance fixture.",
-  "expected_reason_digest": "9f336db59735c3b22bc823d91451327ca92edd71c1a380a6b962619f313f3774",
-  "expected_result_digest": "9d681a7ec102da3c2b1dcc2cd859d749ca712f524fa4d9b3514f0d981d1938e8",
+  "expected_reason_digest": "b7a0446cd669c594ce18551b4a7c2ae76143624e05b7d47f147b780fc2366cbc",
+  "expected_result_digest": "4b36ea156005e75e8e272f80883dc41f31a2ca629a5fa8f2aa4acf26556e4fb2",
   "fixture_schema_version": 1,
   "policy_hashes": {
     "classification": "da4760dd97565b32b123caa4a3978990c28038acf23fddfbe28ecc2d592b99d6",
     "risk": "7d92af5ae286896e254790f51fb4c017f61576273ccae025a840df861ccb4dde",
-    "sources": "a534f6d31664372fdde5290ec2a0e622d534ae2e19bd323f698a270524615359",
+    "sources": "e1105793df337d0be98c92bcfa398782980cfd966278f091782663723af70d66",
     "summary": "41fe228c9ec1060d5eb6f073b05ae2c961986b154ba82dcc05027be56970e287"
   },
   "policy_versions": {
@@ -29,18 +29,18 @@
   ],
   "streams": [
     {
-      "byte_count": 140,
+      "byte_count": 544,
       "filename": "failures.ndjson",
       "kind": "source_failures",
-      "record_count": 1,
-      "sha256": "c9b27e22c940c4cb4b1c40f2ecf28248befac3249c97ac83a8194f8c79103f74"
+      "record_count": 4,
+      "sha256": "21e248c722211e192c87c82520d82e9bdc49a8976e31aa1212ef5274e8f96ee3"
     },
     {
-      "byte_count": 506,
+      "byte_count": 3035,
       "filename": "events.ndjson",
       "kind": "provider_events",
-      "record_count": 1,
-      "sha256": "6e63807b31438d327fcf54bff7c2e968bac66f4447e44c4c2257922fa785e4c4"
+      "record_count": 6,
+      "sha256": "b0cd7dc225789cca2dab3b9e2e97156657e320a05c3169d68a4529c396b2c852"
     },
     {
       "byte_count": 314,

@@ -362,6 +362,48 @@ def test_social_stale_boundary_is_inclusive_then_stale_one_microsecond_later() -
     assert stale.quarantine.reasons == ("stale_observation",)
 
 
+@pytest.mark.parametrize("category", ("guidance_raised", "guidance_lowered"))
+def test_accepts_structured_guidance_categories(category: str) -> None:
+    result = normalize_event(
+        _event(
+            family=EventFamily.EARNINGS,
+            source_id="recorded-earnings-v1",
+            structured_fields={
+                "event_category": category,
+                "guidance_low": "12",
+                "guidance_high": "14",
+                "prior_guidance_low": "10",
+                "prior_guidance_high": "11",
+                "currency": "USD",
+                "period": "2026-Q3",
+                "unit": "per_share",
+            },
+        ),
+        as_of=AS_OF,
+        configuration=CONFIGURATION,
+    )
+
+    assert result.observation is not None
+    assert result.observation.event_category == category
+
+
+def test_accepts_fixture_backed_fomc_schedule_as_market_level() -> None:
+    result = normalize_event(
+        _event(
+            family=EventFamily.ECONOMIC_RELEASE,
+            source_id="recorded-macro-v1",
+            symbol=None,
+            structured_fields={"event_category": "fomc_rate_decision"},
+        ),
+        as_of=AS_OF,
+        configuration=CONFIGURATION,
+    )
+
+    assert result.observation is not None
+    assert result.observation.event_category == "fomc_rate_decision"
+    assert result.observation.symbol is None
+
+
 def test_watermark_rejects_out_of_order_and_authoritative_conflicts() -> None:
     first_result = normalize_event(_event(), as_of=AS_OF, configuration=CONFIGURATION)
     assert first_result.observation is not None

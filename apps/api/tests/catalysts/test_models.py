@@ -215,6 +215,10 @@ def test_outcome_contracts_enforce_aware_times_and_sorted_values() -> None:
     result = SourceRunResult(
         run_key="run-1",
         source_id="fixture",
+        capability="fixture_replay",
+        request_digest="a" * 64,
+        source_policy_version="catalyst-source-policy-v1",
+        policy_hashes={"sources": "b" * 64},
         as_of=AS_OF,
         state=SourceState.DEGRADED,
         observations=(),
@@ -229,4 +233,3 @@ def test_outcome_contracts_enforce_aware_times_and_sorted_values() -> None:
     assert quarantine.reasons == ("a", "z")
     assert window.lineage == ("obs-1", "obs-2")
     assert result.reasons == ("source_partial",)
-

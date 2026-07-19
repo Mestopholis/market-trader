@@ -187,7 +187,7 @@ def test_guidance_requires_comparable_numeric_ranges(
         ("regulatory_denial", {}),
         ("dividend_increase", {"old_amount": "1.00", "new_amount": "1.10"}),
         ("dividend_cut", {"old_amount": "1.00", "new_amount": "0.50"}),
-        ("buyback_authorized", {"amount": "1000000", "authorization_date": "2026-07-17"}),
+        ("buyback_authorized", {"amount": "1000000", "authorized_at": "2026-07-17"}),
         ("bankruptcy_filing", {}),
         ("going_concern", {}),
         ("cyber_incident", {}),

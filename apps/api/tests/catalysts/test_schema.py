@@ -48,6 +48,12 @@ def test_catalyst_tables_have_stable_keys_and_required_relationships() -> None:
         summary.c.summary_key,
     )
     assert all(cast(String, column.type).length == 512 for column in stable_keys)
+    assert {
+        "capability",
+        "request_digest",
+        "source_policy_version",
+    } <= set(source_run.c.keys())
+    assert "quality_reasons" in observation.c
 
 
 def test_catalyst_tables_index_source_symbol_and_as_of_access_paths() -> None:
@@ -110,6 +116,11 @@ def test_catalyst_temporal_columns_are_timezone_aware() -> None:
     ("model", "column_name", "index_name"),
     (
         (CatalystSourceRunORM, "reasons", "ix_catalyst_source_runs_reasons"),
+        (
+            CatalystObservationORM,
+            "quality_reasons",
+            "ix_catalyst_observations_quality_reasons",
+        ),
         (CatalystQuarantineORM, "reasons", "ix_catalyst_quarantine_reasons"),
         (CatalystDecisionORM, "reasons", "ix_catalyst_decisions_reasons"),
         (
@@ -169,9 +180,11 @@ def _seed_catalyst_rows(engine: Engine) -> None:
         connection.execute(
             text(
                 "INSERT INTO catalyst_source_runs "
-                "(id, run_key, source_id, as_of, state, policy_versions, policy_hashes, "
+                "(id, run_key, source_id, capability, request_digest, "
+                "source_policy_version, as_of, state, policy_versions, policy_hashes, "
                 "result_counts, reasons, result_digest, correlation_id, created_at) VALUES "
-                "('run-row', 'run-key', 'fixture', '2026-07-17 15:30:00', 'available', "
+                "('run-row', 'run-key', 'fixture', 'fixture_replay', :digest, "
+                "'catalyst-source-policy-v1', '2026-07-17 15:30:00', 'available', "
                 "'{}', '{}', '{}', '[]', :digest, 'corr', '2026-07-17 15:30:00')"
             ),
             {"digest": "a" * 64},
@@ -183,12 +196,13 @@ def _seed_catalyst_rows(engine: Engine) -> None:
                 "external_text_digest, source_id, authority_class, event_family, event_category, "
                 "provider_event_id, source_reference, symbol_id, published_at, ingested_at, "
                 "scheduled_for, valid_until, structured_facts, external_text, "
+                "quality_reasons, "
                 "source_schema_version, "
                 "normalization_schema_version, configuration_version, correlation_id, created_at) "
                 "VALUES ('obs-row', 'obs-key', 'run-row', 'ing-key', :digest, :digest, 'fixture', "
                 "'authorized_structured', 'company_news', 'regulatory_approval', 'event-key', "
                 "'fixture://event', NULL, '2026-07-17 15:30:00', '2026-07-17 15:30:00', NULL, "
-                "'2026-07-18 15:30:00', '{}', '{}', 1, 1, 'source-v1', 'corr', "
+                "'2026-07-18 15:30:00', '{}', '{}', '[]', 1, 1, 'source-v1', 'corr', "
                 "'2026-07-17 15:30:00')"
             ),
             {"digest": "b" * 64},

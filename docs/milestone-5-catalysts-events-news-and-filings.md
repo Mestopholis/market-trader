@@ -45,8 +45,8 @@ Replay the same fixture entirely in memory:
 The four production groups are `company-and-earnings`, `sec-and-amendments`,
 `macro-risk-windows`, and `social-summary-and-failures`. Commands print one
 compact, sorted JSON object. Exit `2` means dataset or policy validation failed,
-`3` means persistence or infrastructure failed, and `4` means an explicit live
-source was unavailable. Diagnostics do not echo provider payloads, database URLs,
+`3` means a source, persistence, or infrastructure failure, and `4` means a
+security-policy rejection. Diagnostics do not echo provider payloads, database URLs,
 SEC contact values, or external text.
 
 ## Persistent SQLite Replay
@@ -109,7 +109,7 @@ Use read-only SQLite queries against the local database:
 
 ```bash
 sqlite3 data/milestone5.db \
-  'SELECT run_key, source_id, as_of, state, result_digest FROM catalyst_source_runs;'
+  'SELECT run_key, source_id, capability, request_digest, source_policy_version, as_of, state, result_digest FROM catalyst_source_runs;'
 
 sqlite3 data/milestone5.db \
   'SELECT source_id, event_family, event_category, published_at FROM catalyst_observations ORDER BY published_at;'
@@ -148,13 +148,17 @@ identified contact value for its user agent:
   --as-of '2026-07-19T15:00:00-05:00'
 ```
 
+Add `--database-url "$CATALYST_DB"` to either fetch command to migrate and persist
+the complete normalized source run in one transaction. Failed source runs are
+persisted without provider payloads when persistence is explicitly enabled.
+
 The contact value is supplied at runtime and must not be committed. Adapters allow
 only configured official HTTPS origins, bounded response sizes, no redirects,
 source-specific rate limits, and bounded retries. Limit exhaustion, malformed
 responses, or outages return a typed source failure. A later accepted event marks
 recovery; unavailable required evidence remains blocking rather than becoming
 neutral or confirmed. Fetches produce normalized counts and a digest but do not
-persist automatically.
+persist unless `--database-url` is supplied.
 
 ## Policy And Fixture Changes
 

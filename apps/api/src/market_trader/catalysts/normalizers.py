@@ -29,12 +29,20 @@ _SYMBOL = re.compile(r"^[A-Z][A-Z0-9.-]{0,9}$")
 _SOURCE_FAMILY = {
     "recorded-company-news-v1": EventFamily.COMPANY_NEWS,
     "recorded-earnings-v1": EventFamily.EARNINGS,
+    "recorded-macro-v1": EventFamily.ECONOMIC_RELEASE,
     "sec-edgar-public-v1": EventFamily.SEC_FILING,
     "bls-public-v1": EventFamily.ECONOMIC_RELEASE,
     "recorded-social-v1": EventFamily.SOCIAL,
 }
 _STATIC_CATEGORIES = {
-    EventFamily.EARNINGS: frozenset(("earnings_result", "earnings_schedule")),
+    EventFamily.EARNINGS: frozenset(
+        (
+            "earnings_result",
+            "earnings_schedule",
+            "guidance_lowered",
+            "guidance_raised",
+        )
+    ),
     EventFamily.SEC_FILING: frozenset(("sec_filing",)),
     EventFamily.SOCIAL: frozenset(("social_post",)),
 }
@@ -211,6 +219,7 @@ def _event_category(
         allowed = {
             *configuration.sources.bls_series,
             "employment_situation",
+            "fomc_rate_decision",
         }
     else:
         allowed = _STATIC_CATEGORIES[family]
