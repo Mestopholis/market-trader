@@ -173,6 +173,7 @@ def _dataset(
         as_of=AS_OF,
         policy_versions=CatalystPolicyVersions(),
         policy_hashes=MappingProxyType(dict(CONFIGURATION.content_hashes)),
+        scenarios=("replay-test",),
         streams=(
             CatalystFixtureStream(
                 filename="events.ndjson",

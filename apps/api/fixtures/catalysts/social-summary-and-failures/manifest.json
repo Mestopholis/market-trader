@@ -1,0 +1,53 @@
+{
+  "as_of": "2026-07-17T16:00:00+00:00",
+  "dataset_id": "social-summary-and-failures",
+  "description": "Deterministic social-summary-and-failures catalyst conformance fixture.",
+  "expected_reason_digest": "9f336db59735c3b22bc823d91451327ca92edd71c1a380a6b962619f313f3774",
+  "expected_result_digest": "9d681a7ec102da3c2b1dcc2cd859d749ca712f524fa4d9b3514f0d981d1938e8",
+  "fixture_schema_version": 1,
+  "policy_hashes": {
+    "classification": "da4760dd97565b32b123caa4a3978990c28038acf23fddfbe28ecc2d592b99d6",
+    "risk": "7d92af5ae286896e254790f51fb4c017f61576273ccae025a840df861ccb4dde",
+    "sources": "a534f6d31664372fdde5290ec2a0e622d534ae2e19bd323f698a270524615359",
+    "summary": "41fe228c9ec1060d5eb6f073b05ae2c961986b154ba82dcc05027be56970e287"
+  },
+  "policy_versions": {
+    "classification": "catalyst-classification-policy-v1",
+    "fixture": "catalyst-fixture-v1",
+    "risk": "event-risk-policy-v1",
+    "source": "catalyst-source-policy-v1",
+    "summary": "catalyst-summary-policy-v1"
+  },
+  "scenarios": [
+    "source:failure",
+    "source:recovery",
+    "social:only-unconfirmed",
+    "summary:cited",
+    "summary:injection-text",
+    "identity:duplicate",
+    "identity:conflict"
+  ],
+  "streams": [
+    {
+      "byte_count": 140,
+      "filename": "failures.ndjson",
+      "kind": "source_failures",
+      "record_count": 1,
+      "sha256": "c9b27e22c940c4cb4b1c40f2ecf28248befac3249c97ac83a8194f8c79103f74"
+    },
+    {
+      "byte_count": 506,
+      "filename": "events.ndjson",
+      "kind": "provider_events",
+      "record_count": 1,
+      "sha256": "6e63807b31438d327fcf54bff7c2e968bac66f4447e44c4c2257922fa785e4c4"
+    },
+    {
+      "byte_count": 314,
+      "filename": "summaries.ndjson",
+      "kind": "summaries",
+      "record_count": 1,
+      "sha256": "21b167569df3912187f3b832623cec352f58f9102aeed38876c585b7ef1bc3bf"
+    }
+  ]
+}

@@ -83,6 +83,8 @@ class CatalystReplayResult:
     deduplicated: int
     source_failures: int
     source_recoveries: int
+    observations: tuple[CatalystObservation, ...]
+    quarantined_outcomes: tuple[QuarantinedObservation, ...]
     classifications: tuple[ClassifiedObservation, ...]
     risk_windows: tuple[EventRiskWindow, ...]
     decisions: tuple[CatalystDecision, ...]
@@ -242,6 +244,10 @@ class CatalystReplayEngine:
             deduplicated=counts.deduplicated,
             source_failures=counts.source_failures,
             source_recoveries=counts.source_recoveries,
+            observations=observations,
+            quarantined_outcomes=tuple(
+                sorted(self._sink.quarantined.values(), key=lambda item: item.ingestion_key)
+            ),
             classifications=classifications,
             risk_windows=windows,
             decisions=decisions,

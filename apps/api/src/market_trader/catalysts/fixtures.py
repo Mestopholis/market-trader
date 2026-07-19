@@ -34,6 +34,7 @@ _MANIFEST_KEYS = {
     "fixture_schema_version",
     "policy_hashes",
     "policy_versions",
+    "scenarios",
     "streams",
 }
 _STREAM_KEYS = {"byte_count", "filename", "kind", "record_count", "sha256"}
@@ -98,6 +99,7 @@ class CatalystFixtureManifest:
     as_of: datetime
     policy_versions: CatalystPolicyVersions
     policy_hashes: Mapping[str, str]
+    scenarios: tuple[str, ...]
     streams: tuple[CatalystFixtureStream, ...]
     expected_result_digest: str | None
     expected_reason_digest: str | None
@@ -171,6 +173,7 @@ def _load_manifest(root: Path) -> CatalystFixtureManifest:
         as_of=_timestamp(raw["as_of"], "as_of"),
         policy_versions=versions,
         policy_hashes=hashes,
+        scenarios=_string_tuple(raw["scenarios"], "scenarios"),
         streams=streams,
         expected_result_digest=_optional_digest(raw["expected_result_digest"]),
         expected_reason_digest=_optional_digest(raw["expected_reason_digest"]),
