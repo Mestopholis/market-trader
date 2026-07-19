@@ -1,0 +1,71 @@
+{
+  "as_of": "2026-07-17T13:40:00+00:00",
+  "configuration_hashes": {
+    "eligibility": "c16a581213a840e8d83e17d371cee619f1e73b18a0ce0939bc307f497777880f",
+    "regime": "39157b670beca5624b6f4f124218947068965341a0c36d6e243ba06a91ca5b14",
+    "scoring": "99ab31d048788ada0029d51498fe4b952ccd55bd35b1dcd527e5b3af3b6d70d2",
+    "strategies": "5e2e282153e1113b4e2fa0b6c2e667f2f38b770b80f18fdb1ab7a995f809d409",
+    "universe": "44eae3aa12fd93398a9d60455bd25b94868a426f19ba7128926ba2a533f8810a"
+  },
+  "dataset_id": "bullish",
+  "description": "Bullish breakout, bullish pullback, and positive news continuation in a normal session with deterministic idempotence.",
+  "expected": {
+    "blocked": 29,
+    "candidates": 1,
+    "eligible": 1,
+    "ineligible": 0,
+    "reason_summary": {
+      "breakdown_not_confirmed": 1,
+      "failed_rally_zone_not_reached": 1,
+      "insufficient_intraday_history": 2,
+      "missing_required_input": 29,
+      "price_above_vwap": 1,
+      "pullback_zone_not_reached": 1,
+      "regime_not_compatible": 2,
+      "trend_not_established": 2
+    },
+    "regime_score": "100.000000",
+    "regime_state": "bullish",
+    "result_digest": "646e469f911a104ef019e23e893d88ebfece5f2056059ab05c9c783ad9b898fb",
+    "signals": 5
+  },
+  "market_configuration_version": "market-data-fixtures-v1",
+  "market_streams": [
+    {
+      "data_kind": "candle",
+      "event_count": 429,
+      "filename": "market.ndjson",
+      "sha256": "2584a7acd1657c8742f33848bcf0f63f5b5225ee3bdea338f61d7c41a75044cb"
+    },
+    {
+      "data_kind": "quote",
+      "event_count": 1,
+      "filename": "quotes.ndjson",
+      "sha256": "fc3f53dacea2b8c2411b8a1514be4fb1da7ad6780ab777af1e15cb15b3171f08"
+    },
+    {
+      "data_kind": "provider_state",
+      "event_count": 1,
+      "filename": "states.ndjson",
+      "sha256": "e8f20749210b61014d5623af095131311cf42d347b975c70864054ead0818655"
+    }
+  ],
+  "scanner_fixture_schema_version": "scanner-fixture-v1",
+  "session_date": "2026-07-17",
+  "source": "synthetic-scanner-fixture",
+  "supplemental": {
+    "filename": "supplemental.ndjson",
+    "record_count": 5,
+    "sha256": "e47d2849d6fdfcfb0cdee8d14d1a589ea5013e2cccc2ba2ec168e5d06773c7b6"
+  },
+  "versions": {
+    "eligibility": "eligibility-policy-v1",
+    "evidence": "scanner-evidence-v1",
+    "features": "scanner-features-v1",
+    "fixture": "scanner-fixture-v1",
+    "regime": "market-regime-v1",
+    "scoring": "candidate-scoring-v1",
+    "strategies": "scanner-strategies-v1",
+    "universe": "eligible-universe-v1"
+  }
+}

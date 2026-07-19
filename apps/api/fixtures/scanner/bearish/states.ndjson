@@ -1,0 +1,1 @@
+{"data_kind":"provider_state","event_id":"bearish-provider","ingested_at":"2026-11-02T14:39:59.500000+00:00","observed_at":"2026-11-02T14:39:59.500000+00:00","payload":{"provider":"synthetic","scenario":"bearish","schema_version":1,"state":"available"}}

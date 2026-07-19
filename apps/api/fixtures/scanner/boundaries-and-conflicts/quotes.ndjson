@@ -1,0 +1,1 @@
+{"data_kind":"quote","event_id":"boundaries-and-conflicts-quote","ingested_at":"2026-03-09T13:39:59+00:00","observed_at":"2026-03-09T13:39:58+00:00","payload":{"ask":"220.05","ask_size":100,"bid":"219.95","bid_size":100,"condition_codes":["halt"],"last":"220","last_size":50,"scenario":"boundaries-and-conflicts","schema_version":1,"symbol":"SPY"}}

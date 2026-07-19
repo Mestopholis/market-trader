@@ -1,0 +1,66 @@
+{
+  "as_of": "2026-03-09T13:40:00+00:00",
+  "configuration_hashes": {
+    "eligibility": "c16a581213a840e8d83e17d371cee619f1e73b18a0ce0939bc307f497777880f",
+    "regime": "39157b670beca5624b6f4f124218947068965341a0c36d6e243ba06a91ca5b14",
+    "scoring": "99ab31d048788ada0029d51498fe4b952ccd55bd35b1dcd527e5b3af3b6d70d2",
+    "strategies": "5e2e282153e1113b4e2fa0b6c2e667f2f38b770b80f18fdb1ab7a995f809d409",
+    "universe": "44eae3aa12fd93398a9d60455bd25b94868a426f19ba7128926ba2a533f8810a"
+  },
+  "dataset_id": "boundaries-and-conflicts",
+  "description": "Threshold boundary, conflicting and halted inputs, unresolved corporate action, evidence deduplication, family cap, changed-input conflict, and exact idempotence.",
+  "expected": {
+    "blocked": 30,
+    "candidates": 0,
+    "eligible": 0,
+    "ineligible": 0,
+    "reason_summary": {
+      "halted_symbol": 1,
+      "missing_required_input": 29,
+      "provider_unavailable": 1
+    },
+    "regime_score": "70.000000",
+    "regime_state": "bullish",
+    "result_digest": "a59ba668b14b10077a25c4a36b54f95bed7436783c56a82459780405fddef90a",
+    "signals": 0
+  },
+  "market_configuration_version": "market-data-fixtures-v1",
+  "market_streams": [
+    {
+      "data_kind": "candle",
+      "event_count": 429,
+      "filename": "market.ndjson",
+      "sha256": "92c832238f5628cd32dc0a04b92802245d439769ec7f8be4413b8f24acf8fd77"
+    },
+    {
+      "data_kind": "quote",
+      "event_count": 1,
+      "filename": "quotes.ndjson",
+      "sha256": "b2ecc86eda0d424cf6e00d66a93a21271c2172e3e59ae0eb87b3dc118b678a3c"
+    },
+    {
+      "data_kind": "provider_state",
+      "event_count": 1,
+      "filename": "states.ndjson",
+      "sha256": "770f0ab4f08bc75570d0cad368eaf1a6fcad65391853b992a810eb869fe922e6"
+    }
+  ],
+  "scanner_fixture_schema_version": "scanner-fixture-v1",
+  "session_date": "2026-03-09",
+  "source": "synthetic-scanner-fixture",
+  "supplemental": {
+    "filename": "supplemental.ndjson",
+    "record_count": 4,
+    "sha256": "129a00dcf25f1395c89cb569b1b3bcacdfdd451ba227003985fdb5e150df7143"
+  },
+  "versions": {
+    "eligibility": "eligibility-policy-v1",
+    "evidence": "scanner-evidence-v1",
+    "features": "scanner-features-v1",
+    "fixture": "scanner-fixture-v1",
+    "regime": "market-regime-v1",
+    "scoring": "candidate-scoring-v1",
+    "strategies": "scanner-strategies-v1",
+    "universe": "eligible-universe-v1"
+  }
+}

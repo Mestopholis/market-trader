@@ -1,0 +1,1 @@
+{"data_kind":"provider_state","event_id":"boundaries-and-conflicts-provider","ingested_at":"2026-03-09T13:39:59.500000+00:00","observed_at":"2026-03-09T13:39:59.500000+00:00","payload":{"provider":"synthetic","scenario":"boundaries-and-conflicts","schema_version":1,"state":"unavailable"}}
