@@ -44,6 +44,7 @@ from market_trader.scanner.models import (
     StrategyStatus,
     SymbolInput,
 )
+from market_trader.scanner.regime import RegimeClassifier
 from market_trader.scanner.serialization import canonical_record, stable_digest
 
 __all__ = [
@@ -68,6 +69,7 @@ __all__ = [
     "MacroEvidence",
     "MacroState",
     "PolicyVersions",
+    "RegimeClassifier",
     "RegimeResult",
     "RegimeState",
     "ScanCounts",
