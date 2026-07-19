@@ -86,23 +86,27 @@ class SymbolInput:
         object.__setattr__(
             self,
             "daily_candles",
-            tuple(sorted(self.daily_candles, key=_stable_sort_key)),
+            tuple(sorted(self.daily_candles, key=_candle_sort_key)),
         )
         object.__setattr__(
             self,
             "intraday_candles",
-            tuple(sorted(self.intraday_candles, key=_stable_sort_key)),
+            tuple(sorted(self.intraday_candles, key=_candle_sort_key)),
         )
-        object.__setattr__(self, "quotes", tuple(sorted(self.quotes, key=_stable_sort_key)))
+        object.__setattr__(
+            self,
+            "quotes",
+            tuple(sorted(self.quotes, key=_observation_sort_key)),
+        )
         object.__setattr__(
             self,
             "provider_states",
-            tuple(sorted(self.provider_states, key=_stable_sort_key)),
+            tuple(sorted(self.provider_states, key=_observation_sort_key)),
         )
         object.__setattr__(
             self,
             "corporate_actions",
-            tuple(sorted(self.corporate_actions, key=_stable_sort_key)),
+            tuple(sorted(self.corporate_actions, key=_corporate_action_sort_key)),
         )
         object.__setattr__(self, "evidence", _sorted_evidence(self.evidence))
         object.__setattr__(self, "attributes", _immutable_mapping(self.attributes))
@@ -358,7 +362,47 @@ def _immutable_mapping[T](values: Mapping[str, T]) -> Mapping[str, T]:
 
 
 def _sorted_evidence(values: tuple[EvidenceRef, ...]) -> tuple[EvidenceRef, ...]:
-    return tuple(sorted(values, key=_stable_sort_key))
+    return tuple(sorted(values, key=_evidence_sort_key))
+
+
+def _candle_sort_key(
+    value: NormalizedCandle,
+) -> tuple[datetime, datetime, str, str, str]:
+    return (
+        ensure_utc(value.start),
+        ensure_utc(value.end),
+        value.interval.value,
+        value.metadata.event_id,
+        _stable_sort_key(value),
+    )
+
+
+def _observation_sort_key(
+    value: NormalizedQuote | NormalizedProviderState,
+) -> tuple[datetime, datetime, str, str]:
+    return (
+        ensure_utc(value.metadata.observed_at),
+        ensure_utc(value.metadata.ingested_at),
+        value.metadata.event_id,
+        _stable_sort_key(value),
+    )
+
+
+def _corporate_action_sort_key(
+    value: NormalizedCorporateAction,
+) -> tuple[date, str, str]:
+    return (value.effective_date, value.action_id, _stable_sort_key(value))
+
+
+def _evidence_sort_key(value: EvidenceRef) -> tuple[str, str, str, str, str, str]:
+    return (
+        value.lineage_id,
+        value.source,
+        value.event_id,
+        value.ingestion_key,
+        value.payload_digest,
+        _stable_sort_key(value),
+    )
 
 
 def _freeze_value(value: object) -> object:

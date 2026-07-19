@@ -9,8 +9,11 @@ import pytest
 from market_trader.market_data.models import (
     AdjustmentState,
     CandleInterval,
+    CorporateActionType,
     NormalizedCandle,
+    NormalizedCorporateAction,
     NormalizedProviderState,
+    NormalizedQuote,
     ObservationMetadata,
     ProviderOperationalState,
     QualityState,
@@ -53,6 +56,26 @@ def _reference(lineage_id: str = "lineage-1") -> EvidenceRef:
         payload_digest="a" * 64,
         observed_at=AS_OF,
         ingested_at=AS_OF,
+    )
+
+
+def _metadata(
+    event_id: str,
+    *,
+    observed_at: datetime = AS_OF,
+    ingested_at: datetime = AS_OF,
+) -> ObservationMetadata:
+    return ObservationMetadata(
+        source="fixture",
+        event_id=event_id,
+        observed_at=observed_at,
+        ingested_at=ingested_at,
+        session_date=date(2026, 7, 17),
+        normalized_schema_version=1,
+        configuration_version="market-data-v1",
+        correlation_id="correlation-1",
+        quality_state=QualityState.VALID,
+        quality_reasons=(),
     )
 
 
@@ -269,6 +292,180 @@ def test_tied_evidence_and_market_observations_have_total_order() -> None:
     )
 
     assert stable_digest(left) == stable_digest(right)
+
+
+def test_candles_sort_by_utc_chronology_then_interval_and_event_id() -> None:
+    offset = timezone(timedelta(hours=-5))
+    early_start = (AS_OF - timedelta(days=2)).astimezone(offset)
+    late_start = AS_OF - timedelta(days=1)
+
+    def candle(
+        event_id: str,
+        *,
+        interval: CandleInterval,
+        start: datetime,
+        close: Decimal,
+    ) -> NormalizedCandle:
+        return NormalizedCandle(
+            symbol="SPY",
+            interval=interval,
+            start=start,
+            end=start + timedelta(minutes=1),
+            open=close,
+            high=close,
+            low=close,
+            close=close,
+            volume=100,
+            vwap=close,
+            trade_count=10,
+            adjustment=AdjustmentState.ADJUSTED,
+            metadata=_metadata(event_id),
+        )
+
+    daily_early = candle(
+        "daily-z",
+        interval=CandleInterval.DAILY,
+        start=early_start,
+        close=Decimal("999"),
+    )
+    daily_late = candle(
+        "daily-a",
+        interval=CandleInterval.DAILY,
+        start=late_start,
+        close=Decimal("1"),
+    )
+    tied_z = candle(
+        "minute-z",
+        interval=CandleInterval.ONE_MINUTE,
+        start=AS_OF.astimezone(offset),
+        close=Decimal("1"),
+    )
+    tied_a = candle(
+        "minute-a",
+        interval=CandleInterval.ONE_MINUTE,
+        start=AS_OF,
+        close=Decimal("999"),
+    )
+
+    symbol = SymbolInput(
+        symbol="SPY",
+        daily_candles=(daily_late, daily_early),
+        intraday_candles=(tied_z, tied_a),
+    )
+
+    assert [item.metadata.event_id for item in symbol.daily_candles] == [
+        "daily-z",
+        "daily-a",
+    ]
+    assert [item.metadata.event_id for item in symbol.intraday_candles] == [
+        "minute-a",
+        "minute-z",
+    ]
+
+
+def test_quotes_and_provider_states_sort_by_utc_observation_chronology() -> None:
+    offset = timezone(timedelta(hours=-5))
+    early = _metadata(
+        "event-z",
+        observed_at=(AS_OF - timedelta(minutes=2)).astimezone(offset),
+        ingested_at=(AS_OF - timedelta(minutes=1)).astimezone(offset),
+    )
+    late = _metadata(
+        "event-a",
+        observed_at=AS_OF - timedelta(minutes=1),
+        ingested_at=AS_OF,
+    )
+    quote_early = NormalizedQuote(
+        symbol="SPY",
+        bid=Decimal("999"),
+        ask=Decimal("1000"),
+        bid_size=1,
+        ask_size=1,
+        last=None,
+        last_size=None,
+        last_at=None,
+        bid_venue=None,
+        ask_venue=None,
+        trade_venue=None,
+        condition_codes=(),
+        metadata=early,
+    )
+    quote_late = replace(quote_early, bid=Decimal("1"), ask=Decimal("2"), metadata=late)
+    provider_early = NormalizedProviderState(
+        provider="z-provider",
+        state=ProviderOperationalState.AVAILABLE,
+        metadata=early,
+    )
+    provider_late = replace(provider_early, provider="a-provider", metadata=late)
+
+    symbol = SymbolInput(
+        symbol="SPY",
+        quotes=(quote_late, quote_early),
+        provider_states=(provider_late, provider_early),
+    )
+
+    assert [item.metadata.event_id for item in symbol.quotes] == ["event-z", "event-a"]
+    assert [item.metadata.event_id for item in symbol.provider_states] == [
+        "event-z",
+        "event-a",
+    ]
+
+
+def test_corporate_actions_sort_by_effective_date_and_action_id() -> None:
+    early = NormalizedCorporateAction(
+        action_id="action-z",
+        symbol="SPY",
+        action_type=CorporateActionType.SPLIT,
+        declaration_date=None,
+        effective_date=date(2026, 7, 16),
+        record_date=None,
+        payment_date=None,
+        share_ratio=Decimal("2"),
+        cash_amount=None,
+        currency=None,
+        metadata=_metadata("corporate-z"),
+    )
+    late = replace(
+        early,
+        action_id="action-a",
+        effective_date=date(2026, 7, 17),
+        metadata=_metadata("corporate-a"),
+    )
+    tied_a = replace(late, action_id="action-0", metadata=_metadata("corporate-0"))
+
+    symbol = SymbolInput(symbol="SPY", corporate_actions=(late, early, tied_a))
+
+    assert [item.action_id for item in symbol.corporate_actions] == [
+        "action-z",
+        "action-0",
+        "action-a",
+    ]
+
+
+def test_evidence_sorts_by_approved_semantic_identity_before_total_tie_break() -> None:
+    offset = timezone(timedelta(hours=-5))
+    lineage_a = EvidenceRef(
+        lineage_id="lineage-a",
+        source="z-source",
+        event_id="z-event",
+        ingestion_key="z-ingestion",
+        payload_digest="f" * 64,
+        observed_at=AS_OF.astimezone(offset),
+        ingested_at=AS_OF.astimezone(offset),
+    )
+    lineage_z = EvidenceRef(
+        lineage_id="lineage-z",
+        source="a-source",
+        event_id="a-event",
+        ingestion_key="a-ingestion",
+        payload_digest="0" * 64,
+        observed_at=AS_OF,
+        ingested_at=AS_OF,
+    )
+
+    symbol = SymbolInput(symbol="SPY", evidence=(lineage_z, lineage_a))
+
+    assert [item.lineage_id for item in symbol.evidence] == ["lineage-a", "lineage-z"]
 
 
 def test_tied_symbols_gates_and_components_have_total_order() -> None:
