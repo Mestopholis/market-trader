@@ -27,4 +27,8 @@ docker compose exec -T api \
   python -m market_trader.market_data.cli validate \
   /app/fixtures/market_data/regular-session >/dev/null
 
+docker compose exec -T api \
+  python -m market_trader.scanner.cli validate \
+  /app/fixtures/scanner/bullish >/dev/null
+
 printf 'Foundation verification passed at %s\n' "$base_url"

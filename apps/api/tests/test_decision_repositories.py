@@ -3,6 +3,7 @@ from pathlib import Path
 
 from sqlalchemy.orm import Session
 
+from market_trader.db.models import CandidateORM, SignalORM
 from market_trader.domain.time import utc_now
 from market_trader.repositories.audit import AuditRepository
 from market_trader.repositories.decisions import (
@@ -87,6 +88,8 @@ def test_creates_signal_and_candidate_from_snapshot_with_shared_correlation(
         with Session(engine) as session:
             stored = DecisionRepository(session).get_candidate(candidate.id)
             events = AuditRepository(session).list_by_correlation_id("corr_decision")
+            signal_record = session.get(SignalORM, signal.id)
+            candidate_record = session.get(CandidateORM, candidate.id)
 
         assert stored == candidate
         assert stored is not None
@@ -97,5 +100,7 @@ def test_creates_signal_and_candidate_from_snapshot_with_shared_correlation(
             "signal.created",
             "candidate.created",
         }
+        assert signal_record is not None and signal_record.scanner_run_id is None
+        assert candidate_record is not None and candidate_record.scanner_run_id is None
     finally:
         engine.dispose()

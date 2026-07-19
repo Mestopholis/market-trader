@@ -1,0 +1,71 @@
+{
+  "as_of": "2026-11-02T14:40:00+00:00",
+  "configuration_hashes": {
+    "eligibility": "c16a581213a840e8d83e17d371cee619f1e73b18a0ce0939bc307f497777880f",
+    "regime": "39157b670beca5624b6f4f124218947068965341a0c36d6e243ba06a91ca5b14",
+    "scoring": "99ab31d048788ada0029d51498fe4b952ccd55bd35b1dcd527e5b3af3b6d70d2",
+    "strategies": "5e2e282153e1113b4e2fa0b6c2e667f2f38b770b80f18fdb1ab7a995f809d409",
+    "universe": "44eae3aa12fd93398a9d60455bd25b94868a426f19ba7128926ba2a533f8810a"
+  },
+  "dataset_id": "bearish",
+  "description": "Bearish breakdown, bearish failed rally, and negative news continuation across daylight-saving session timing.",
+  "expected": {
+    "blocked": 29,
+    "candidates": 2,
+    "eligible": 1,
+    "ineligible": 0,
+    "reason_summary": {
+      "breakout_not_confirmed": 1,
+      "failed_rally_zone_not_reached": 1,
+      "insufficient_intraday_history": 2,
+      "missing_required_input": 29,
+      "price_below_vwap": 1,
+      "pullback_zone_not_reached": 1,
+      "regime_not_compatible": 2,
+      "trend_not_established": 2
+    },
+    "regime_score": "-100.000000",
+    "regime_state": "bearish",
+    "result_digest": "6a5f462bf1b4671bbbdd41ee7a8cac6bfc948409695cf3a97b2520e7e31b8d01",
+    "signals": 5
+  },
+  "market_configuration_version": "market-data-fixtures-v1",
+  "market_streams": [
+    {
+      "data_kind": "candle",
+      "event_count": 429,
+      "filename": "market.ndjson",
+      "sha256": "8dd0e9bc602ceb116ff8fc20db8d688d25e9cd7587febc340c782b16ebb3cf6d"
+    },
+    {
+      "data_kind": "quote",
+      "event_count": 1,
+      "filename": "quotes.ndjson",
+      "sha256": "ed71dccd3941a865595d16adcecb26620161f8568517b54fa19c10d284bd04de"
+    },
+    {
+      "data_kind": "provider_state",
+      "event_count": 1,
+      "filename": "states.ndjson",
+      "sha256": "25b60fd6307abeeab373ccf1bd24d7a288d70aae2f3b0d66470d8c8e3ad6a82d"
+    }
+  ],
+  "scanner_fixture_schema_version": "scanner-fixture-v1",
+  "session_date": "2026-11-02",
+  "source": "synthetic-scanner-fixture",
+  "supplemental": {
+    "filename": "supplemental.ndjson",
+    "record_count": 5,
+    "sha256": "175ac77434989629eeed5f4ed3bd9aaccdd1279ab843e8af18cd58ad50b71206"
+  },
+  "versions": {
+    "eligibility": "eligibility-policy-v1",
+    "evidence": "scanner-evidence-v1",
+    "features": "scanner-features-v1",
+    "fixture": "scanner-fixture-v1",
+    "regime": "market-regime-v1",
+    "scoring": "candidate-scoring-v1",
+    "strategies": "scanner-strategies-v1",
+    "universe": "eligible-universe-v1"
+  }
+}

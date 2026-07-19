@@ -1,0 +1,1 @@
+{"data_kind":"provider_state","event_id":"bullish-provider","ingested_at":"2026-07-17T13:39:59.500000+00:00","observed_at":"2026-07-17T13:39:59.500000+00:00","payload":{"provider":"synthetic","scenario":"bullish","schema_version":1,"state":"available"}}

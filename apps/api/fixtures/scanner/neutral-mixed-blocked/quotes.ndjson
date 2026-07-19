@@ -1,0 +1,1 @@
+{"data_kind":"quote","event_id":"neutral-mixed-blocked-quote","ingested_at":"2026-11-27T14:39:59+00:00","observed_at":"2026-11-27T14:39:58+00:00","payload":{"ask":"220.05","ask_size":100,"bid":"219.95","bid_size":100,"condition_codes":[],"last":"220","last_size":50,"scenario":"neutral-mixed-blocked","schema_version":1,"symbol":"SPY"}}

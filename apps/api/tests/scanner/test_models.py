@@ -1,0 +1,741 @@
+from collections.abc import Mapping
+from dataclasses import dataclass, replace
+from datetime import UTC, date, datetime, timedelta, timezone
+from decimal import Decimal
+from typing import cast
+
+import pytest
+
+from market_trader.market_data.models import (
+    AdjustmentState,
+    CandleInterval,
+    CorporateActionType,
+    NormalizedCandle,
+    NormalizedCorporateAction,
+    NormalizedProviderState,
+    NormalizedQuote,
+    ObservationMetadata,
+    ProviderOperationalState,
+    QualityState,
+)
+from market_trader.scanner.models import (
+    CandidateResult,
+    ComponentScore,
+    Direction,
+    EligibilityResult,
+    EligibilityStatus,
+    EvidenceRef,
+    FeatureSet,
+    GateResult,
+    PolicyVersions,
+    RegimeResult,
+    RegimeState,
+    ScanCounts,
+    ScannerInput,
+    ScanResult,
+    StrategyResult,
+    StrategyStatus,
+    SymbolInput,
+)
+from market_trader.scanner.serialization import stable_digest
+
+AS_OF = datetime(2026, 7, 17, 15, 30, tzinfo=UTC)
+
+
+@dataclass
+class MutablePayload:
+    labels: list[str]
+
+
+def _reference(lineage_id: str = "lineage-1") -> EvidenceRef:
+    return EvidenceRef(
+        lineage_id=lineage_id,
+        source="fixture",
+        event_id=f"event-{lineage_id}",
+        ingestion_key=f"ing-{lineage_id}",
+        payload_digest="a" * 64,
+        observed_at=AS_OF,
+        ingested_at=AS_OF,
+    )
+
+
+def _metadata(
+    event_id: str,
+    *,
+    observed_at: datetime = AS_OF,
+    ingested_at: datetime = AS_OF,
+) -> ObservationMetadata:
+    return ObservationMetadata(
+        source="fixture",
+        event_id=event_id,
+        observed_at=observed_at,
+        ingested_at=ingested_at,
+        session_date=date(2026, 7, 17),
+        normalized_schema_version=1,
+        configuration_version="market-data-v1",
+        correlation_id="correlation-1",
+        quality_state=QualityState.VALID,
+        quality_reasons=(),
+    )
+
+
+def test_public_enums_contain_only_approved_values() -> None:
+    assert tuple(Direction) == (Direction.BULLISH, Direction.BEARISH)
+    assert tuple(EligibilityStatus) == (
+        EligibilityStatus.ELIGIBLE,
+        EligibilityStatus.INELIGIBLE,
+        EligibilityStatus.BLOCKED,
+    )
+    assert tuple(RegimeState) == (
+        RegimeState.BULLISH,
+        RegimeState.BEARISH,
+        RegimeState.NEUTRAL,
+        RegimeState.MIXED,
+        RegimeState.BLOCKED,
+    )
+    assert tuple(StrategyStatus) == (
+        StrategyStatus.PASSED,
+        StrategyStatus.FAILED,
+        StrategyStatus.BLOCKED,
+        StrategyStatus.NOT_APPLICABLE,
+    )
+
+
+def test_policy_versions_use_the_approved_identifiers() -> None:
+    assert PolicyVersions() == PolicyVersions(
+        universe="eligible-universe-v1",
+        eligibility="eligibility-policy-v1",
+        features="scanner-features-v1",
+        regime="market-regime-v1",
+        strategies="scanner-strategies-v1",
+        scoring="candidate-scoring-v1",
+        evidence="scanner-evidence-v1",
+        fixture="scanner-fixture-v1",
+    )
+
+
+@pytest.mark.parametrize(
+    "factory",
+    [
+        lambda: _reference().__class__(
+            lineage_id="lineage",
+            source="fixture",
+            event_id="event",
+            ingestion_key="ing",
+            payload_digest="a" * 64,
+            observed_at=datetime(2026, 7, 17, 10, 0),
+            ingested_at=AS_OF,
+        ),
+        lambda: ScannerInput(
+            as_of=datetime(2026, 7, 17, 10, 0),
+            session_date=date(2026, 7, 17),
+            versions=PolicyVersions(),
+            symbols=(),
+        ),
+    ],
+)
+def test_naive_boundary_timestamps_are_rejected(factory: object) -> None:
+    with pytest.raises(ValueError, match="timezone-aware"):
+        factory()  # type: ignore[operator]
+
+
+def test_records_sort_and_deduplicate_reasons_lineage_and_named_children() -> None:
+    gates = (
+        GateResult(name="z_gate", passed=False, reasons=("z_reason", "a_reason")),
+        GateResult(name="a_gate", passed=True),
+    )
+    components = (
+        ComponentScore(
+            family="z_family",
+            pre_cap=Decimal("8"),
+            cap=Decimal("5"),
+            final=Decimal("5"),
+        ),
+        ComponentScore(
+            family="a_family",
+            pre_cap=Decimal("2"),
+            cap=Decimal("10"),
+            final=Decimal("2"),
+        ),
+    )
+    strategy = StrategyResult(
+        signal_key="signal-1",
+        symbol="SPY",
+        strategy_id="breakout",
+        policy_version="scanner-strategies-v1",
+        direction=Direction.BULLISH,
+        status=StrategyStatus.FAILED,
+        gates=gates,
+        components=components,
+        reasons=("z_reason", "a_reason", "z_reason"),
+        lineage=("lineage-z", "lineage-a", "lineage-z"),
+    )
+
+    assert strategy.reasons == ("a_reason", "z_reason")
+    assert strategy.lineage == ("lineage-a", "lineage-z")
+    assert tuple(gate.name for gate in strategy.gates) == ("a_gate", "z_gate")
+    assert tuple(component.family for component in strategy.components) == (
+        "a_family",
+        "z_family",
+    )
+    assert strategy.gates[1].reasons == ("a_reason", "z_reason")
+
+
+def test_mapping_inputs_are_copied_and_immutable() -> None:
+    attributes: dict[str, object] = {"role": "benchmark"}
+    feature_values = {"adjusted_close": Decimal("625.25")}
+    observed = {"daily_sessions": 200}
+    symbol = SymbolInput(symbol="SPY", attributes=attributes)
+    features = FeatureSet(symbol="SPY", values=feature_values)
+    eligibility = EligibilityResult(
+        symbol="SPY",
+        status=EligibilityStatus.ELIGIBLE,
+        policy_version="eligibility-policy-v1",
+        observed=observed,
+    )
+
+    attributes["role"] = "changed"
+    feature_values["adjusted_close"] = Decimal("1")
+    observed["daily_sessions"] = 0
+
+    assert symbol.attributes["role"] == "benchmark"
+    assert features.values["adjusted_close"] == Decimal("625.25")
+    assert eligibility.observed["daily_sessions"] == 200
+    with pytest.raises(TypeError):
+        symbol.attributes["role"] = "candidate"  # type: ignore[index]
+
+
+def test_nested_mapping_inputs_cannot_mutate_records_or_digests() -> None:
+    sectors = ["technology", "financials"]
+    quality = {"states": sectors}
+    attributes: dict[str, object] = {"quality": quality}
+    symbol = SymbolInput(symbol="SPY", attributes=attributes)
+    original_digest = stable_digest(symbol)
+
+    sectors.append("energy")
+    quality["states"] = ["changed"]
+    attributes["quality"] = {"states": ["replaced"]}
+
+    frozen_quality = cast(Mapping[str, object], symbol.attributes["quality"])
+    assert frozen_quality["states"] == ("technology", "financials")
+    assert stable_digest(symbol) == original_digest
+    with pytest.raises(TypeError):
+        frozen_quality["states"] = ()  # type: ignore[index]
+
+
+def test_mutable_dataclass_values_are_recursively_owned_and_immutable() -> None:
+    payload = MutablePayload(labels=["valid"])
+    symbol = SymbolInput(symbol="SPY", attributes={"payload": payload})
+    original_digest = stable_digest(symbol)
+
+    payload.labels.append("changed")
+
+    frozen_payload = cast(Mapping[str, object], symbol.attributes["payload"])
+    assert frozen_payload["labels"] == ("valid",)
+    assert stable_digest(symbol) == original_digest
+
+
+def test_unsupported_mutable_values_are_rejected() -> None:
+    with pytest.raises(TypeError, match="unsupported mutable scanner value: bytearray"):
+        SymbolInput(symbol="SPY", attributes={"payload": bytearray(b"mutable")})
+
+
+def test_tied_evidence_and_market_observations_have_total_order() -> None:
+    metadata = ObservationMetadata(
+        source="fixture",
+        event_id="tied-event",
+        observed_at=AS_OF,
+        ingested_at=AS_OF,
+        session_date=date(2026, 7, 17),
+        normalized_schema_version=1,
+        configuration_version="market-data-v1",
+        correlation_id="correlation-1",
+        quality_state=QualityState.VALID,
+        quality_reasons=(),
+    )
+    candle_a = NormalizedCandle(
+        symbol="SPY",
+        interval=CandleInterval.ONE_MINUTE,
+        start=AS_OF - timedelta(minutes=1),
+        end=AS_OF,
+        open=Decimal("625"),
+        high=Decimal("626"),
+        low=Decimal("624"),
+        close=Decimal("625"),
+        volume=100,
+        vwap=Decimal("625"),
+        trade_count=10,
+        adjustment=AdjustmentState.ADJUSTED,
+        metadata=metadata,
+    )
+    candle_b = replace(candle_a, close=Decimal("625.5"))
+    provider_a = NormalizedProviderState(
+        provider="fixture-a",
+        state=ProviderOperationalState.AVAILABLE,
+        metadata=metadata,
+    )
+    provider_b = replace(provider_a, provider="fixture-b")
+    evidence_a = _reference("tied-lineage")
+    evidence_b = replace(evidence_a, observed_at=AS_OF - timedelta(seconds=1))
+
+    left = SymbolInput(
+        symbol="SPY",
+        intraday_candles=(candle_a, candle_b),
+        provider_states=(provider_a, provider_b),
+        evidence=(evidence_a, evidence_b),
+    )
+    right = SymbolInput(
+        symbol="SPY",
+        intraday_candles=(candle_b, candle_a),
+        provider_states=(provider_b, provider_a),
+        evidence=(evidence_b, evidence_a),
+    )
+
+    assert stable_digest(left) == stable_digest(right)
+
+
+def test_candles_sort_by_utc_chronology_then_interval_and_event_id() -> None:
+    offset = timezone(timedelta(hours=-5))
+    early_start = (AS_OF - timedelta(days=2)).astimezone(offset)
+    late_start = AS_OF - timedelta(days=1)
+
+    def candle(
+        event_id: str,
+        *,
+        interval: CandleInterval,
+        start: datetime,
+        close: Decimal,
+    ) -> NormalizedCandle:
+        return NormalizedCandle(
+            symbol="SPY",
+            interval=interval,
+            start=start,
+            end=start + timedelta(minutes=1),
+            open=close,
+            high=close,
+            low=close,
+            close=close,
+            volume=100,
+            vwap=close,
+            trade_count=10,
+            adjustment=AdjustmentState.ADJUSTED,
+            metadata=_metadata(event_id),
+        )
+
+    daily_early = candle(
+        "daily-z",
+        interval=CandleInterval.DAILY,
+        start=early_start,
+        close=Decimal("999"),
+    )
+    daily_late = candle(
+        "daily-a",
+        interval=CandleInterval.DAILY,
+        start=late_start,
+        close=Decimal("1"),
+    )
+    tied_z = candle(
+        "minute-z",
+        interval=CandleInterval.ONE_MINUTE,
+        start=AS_OF.astimezone(offset),
+        close=Decimal("1"),
+    )
+    tied_a = candle(
+        "minute-a",
+        interval=CandleInterval.ONE_MINUTE,
+        start=AS_OF,
+        close=Decimal("999"),
+    )
+
+    symbol = SymbolInput(
+        symbol="SPY",
+        daily_candles=(daily_late, daily_early),
+        intraday_candles=(tied_z, tied_a),
+    )
+
+    assert [item.metadata.event_id for item in symbol.daily_candles] == [
+        "daily-z",
+        "daily-a",
+    ]
+    assert [item.metadata.event_id for item in symbol.intraday_candles] == [
+        "minute-a",
+        "minute-z",
+    ]
+
+
+def test_quotes_and_provider_states_sort_by_utc_observation_chronology() -> None:
+    offset = timezone(timedelta(hours=-5))
+    early = _metadata(
+        "event-z",
+        observed_at=(AS_OF - timedelta(minutes=2)).astimezone(offset),
+        ingested_at=(AS_OF - timedelta(minutes=1)).astimezone(offset),
+    )
+    late = _metadata(
+        "event-a",
+        observed_at=AS_OF - timedelta(minutes=1),
+        ingested_at=AS_OF,
+    )
+    quote_early = NormalizedQuote(
+        symbol="SPY",
+        bid=Decimal("999"),
+        ask=Decimal("1000"),
+        bid_size=1,
+        ask_size=1,
+        last=None,
+        last_size=None,
+        last_at=None,
+        bid_venue=None,
+        ask_venue=None,
+        trade_venue=None,
+        condition_codes=(),
+        metadata=early,
+    )
+    quote_late = replace(quote_early, bid=Decimal("1"), ask=Decimal("2"), metadata=late)
+    provider_early = NormalizedProviderState(
+        provider="z-provider",
+        state=ProviderOperationalState.AVAILABLE,
+        metadata=early,
+    )
+    provider_late = replace(provider_early, provider="a-provider", metadata=late)
+
+    symbol = SymbolInput(
+        symbol="SPY",
+        quotes=(quote_late, quote_early),
+        provider_states=(provider_late, provider_early),
+    )
+
+    assert [item.metadata.event_id for item in symbol.quotes] == ["event-z", "event-a"]
+    assert [item.metadata.event_id for item in symbol.provider_states] == [
+        "event-z",
+        "event-a",
+    ]
+
+
+def test_corporate_actions_sort_by_effective_date_and_action_id() -> None:
+    early = NormalizedCorporateAction(
+        action_id="action-z",
+        symbol="SPY",
+        action_type=CorporateActionType.SPLIT,
+        declaration_date=None,
+        effective_date=date(2026, 7, 16),
+        record_date=None,
+        payment_date=None,
+        share_ratio=Decimal("2"),
+        cash_amount=None,
+        currency=None,
+        metadata=_metadata("corporate-z"),
+    )
+    late = replace(
+        early,
+        action_id="action-a",
+        effective_date=date(2026, 7, 17),
+        metadata=_metadata("corporate-a"),
+    )
+    tied_a = replace(late, action_id="action-0", metadata=_metadata("corporate-0"))
+
+    symbol = SymbolInput(symbol="SPY", corporate_actions=(late, early, tied_a))
+
+    assert [item.action_id for item in symbol.corporate_actions] == [
+        "action-z",
+        "action-0",
+        "action-a",
+    ]
+
+
+def test_evidence_sorts_by_approved_semantic_identity_before_total_tie_break() -> None:
+    offset = timezone(timedelta(hours=-5))
+    lineage_a = EvidenceRef(
+        lineage_id="lineage-a",
+        source="z-source",
+        event_id="z-event",
+        ingestion_key="z-ingestion",
+        payload_digest="f" * 64,
+        observed_at=AS_OF.astimezone(offset),
+        ingested_at=AS_OF.astimezone(offset),
+    )
+    lineage_z = EvidenceRef(
+        lineage_id="lineage-z",
+        source="a-source",
+        event_id="a-event",
+        ingestion_key="a-ingestion",
+        payload_digest="0" * 64,
+        observed_at=AS_OF,
+        ingested_at=AS_OF,
+    )
+
+    symbol = SymbolInput(symbol="SPY", evidence=(lineage_z, lineage_a))
+
+    assert [item.lineage_id for item in symbol.evidence] == ["lineage-a", "lineage-z"]
+
+
+def test_tied_symbols_gates_and_components_have_total_order() -> None:
+    symbol_a = SymbolInput(symbol="SPY", attributes={"role": "a"})
+    symbol_b = SymbolInput(symbol="SPY", attributes={"role": "b"})
+    scanner_left = ScannerInput(
+        as_of=AS_OF,
+        session_date=date(2026, 7, 17),
+        versions=PolicyVersions(),
+        symbols=(symbol_a, symbol_b),
+    )
+    scanner_right = replace(scanner_left, symbols=(symbol_b, symbol_a))
+    gate_a = GateResult(name="trigger", passed=True, observed={"value": "a"})
+    gate_b = GateResult(name="trigger", passed=False, observed={"value": "b"})
+    component_a = ComponentScore(
+        family="price_structure",
+        pre_cap=Decimal("10"),
+        cap=Decimal("30"),
+        final=Decimal("10"),
+    )
+    component_b = replace(component_a, final=Decimal("20"))
+    strategy_left = StrategyResult(
+        signal_key="signal",
+        symbol="SPY",
+        strategy_id="breakout",
+        policy_version="scanner-strategies-v1",
+        direction=Direction.BULLISH,
+        status=StrategyStatus.FAILED,
+        gates=(gate_a, gate_b),
+        components=(component_a, component_b),
+    )
+    strategy_right = replace(
+        strategy_left,
+        gates=(gate_b, gate_a),
+        components=(component_b, component_a),
+    )
+
+    assert stable_digest(scanner_left) == stable_digest(scanner_right)
+    assert stable_digest(strategy_left) == stable_digest(strategy_right)
+
+
+def test_collections_preserve_semantic_primary_order() -> None:
+    versions = PolicyVersions()
+    symbols = (
+        SymbolInput(symbol="SPY", attributes={"priority": "a"}),
+        SymbolInput(symbol="AAPL", attributes={"priority": "z"}),
+    )
+    gates = (
+        GateResult(name="z_gate", passed=True, observed={"priority": "a"}),
+        GateResult(name="a_gate", passed=True, observed={"priority": "z"}),
+    )
+    components = (
+        ComponentScore(
+            family="z_family",
+            pre_cap=Decimal("1"),
+            cap=Decimal("1"),
+            final=Decimal("1"),
+        ),
+        ComponentScore(
+            family="a_family",
+            pre_cap=Decimal("9"),
+            cap=Decimal("9"),
+            final=Decimal("9"),
+        ),
+    )
+    strategy_aapl = StrategyResult(
+        signal_key="signal-z",
+        symbol="AAPL",
+        strategy_id="z_strategy",
+        policy_version=versions.strategies,
+        direction=Direction.BULLISH,
+        status=StrategyStatus.PASSED,
+        gates=gates,
+        components=components,
+    )
+    strategy_spy = replace(
+        strategy_aapl,
+        signal_key="signal-a",
+        symbol="SPY",
+        strategy_id="a_strategy",
+    )
+    eligibility = (
+        EligibilityResult(
+            symbol="SPY",
+            status=EligibilityStatus.ELIGIBLE,
+            policy_version=versions.eligibility,
+            observed={"priority": "a"},
+        ),
+        EligibilityResult(
+            symbol="AAPL",
+            status=EligibilityStatus.ELIGIBLE,
+            policy_version=versions.eligibility,
+            observed={"priority": "z"},
+        ),
+    )
+    candidate_aapl = CandidateResult(
+        candidate_key="candidate-z",
+        signal_key="signal-z",
+        symbol="AAPL",
+        strategy_id="z_strategy",
+        direction=Direction.BULLISH,
+        score=Decimal("70"),
+    )
+    candidate_spy = replace(
+        candidate_aapl,
+        candidate_key="candidate-a",
+        signal_key="signal-a",
+        symbol="SPY",
+        strategy_id="a_strategy",
+    )
+    scanner_input = ScannerInput(
+        as_of=AS_OF,
+        session_date=date(2026, 7, 17),
+        versions=versions,
+        symbols=symbols,
+    )
+    result = ScanResult(
+        run_key="run",
+        as_of=AS_OF,
+        session_date=date(2026, 7, 17),
+        versions=versions,
+        input_digest="a" * 64,
+        regime=RegimeResult(
+            state=RegimeState.NEUTRAL,
+            signed_score=Decimal("0"),
+            policy_version=versions.regime,
+        ),
+        eligibility=eligibility,
+        strategies=(strategy_spy, strategy_aapl),
+        candidates=(candidate_spy, candidate_aapl),
+        counts=ScanCounts(eligible=2, signals=2, candidates=2),
+        result_digest="b" * 64,
+    )
+
+    assert [item.symbol for item in scanner_input.symbols] == ["AAPL", "SPY"]
+    assert [item.name for item in strategy_aapl.gates] == ["a_gate", "z_gate"]
+    assert [item.family for item in strategy_aapl.components] == ["a_family", "z_family"]
+    assert [item.symbol for item in result.eligibility] == ["AAPL", "SPY"]
+    assert [(item.symbol, item.strategy_id) for item in result.strategies] == [
+        ("AAPL", "z_strategy"),
+        ("SPY", "a_strategy"),
+    ]
+    assert [(item.symbol, item.strategy_id) for item in result.candidates] == [
+        ("AAPL", "z_strategy"),
+        ("SPY", "a_strategy"),
+    ]
+
+
+def test_tie_breakers_normalize_equivalent_datetime_offsets() -> None:
+    offset = timezone(timedelta(hours=-5))
+    gate_a = GateResult(
+        name="timestamp_gate",
+        passed=True,
+        observed={"at": AS_OF, "id": "a"},
+    )
+    gate_z = GateResult(
+        name="timestamp_gate",
+        passed=True,
+        observed={"at": AS_OF.astimezone(offset), "id": "z"},
+    )
+    left = StrategyResult(
+        signal_key="signal",
+        symbol="SPY",
+        strategy_id="breakout",
+        policy_version="scanner-strategies-v1",
+        direction=Direction.BULLISH,
+        status=StrategyStatus.PASSED,
+        gates=(gate_z, gate_a),
+    )
+    right = replace(left, gates=(gate_a, gate_z))
+
+    assert [gate.observed["id"] for gate in left.gates] == ["a", "z"]
+    assert stable_digest(left) == stable_digest(right)
+
+
+def test_tied_scan_results_have_total_order() -> None:
+    versions = PolicyVersions()
+    regime = RegimeResult(
+        state=RegimeState.NEUTRAL,
+        signed_score=Decimal("0"),
+        policy_version=versions.regime,
+    )
+    strategy_a = StrategyResult(
+        signal_key="signal-a",
+        symbol="SPY",
+        strategy_id="breakout",
+        policy_version=versions.strategies,
+        direction=Direction.BULLISH,
+        status=StrategyStatus.PASSED,
+    )
+    strategy_b = replace(strategy_a, signal_key="signal-b")
+    candidate_a = CandidateResult(
+        candidate_key="candidate-a",
+        signal_key="signal-a",
+        symbol="SPY",
+        strategy_id="breakout",
+        direction=Direction.BULLISH,
+        score=Decimal("70"),
+    )
+    candidate_b = replace(
+        candidate_a,
+        candidate_key="candidate-b",
+        signal_key="signal-b",
+    )
+    left = ScanResult(
+        run_key="run",
+        as_of=AS_OF,
+        session_date=date(2026, 7, 17),
+        versions=versions,
+        input_digest="a" * 64,
+        regime=regime,
+        eligibility=(),
+        strategies=(strategy_a, strategy_b),
+        candidates=(candidate_a, candidate_b),
+        counts=ScanCounts(signals=2, candidates=2),
+        result_digest="b" * 64,
+    )
+    right = replace(
+        left,
+        strategies=(strategy_b, strategy_a),
+        candidates=(candidate_b, candidate_a),
+    )
+
+    assert stable_digest(left) == stable_digest(right)
+
+
+def test_all_task_one_result_contracts_compose_into_a_scan_result() -> None:
+    versions = PolicyVersions()
+    regime = RegimeResult(
+        state=RegimeState.BULLISH,
+        signed_score=Decimal("55"),
+        policy_version=versions.regime,
+        components={"broad_trend": Decimal("30")},
+    )
+    eligibility = EligibilityResult(
+        symbol="SPY",
+        status=EligibilityStatus.ELIGIBLE,
+        policy_version=versions.eligibility,
+    )
+    strategy = StrategyResult(
+        signal_key="signal-1",
+        symbol="SPY",
+        strategy_id="bullish_breakout",
+        policy_version=versions.strategies,
+        direction=Direction.BULLISH,
+        status=StrategyStatus.PASSED,
+        score=Decimal("70"),
+    )
+    candidate = CandidateResult(
+        candidate_key="candidate-1",
+        signal_key="signal-1",
+        symbol="SPY",
+        strategy_id="bullish_breakout",
+        direction=Direction.BULLISH,
+        score=Decimal("70"),
+    )
+    result = ScanResult(
+        run_key="run-1",
+        as_of=AS_OF,
+        session_date=date(2026, 7, 17),
+        versions=versions,
+        input_digest="b" * 64,
+        regime=regime,
+        eligibility=(eligibility,),
+        strategies=(strategy,),
+        candidates=(candidate,),
+        counts=ScanCounts(eligible=1, signals=1, candidates=1),
+        result_digest="c" * 64,
+    )
+
+    assert result.strategies[0].score == Decimal("70.000000")
+    assert result.candidates[0].status == "qualified"
+    assert result.counts == ScanCounts(eligible=1, signals=1, candidates=1)

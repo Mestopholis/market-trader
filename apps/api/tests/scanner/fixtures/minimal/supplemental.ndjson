@@ -1,0 +1,1 @@
+{"evidence_type":"macro","schema_version":"scanner-evidence-v1","configuration_version":"fixture-v1","correlation_id":"scanner-minimal","lineage_id":"macro-lineage","source":"fixture","observed_at":"2026-07-17T15:34:00+00:00","valid_until":"2026-07-17T15:35:00+00:00","state":"neutral","reason_codes":[]}

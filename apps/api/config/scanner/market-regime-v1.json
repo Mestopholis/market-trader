@@ -1,0 +1,21 @@
+{
+  "version": "market-regime-v1",
+  "content_hash": "39157b670beca5624b6f4f124218947068965341a0c36d6e243ba06a91ca5b14",
+  "component_weights": {
+    "broad_trend": "30",
+    "breadth": "20",
+    "sector_participation": "15",
+    "volume_participation": "10",
+    "volatility_direction": "15",
+    "macro_overlay": "10"
+  },
+  "bullish_total_minimum": "35",
+  "bearish_total_maximum": "-35",
+  "mixed_strategy_minimum_absolute_total": "20",
+  "breadth_bullish_above_sma_fraction": "0.60",
+  "breadth_bearish_above_sma_fraction": "0.40",
+  "participation_bullish_ratio": "1.50",
+  "participation_bearish_ratio": "0.67",
+  "sector_alignment_count": 7,
+  "volatility_change_minimum": "0.05"
+}
