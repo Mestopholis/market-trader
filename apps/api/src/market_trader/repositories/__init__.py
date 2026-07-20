@@ -5,6 +5,12 @@ from market_trader.repositories.catalysts import (
     CatalystRepository,
     PersistedCatalystSourceRun,
 )
+from market_trader.repositories.options_analysis import (
+    OptionsAnalysisPersistenceConflict,
+    OptionsAnalysisPersistenceError,
+    OptionsAnalysisRepository,
+    PersistedOptionsAnalysisRun,
+)
 from market_trader.repositories.scanner import (
     PersistedScanRun,
     ScannerPersistenceConflict,
@@ -15,8 +21,12 @@ from market_trader.repositories.scanner import (
 __all__ = [
     "CatalystPersistenceConflict",
     "CatalystRepository",
+    "OptionsAnalysisPersistenceConflict",
+    "OptionsAnalysisPersistenceError",
+    "OptionsAnalysisRepository",
     "PersistedScanRun",
     "PersistedCatalystSourceRun",
+    "PersistedOptionsAnalysisRun",
     "ScannerPersistenceConflict",
     "ScannerPersistenceError",
     "ScannerRepository",

@@ -160,7 +160,12 @@ and [operator runbook](milestone-5-catalysts-events-news-and-filings.md).
 
 ## Milestone 6: Options analysis and spread construction
 
-**Status:** Next planning action.
+**Status:** Complete.
+
+**Completion:** Delivered by the approved
+[specification](plans/2026-07-19-milestone-6-options-analysis-and-spread-construction-spec.md),
+[implementation plan](plans/2026-07-19-milestone-6-options-analysis-and-spread-construction-implementation-plan.md),
+and [operator runbook](milestone-6-options-analysis-and-spread-construction.md).
 
 **Objective:** Analyze standard option contracts and construct defined-risk candidates without placing orders.
 
@@ -345,7 +350,7 @@ Every milestone specification and implementation plan must identify:
 
 ## Next planning action
 
-Create and approve the Milestone 5 catalysts, events, news, and filings
-specification, followed by its implementation plan. Milestone 5 must preserve the
-Milestone 4 rule that external text and model output cannot directly control
-eligibility, scores, approvals, or orders.
+Review and approve the Milestone 6 options-analysis and spread-construction
+specification, followed by its implementation plan. Milestone 6 must consume
+qualified scanner candidates and authoritative structured context without adding
+sizing, approval, broker-preview, or order behavior.

@@ -41,7 +41,7 @@ def test_provider_event_is_immutable_and_copies_payload() -> None:
 
     assert event.payload == {"symbol": "SPY"}
     with pytest.raises(TypeError):
-        event.payload["symbol"] = "DIA"  # type: ignore[index]
+        event.payload["symbol"] = "DIA"
 
 
 def test_capabilities_do_not_silently_claim_unsupported_data() -> None:

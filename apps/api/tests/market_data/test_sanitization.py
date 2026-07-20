@@ -1,7 +1,9 @@
 from datetime import UTC, date, datetime
 from decimal import Decimal
+from typing import TypeGuard
 
 from market_trader.market_data.sanitization import (
+    SanitizedValue,
     canonical_digest,
     canonical_json,
     ingestion_key,
@@ -24,6 +26,7 @@ def test_sanitizes_nested_secrets_before_canonical_digest() -> None:
     sanitized_left = sanitize_payload(left)
     sanitized_right = sanitize_payload(right)
 
+    assert isinstance(sanitized_left, dict)
     assert sanitized_left["Authorization"] == "[REDACTED]"
     assert sanitized_left["nested"] == {"cookie": "[REDACTED]", "api-key": "[REDACTED]"}
     assert canonical_digest(sanitized_left) == canonical_digest(sanitized_right)
@@ -51,22 +54,39 @@ def test_sanitizes_exact_types_without_binary_floats() -> None:
 def test_bounds_strings_and_collections() -> None:
     sanitized = sanitize_payload({"long": "x" * 3000, "items": list(range(1005))})
 
+    assert isinstance(sanitized, dict)
+    items = sanitized["items"]
+    assert isinstance(items, list)
     assert sanitized["long"] == "x" * 2048
-    assert len(sanitized["items"]) == 1000
+    assert len(items) == 1000
 
 
 def test_binary_and_unknown_values_are_replaced_with_metadata() -> None:
-    binary = sanitize_payload({"value": b"secret bytes"})["value"]
-    unknown = sanitize_payload({"value": object()})["value"]
+    binary_payload = sanitize_payload({"value": b"secret bytes"})
+    unknown_payload = sanitize_payload({"value": object()})
+    assert isinstance(binary_payload, dict)
+    assert isinstance(unknown_payload, dict)
+    binary = binary_payload["value"]
+    unknown = unknown_payload["value"]
+    assert _is_sanitized_dict(binary)
+    assert _is_sanitized_dict(unknown)
 
     assert binary["type"] == "bytes"
     assert binary["length"] == 12
-    assert len(binary["sha256"]) == 64
+    binary_sha = binary["sha256"]
+    assert isinstance(binary_sha, str)
+    assert len(binary_sha) == 64
     assert unknown["type"] == "object"
-    assert len(unknown["sha256"]) == 64
+    unknown_sha = unknown["sha256"]
+    assert isinstance(unknown_sha, str)
+    assert len(unknown_sha) == 64
 
 
 def test_ingestion_key_is_stable_source_scoped_and_schema_scoped() -> None:
     assert ingestion_key("fixture", "event-1", 1) == ingestion_key("fixture", "event-1", 1)
     assert ingestion_key("fixture", "event-1", 1) != ingestion_key("other", "event-1", 1)
     assert ingestion_key("fixture", "event-1", 1) != ingestion_key("fixture", "event-1", 2)
+
+
+def _is_sanitized_dict(value: SanitizedValue) -> TypeGuard[dict[str, SanitizedValue]]:
+    return isinstance(value, dict)
