@@ -48,6 +48,19 @@ import type {
   JournalEventListResponse,
   RiskSummary,
 } from './dashboard/types'
+import type {
+  ModifyPaperApprovalCardRequest,
+  PaperApproval,
+  PaperApprovalCardListResponse,
+  PaperOrderActionResponse,
+  PaperOrdersResponse,
+  PaperPositionsResponse,
+  PaperPreview,
+  PaperRecoveryResponse,
+  ReplacePaperOrderRequest,
+  SubmitPaperApprovalRequest,
+  SubmittedPaperOrder,
+} from './paper/types'
 
 export async function fetchHealth(signal?: AbortSignal): Promise<HealthResponse> {
   const response = await fetch('/api/health', {
@@ -132,6 +145,122 @@ export async function fetchDashboardAnalytics(
   return dashboardGet('/api/dashboard/analytics', 'Dashboard analytics', signal)
 }
 
+export async function fetchPaperApprovalCards(
+  signal?: AbortSignal,
+): Promise<PaperApprovalCardListResponse> {
+  return paperGet('/api/paper/approval-cards', 'Paper approval cards', signal)
+}
+
+export async function approvePaperApprovalCard(
+  cardKey: string,
+  signal?: AbortSignal,
+): Promise<PaperApproval> {
+  const encodedKey = encodeURIComponent(cardKey)
+  return paperPost(
+    `/api/paper/approval-cards/${encodedKey}/approve`,
+    'Paper approval approve',
+    undefined,
+    signal,
+  )
+}
+
+export async function modifyPaperApprovalCard(
+  cardKey: string,
+  request: ModifyPaperApprovalCardRequest,
+  signal?: AbortSignal,
+): Promise<PaperApproval> {
+  const encodedKey = encodeURIComponent(cardKey)
+  return paperPost(
+    `/api/paper/approval-cards/${encodedKey}/modify`,
+    'Paper approval modify',
+    request,
+    signal,
+  )
+}
+
+export async function rejectPaperApprovalCard(
+  cardKey: string,
+  signal?: AbortSignal,
+): Promise<PaperApproval> {
+  const encodedKey = encodeURIComponent(cardKey)
+  return paperPost(
+    `/api/paper/approval-cards/${encodedKey}/reject`,
+    'Paper approval reject',
+    undefined,
+    signal,
+  )
+}
+
+export async function previewPaperApproval(
+  approvalId: string,
+  signal?: AbortSignal,
+): Promise<PaperPreview> {
+  const encodedId = encodeURIComponent(approvalId)
+  return paperPost(
+    `/api/paper/approvals/${encodedId}/preview`,
+    'Paper approval preview',
+    undefined,
+    signal,
+  )
+}
+
+export async function submitPaperApproval(
+  approvalId: string,
+  request: SubmitPaperApprovalRequest,
+  signal?: AbortSignal,
+): Promise<SubmittedPaperOrder> {
+  const encodedId = encodeURIComponent(approvalId)
+  return paperPost(
+    `/api/paper/approvals/${encodedId}/submit`,
+    'Paper approval submit',
+    request,
+    signal,
+  )
+}
+
+export async function cancelPaperOrder(
+  orderId: string,
+  signal?: AbortSignal,
+): Promise<PaperOrderActionResponse> {
+  const encodedId = encodeURIComponent(orderId)
+  return paperPost(
+    `/api/paper/orders/${encodedId}/cancel`,
+    'Paper order cancel',
+    undefined,
+    signal,
+  )
+}
+
+export async function replacePaperOrder(
+  orderId: string,
+  request: ReplacePaperOrderRequest,
+  signal?: AbortSignal,
+): Promise<PaperOrderActionResponse> {
+  const encodedId = encodeURIComponent(orderId)
+  return paperPost(
+    `/api/paper/orders/${encodedId}/replace`,
+    'Paper order replace',
+    request,
+    signal,
+  )
+}
+
+export async function fetchPaperOrders(signal?: AbortSignal): Promise<PaperOrdersResponse> {
+  return paperGet('/api/paper/orders', 'Paper orders', signal)
+}
+
+export async function fetchPaperPositions(
+  signal?: AbortSignal,
+): Promise<PaperPositionsResponse> {
+  return paperGet('/api/paper/positions', 'Paper positions', signal)
+}
+
+export async function recoverPaperLifecycle(
+  signal?: AbortSignal,
+): Promise<PaperRecoveryResponse> {
+  return paperPost('/api/paper/recover', 'Paper recovery', undefined, signal)
+}
+
 async function dashboardGet<T>(
   url: string,
   label: string,
@@ -142,6 +271,54 @@ async function dashboardGet<T>(
     cache: 'no-store',
     signal,
   })
+  if (!response.ok) {
+    throw new Error(`${label} request failed with ${response.status}`)
+  }
+  return (await response.json()) as T
+}
+
+async function paperGet<T>(
+  url: string,
+  label: string,
+  signal?: AbortSignal,
+): Promise<T> {
+  const response = await fetch(url, {
+    headers: { Accept: 'application/json' },
+    cache: 'no-store',
+    signal,
+  })
+  if (!response.ok) {
+    throw new Error(`${label} request failed with ${response.status}`)
+  }
+  return (await response.json()) as T
+}
+
+async function paperPost<T>(
+  url: string,
+  label: string,
+  body?: Record<string, unknown>,
+  signal?: AbortSignal,
+): Promise<T> {
+  const response = await fetch(
+    url,
+    body === undefined
+      ? {
+          method: 'POST',
+          headers: { Accept: 'application/json' },
+          cache: 'no-store',
+          signal,
+        }
+      : {
+          method: 'POST',
+          headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(body),
+          cache: 'no-store',
+          signal,
+        },
+  )
   if (!response.ok) {
     throw new Error(`${label} request failed with ${response.status}`)
   }
