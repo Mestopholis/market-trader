@@ -300,6 +300,7 @@ class RiskDecision:
     result_digest: str
     as_of: datetime
     explanation: str = ""
+    reason_summary: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         _require_non_empty(self.decision_key, "decision_key")
@@ -309,6 +310,7 @@ class RiskDecision:
         _require_non_empty(self.result_digest, "result_digest")
         object.__setattr__(self, "as_of", ensure_utc(self.as_of))
         object.__setattr__(self, "checks", tuple(sorted(self.checks, key=lambda item: item.code)))
+        object.__setattr__(self, "reason_summary", tuple(sorted(set(self.reason_summary))))
 
 
 def _freeze_facts(value: Facts) -> Facts:
