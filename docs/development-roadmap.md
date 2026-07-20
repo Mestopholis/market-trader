@@ -215,6 +215,11 @@ and [operator runbook](milestone-7-risk-sizing-exposure-and-tax-warnings.md).
 
 **Next planning action:** Write and review the Milestone 8 specification and implementation plan before implementation begins.
 
+**Planning:** Drafted in the
+[specification](plans/2026-07-20-milestone-8-decision-support-dashboard-expansion-spec.md)
+and
+[implementation plan](plans/2026-07-20-milestone-8-decision-support-dashboard-expansion-implementation-plan.md).
+
 **Objective:** Present market state, candidates, risks, and audit information without exposing executable trading controls.
 
 **Depends on:** Milestones 1–7.
