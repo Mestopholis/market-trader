@@ -54,4 +54,29 @@ docker compose exec -T api \
   python -m market_trader.risk.cli validate \
   /app/fixtures/risk/share-sizing-boundaries/approved-share.json >/dev/null
 
+docker compose exec -T api \
+  python - <<'PY'
+import json
+from pathlib import Path
+
+root = Path("/app/fixtures/paper_lifecycle")
+required = {
+    "success",
+    "partial-fill",
+    "reject",
+    "stale-quote",
+    "expired-approval",
+    "cancel-race",
+    "restart-recovery",
+    "simulated-assignment",
+}
+found = {path.parent.name for path in root.glob("*/manifest.json")}
+assert required <= found
+for path in root.glob("*/manifest.json"):
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    assert payload["paper_mode"] is True
+    assert payload["expected_no_external_reference"] is True
+    assert payload["paper_reference_prefix"] == "sim-paper"
+PY
+
 printf 'Foundation verification passed at %s\n' "$base_url"

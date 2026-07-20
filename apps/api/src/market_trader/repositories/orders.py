@@ -3,6 +3,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from market_trader.db.models import (
@@ -307,6 +308,170 @@ class TradeLifecycleRepository:
         record = self._session.get(PositionORM, record_id)
         return _position_to_domain(record) if record is not None else None
 
+    def update_proposed_trade_status(
+        self,
+        record_id: str,
+        *,
+        status: str,
+        updated_at: datetime,
+        terminal_at: datetime | None,
+        correlation_id: str,
+    ) -> ProposedTrade | None:
+        record = self._session.get(ProposedTradeORM, record_id)
+        if record is None:
+            return None
+        self._update_terminal_status(
+            record,
+            status=status,
+            updated_at=updated_at,
+            terminal_at=terminal_at,
+            correlation_id=correlation_id,
+            event_type="proposed_trade.status_updated",
+            subject_type="proposed_trade",
+        )
+        return _proposed_trade_to_domain(record)
+
+    def update_approval_status(
+        self,
+        record_id: str,
+        *,
+        status: str,
+        updated_at: datetime,
+        terminal_at: datetime | None,
+        correlation_id: str,
+    ) -> Approval | None:
+        record = self._session.get(ApprovalORM, record_id)
+        if record is None:
+            return None
+        self._update_terminal_status(
+            record,
+            status=status,
+            updated_at=updated_at,
+            terminal_at=terminal_at,
+            correlation_id=correlation_id,
+            event_type="approval.status_updated",
+            subject_type="approval",
+        )
+        return _approval_to_domain(record)
+
+    def update_order_status(
+        self,
+        record_id: str,
+        *,
+        status: str,
+        updated_at: datetime,
+        terminal_at: datetime | None,
+        correlation_id: str,
+        simulated_broker_reference: str | None = None,
+    ) -> OrderRecord | None:
+        record = self._session.get(OrderORM, record_id)
+        if record is None:
+            return None
+        if simulated_broker_reference is not None:
+            record.simulated_broker_reference = simulated_broker_reference
+        self._update_terminal_status(
+            record,
+            status=status,
+            updated_at=updated_at,
+            terminal_at=terminal_at,
+            correlation_id=correlation_id,
+            event_type="order.status_updated",
+            subject_type="order",
+        )
+        return _order_to_domain(record)
+
+    def update_position_status(
+        self,
+        record_id: str,
+        *,
+        status: str,
+        quantity: Decimal,
+        average_price: Decimal | None,
+        updated_at: datetime,
+        closed_at: datetime | None,
+        correlation_id: str,
+    ) -> Position | None:
+        record = self._session.get(PositionORM, record_id)
+        if record is None:
+            return None
+        record.status = status
+        record.quantity = quantity
+        record.average_price = average_price
+        record.updated_at = ensure_utc(updated_at)
+        record.closed_at = _optional_utc(closed_at)
+        self._session.flush()
+        self._append_audit(
+            event_type="position.status_updated",
+            subject_type="position",
+            subject_id=record.id,
+            status=status,
+            correlation_id=correlation_id,
+            occurred_at=updated_at,
+        )
+        return _position_to_domain(record)
+
+    def list_orders_by_status(self, statuses: set[str]) -> tuple[OrderRecord, ...]:
+        if not statuses:
+            return ()
+        records = self._session.scalars(
+            select(OrderORM)
+            .where(OrderORM.status.in_(statuses))
+            .order_by(OrderORM.created_at, OrderORM.id)
+        ).all()
+        return tuple(_order_to_domain(record) for record in records)
+
+    def list_fills_for_order(self, order_id: str) -> tuple[Fill, ...]:
+        records = self._session.scalars(
+            select(FillORM)
+            .where(FillORM.order_id == order_id)
+            .order_by(FillORM.occurred_at, FillORM.id)
+        ).all()
+        return tuple(_fill_to_domain(record) for record in records)
+
+    def list_approvals_by_status(self, statuses: set[str]) -> tuple[Approval, ...]:
+        if not statuses:
+            return ()
+        records = self._session.scalars(
+            select(ApprovalORM)
+            .where(ApprovalORM.status.in_(statuses))
+            .order_by(ApprovalORM.updated_at, ApprovalORM.id)
+        ).all()
+        return tuple(_approval_to_domain(record) for record in records)
+
+    def list_positions_by_status(self, statuses: set[str]) -> tuple[Position, ...]:
+        if not statuses:
+            return ()
+        records = self._session.scalars(
+            select(PositionORM)
+            .where(PositionORM.status.in_(statuses))
+            .order_by(PositionORM.updated_at, PositionORM.id)
+        ).all()
+        return tuple(_position_to_domain(record) for record in records)
+
+    def _update_terminal_status(
+        self,
+        record: ProposedTradeORM | ApprovalORM | OrderORM,
+        *,
+        status: str,
+        updated_at: datetime,
+        terminal_at: datetime | None,
+        correlation_id: str,
+        event_type: str,
+        subject_type: str,
+    ) -> None:
+        record.status = status
+        record.updated_at = ensure_utc(updated_at)
+        record.terminal_at = _optional_utc(terminal_at)
+        self._session.flush()
+        self._append_audit(
+            event_type=event_type,
+            subject_type=subject_type,
+            subject_id=record.id,
+            status=status,
+            correlation_id=correlation_id,
+            occurred_at=updated_at,
+        )
+
     def _persist_with_audit(
         self,
         record: ProposedTradeORM | ApprovalORM | OrderORM | FillORM | PositionORM,
@@ -318,6 +483,25 @@ class TradeLifecycleRepository:
     ) -> None:
         self._session.add(record)
         self._session.flush()
+        self._append_audit(
+            event_type=event_type,
+            subject_type=subject_type,
+            subject_id=record.id,
+            status=record.status,
+            correlation_id=correlation_id,
+            occurred_at=occurred_at,
+        )
+
+    def _append_audit(
+        self,
+        *,
+        event_type: str,
+        subject_type: str,
+        subject_id: str,
+        status: str,
+        correlation_id: str,
+        occurred_at: datetime,
+    ) -> None:
         self._audit.append(
             AuditEventCreate(
                 correlation_id=correlation_id,
@@ -325,8 +509,8 @@ class TradeLifecycleRepository:
                 actor_type="system",
                 occurred_at=occurred_at,
                 subject_type=subject_type,
-                subject_id=record.id,
-                payload={"schema_version": 1, "status": record.status},
+                subject_id=subject_id,
+                payload={"schema_version": 1, "status": status},
                 schema_version=1,
             )
         )

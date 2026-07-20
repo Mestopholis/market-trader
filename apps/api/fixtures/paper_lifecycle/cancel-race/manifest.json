@@ -1,0 +1,20 @@
+{
+  "approval_state": "approved",
+  "case_name": "paper cancel replace race terminal state",
+  "expected_no_external_reference": true,
+  "expected_order_status": "replaced",
+  "expected_position_status": null,
+  "expected_recovery_counts": {
+    "open_approvals": 0,
+    "open_orders": 0,
+    "open_positions": 0,
+    "timed_out_orders": 0,
+    "working_orders": 0
+  },
+  "fixture_hash": "7fa88e39abac1322aa20bc977ca957403de943175938e790ed52c568e87a85db",
+  "fixture_id": "cancel-race",
+  "paper_lifecycle_fixture_schema_version": 1,
+  "paper_mode": true,
+  "paper_reference_prefix": "sim-paper",
+  "scenario": "cancel_replace"
+}

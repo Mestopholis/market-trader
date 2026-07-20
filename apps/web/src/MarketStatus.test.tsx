@@ -46,11 +46,14 @@ test('shows loading before the first market state response', () => {
 })
 
 test('shows market state with Eastern and Central values', async () => {
+  vi.useFakeTimers()
+  vi.setSystemTime(new Date('2026-07-20T15:30:00Z'))
   vi.spyOn(globalThis, 'fetch').mockResolvedValue(response(marketState()))
 
   render(<MarketStatus />)
 
-  expect(await screen.findByText('Entry window open')).toBeInTheDocument()
+  await act(async () => {})
+  expect(screen.getByText('Entry window open')).toBeInTheDocument()
   expect(screen.getByRole('heading', { name: 'Market status' })).toBeInTheDocument()
   expect(screen.getAllByText(/ET \/ .*CT/).length).toBeGreaterThan(0)
 })

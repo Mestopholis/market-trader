@@ -10,6 +10,7 @@ COPY migrations ./migrations
 COPY src ./src
 COPY config ./config
 COPY fixtures ./fixtures
+COPY scripts ./scripts
 RUN python -m pip install --no-cache-dir .
 
 RUN useradd --create-home --uid 10001 appuser \

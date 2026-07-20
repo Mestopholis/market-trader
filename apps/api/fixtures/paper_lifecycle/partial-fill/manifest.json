@@ -1,0 +1,20 @@
+{
+  "approval_state": "approved",
+  "case_name": "paper partial fill leaves working remainder",
+  "expected_no_external_reference": true,
+  "expected_order_status": "partially_filled",
+  "expected_position_status": null,
+  "expected_recovery_counts": {
+    "open_approvals": 0,
+    "open_orders": 1,
+    "open_positions": 0,
+    "timed_out_orders": 0,
+    "working_orders": 1
+  },
+  "fixture_hash": "fa234bf2f0409034d44c03eed28d9ac4fd8cc3bea2d6620d1c9db5ffbb9f7856",
+  "fixture_id": "partial-fill",
+  "paper_lifecycle_fixture_schema_version": 1,
+  "paper_mode": true,
+  "paper_reference_prefix": "sim-paper",
+  "scenario": "partial_fill"
+}

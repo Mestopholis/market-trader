@@ -5,6 +5,7 @@ from market_trader.api.dashboard import router as dashboard_router
 from market_trader.api.health import router as health_router
 from market_trader.api.market_state import MarketStateUnavailableResponse
 from market_trader.api.market_state import router as market_state_router
+from market_trader.api.paper import router as paper_router
 from market_trader.config import get_settings
 from market_trader.market_calendar.models import CalendarUnavailableError
 
@@ -36,6 +37,7 @@ def create_app() -> FastAPI:
     application.include_router(health_router, prefix="/api")
     application.include_router(market_state_router, prefix="/api")
     application.include_router(dashboard_router, prefix="/api/dashboard")
+    application.include_router(paper_router, prefix="/api/paper")
     return application
 
 

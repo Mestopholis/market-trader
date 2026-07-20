@@ -43,7 +43,12 @@ def test_dashboard_routes_expose_no_write_methods() -> None:
 
 
 def test_dashboard_openapi_contract_has_no_forbidden_action_fields() -> None:
-    payload = TestClient(app).get("/api/openapi.json").text.lower()
+    dashboard_paths = {
+        path: route
+        for path, route in TestClient(app).get("/api/openapi.json").json()["paths"].items()
+        if path.startswith("/api/dashboard")
+    }
+    payload = str(dashboard_paths).lower()
 
     for term in FORBIDDEN_TERMS:
         assert term not in payload

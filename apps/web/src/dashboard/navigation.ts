@@ -1,4 +1,14 @@
-export type DashboardView = 'overview' | 'scanner' | 'candidate' | 'risk' | 'journal' | 'analytics'
+export type DashboardView =
+  | 'overview'
+  | 'scanner'
+  | 'candidate'
+  | 'risk'
+  | 'journal'
+  | 'analytics'
+  | 'paperApprovals'
+  | 'paperOrders'
+  | 'paperPositions'
+  | 'paperRecovery'
 
 export type DashboardNavItem = {
   id: DashboardView
@@ -12,4 +22,8 @@ export const dashboardNavigation: DashboardNavItem[] = [
   { id: 'risk', label: 'Risk' },
   { id: 'journal', label: 'Journal' },
   { id: 'analytics', label: 'Analytics' },
+  { id: 'paperApprovals', label: 'Paper Approvals' },
+  { id: 'paperOrders', label: 'Paper Orders' },
+  { id: 'paperPositions', label: 'Paper Positions' },
+  { id: 'paperRecovery', label: 'Paper Recovery' },
 ]

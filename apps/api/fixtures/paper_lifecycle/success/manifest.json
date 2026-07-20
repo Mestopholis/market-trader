@@ -1,0 +1,20 @@
+{
+  "approval_state": "approved",
+  "case_name": "paper approval preview submit full fill",
+  "expected_no_external_reference": true,
+  "expected_order_status": "filled",
+  "expected_position_status": "open",
+  "expected_recovery_counts": {
+    "open_approvals": 0,
+    "open_orders": 0,
+    "open_positions": 1,
+    "timed_out_orders": 0,
+    "working_orders": 0
+  },
+  "fixture_hash": "901b5c51c9b451e5d99a81470ec7c1578405c79b25dc986cc8f941016f6486ab",
+  "fixture_id": "success",
+  "paper_lifecycle_fixture_schema_version": 1,
+  "paper_mode": true,
+  "paper_reference_prefix": "sim-paper",
+  "scenario": "full_fill"
+}

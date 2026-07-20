@@ -32,6 +32,49 @@ test('switches dashboard panels with accessible tabs', async () => {
   expect(screen.getByRole('tabpanel', { name: 'Risk' })).toHaveTextContent('Risk')
 })
 
+test('includes paper approvals as a dashboard tab', async () => {
+  const user = userEvent.setup()
+  render(
+    <DashboardShell
+      panels={{
+        paperApprovals: <section>Paper approval queue test panel</section>,
+      }}
+    />,
+  )
+
+  await user.click(screen.getByRole('tab', { name: 'Paper Approvals' }))
+
+  expect(screen.getByRole('tab', { name: 'Paper Approvals' }))
+    .toHaveAttribute('aria-selected', 'true')
+  expect(screen.getByRole('tabpanel', { name: 'Paper Approvals' }))
+    .toHaveTextContent('Paper approval queue test panel')
+})
+
+test('includes paper order, position, and recovery tabs', async () => {
+  const user = userEvent.setup()
+  render(
+    <DashboardShell
+      panels={{
+        paperOrders: <section>Paper order table test panel</section>,
+        paperPositions: <section>Paper position table test panel</section>,
+        paperRecovery: <section>Paper recovery test panel</section>,
+      }}
+    />,
+  )
+
+  await user.click(screen.getByRole('tab', { name: 'Paper Orders' }))
+  expect(screen.getByRole('tabpanel', { name: 'Paper Orders' }))
+    .toHaveTextContent('Paper order table test panel')
+
+  await user.click(screen.getByRole('tab', { name: 'Paper Positions' }))
+  expect(screen.getByRole('tabpanel', { name: 'Paper Positions' }))
+    .toHaveTextContent('Paper position table test panel')
+
+  await user.click(screen.getByRole('tab', { name: 'Paper Recovery' }))
+  expect(screen.getByRole('tabpanel', { name: 'Paper Recovery' }))
+    .toHaveTextContent('Paper recovery test panel')
+})
+
 test('panel errors render an unavailable state without hiding the shell', () => {
   vi.spyOn(console, 'error').mockImplementation(() => undefined)
 
