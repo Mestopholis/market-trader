@@ -16,30 +16,29 @@ const health = {
   database: 'ok',
 }
 
-const marketState = {
+const overview = {
+  as_of: '2026-07-20T15:30:00Z',
+  data_state: 'ready',
+  paper_mode: true,
   market_state: 'entry_open',
   entry_allowed: true,
-  calendar: 'XNYS',
-  policy_version: 'entry-window-v1',
-  observed_at: '2026-07-20T15:30:00Z',
-  valid_until: '2027-07-20T15:31:00Z',
-  next_transition: '2026-07-20T19:30:00Z',
-  session_date: '2026-07-20',
-  market_open: '2026-07-20T13:30:00Z',
-  market_close: '2026-07-20T20:00:00Z',
-  entry_window_open: '2026-07-20T13:45:00Z',
-  entry_window_close: '2026-07-20T19:30:00Z',
-  is_early_close: false,
-  next_session_date: '2026-07-21',
-  next_session_open: '2026-07-21T13:30:00Z',
-  calendar_timezone: 'America/New_York',
-  display_timezone: 'America/Chicago',
+  sources: [
+    {
+      name: 'scanner',
+      state: 'ready',
+      version: 'scanner-policy-v1',
+      observed_at: '2026-07-20T15:20:00Z',
+      stable_key: 'scanner:latest',
+      digest: 'scanner-digest',
+    },
+  ],
+  warnings: [],
 }
 
-test('shows an unmistakable paper mode banner', async () => {
+test('shows the dashboard overview on first load', async () => {
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
     const url = String(input)
-    const body = url.includes('/api/health') ? health : marketState
+    const body = url.includes('/api/health') ? health : overview
     return new Response(JSON.stringify(body), { status: 200 })
   })
 
@@ -47,12 +46,12 @@ test('shows an unmistakable paper mode banner', async () => {
 
   expect(await screen.findByRole('status')).toHaveTextContent('PAPER MODE')
   expect(screen.getByText(/No live orders can be submitted/i)).toBeInTheDocument()
-  expect(screen.getByText('Database')).toBeInTheDocument()
-  expect(screen.getByText('ok')).toBeInTheDocument()
-  expect(await screen.findByText('Entry window open')).toBeInTheDocument()
-  expect(screen.getByRole('heading', { name: 'Market status' })).toBeInTheDocument()
+  expect(await screen.findByRole('heading', { name: 'Market overview' })).toBeInTheDocument()
+  expect(screen.getByText('scanner-policy-v1')).toBeInTheDocument()
   expect(screen.getAllByText(/ET \/ .*CT/).length).toBeGreaterThan(0)
-  expect(screen.queryByRole('button')).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: /approve|preview|submit|buy|sell|execute/i }))
+    .not
+    .toBeInTheDocument()
 })
 
 test('shows a safe unavailable state when health fails', async () => {
@@ -63,17 +62,13 @@ test('shows a safe unavailable state when health fails', async () => {
   expect(await screen.findByRole('alert')).toHaveTextContent('Trading controls unavailable')
 })
 
-test('keeps paper and health state visible when the calendar is unavailable', async () => {
+test('keeps paper state visible when the dashboard overview is unavailable', async () => {
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
     if (String(input).includes('/api/health')) {
       return new Response(JSON.stringify(health), { status: 200 })
     }
     return new Response(
-      JSON.stringify({
-        market_state: 'unavailable',
-        entry_allowed: false,
-        error_code: 'market_calendar_unavailable',
-      }),
+      JSON.stringify({ message: 'dashboard unavailable' }),
       { status: 503 },
     )
   })
@@ -81,7 +76,6 @@ test('keeps paper and health state visible when the calendar is unavailable', as
   render(<App />)
 
   expect(await screen.findByText('PAPER MODE')).toBeInTheDocument()
-  expect(await screen.findByText('Market schedule unavailable')).toBeInTheDocument()
-  expect(screen.getByText('Database')).toBeInTheDocument()
+  expect(await screen.findByText('Market overview unavailable')).toBeInTheDocument()
   expect(screen.queryByText('Trading controls unavailable')).not.toBeInTheDocument()
 })

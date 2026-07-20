@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
+from market_trader.api.dashboard import router as dashboard_router
 from market_trader.api.health import router as health_router
 from market_trader.api.market_state import MarketStateUnavailableResponse
 from market_trader.api.market_state import router as market_state_router
@@ -34,6 +35,7 @@ def create_app() -> FastAPI:
     )
     application.include_router(health_router, prefix="/api")
     application.include_router(market_state_router, prefix="/api")
+    application.include_router(dashboard_router, prefix="/api/dashboard")
     return application
 
 

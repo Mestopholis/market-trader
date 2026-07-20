@@ -213,7 +213,13 @@ and [operator runbook](milestone-7-risk-sizing-exposure-and-tax-warnings.md).
 
 ## Milestone 8: Decision-support dashboard expansion
 
-**Next planning action:** Write and review the Milestone 8 specification and implementation plan before implementation begins.
+**Status:** Complete.
+
+**Completion:** Delivered by the approved
+[specification](plans/2026-07-20-milestone-8-decision-support-dashboard-expansion-spec.md)
+and
+[implementation plan](plans/2026-07-20-milestone-8-decision-support-dashboard-expansion-implementation-plan.md),
+and [operator runbook](milestone-8-decision-support-dashboard.md).
 
 **Objective:** Present market state, candidates, risks, and audit information without exposing executable trading controls.
 
@@ -232,6 +238,8 @@ and [operator runbook](milestone-7-risk-sizing-exposure-and-tax-warnings.md).
 **Explicitly excluded:** Approval buttons, broker credentials, and order submission.
 
 ## Milestone 9: Paper approval, execution, and position lifecycle
+
+**Next planning action:** Write and review the Milestone 9 specification and implementation plan before implementation begins.
 
 **Objective:** Validate the complete user workflow using a deterministic simulated broker only.
 
