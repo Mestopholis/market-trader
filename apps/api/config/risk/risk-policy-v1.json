@@ -1,0 +1,54 @@
+{
+  "allow_unsettled_cash": false,
+  "block_borrowed_buying_power": true,
+  "blocked_trading_windows": [
+    {
+      "end": "09:35",
+      "label": "open-auction",
+      "start": "09:30"
+    },
+    {
+      "end": "16:00",
+      "label": "closing-auction",
+      "start": "15:55"
+    }
+  ],
+  "content_hash": "8b8bc6ee1a72c6cf192cadacb7420f4d9b18972cfce5d08bcac718594e50edbe",
+  "contract_multiplier": "100",
+  "equivalent_symbol_groups": [
+    [
+      "SPY",
+      "VOO",
+      "IVV"
+    ],
+    [
+      "QQQ",
+      "QQQM"
+    ]
+  ],
+  "informational_lock_types": [
+    "catalyst_warning"
+  ],
+  "long_term_holding_period_days": 366,
+  "max_correlation_group_fraction": "0.30",
+  "max_daily_loss_fraction": "0.02",
+  "max_drawdown_fraction": "0.08",
+  "max_open_trades_per_day": 3,
+  "max_positions": 8,
+  "max_share_notional_fraction": "0.20",
+  "max_spread_debit_fraction": "0.05",
+  "max_total_reserved_risk_fraction": "0.06",
+  "max_weekly_loss_fraction": "0.04",
+  "min_settled_cash_after_trade": "250.00",
+  "per_trade_risk_fraction": "0.01",
+  "required_lock_types": [
+    "daily_loss",
+    "weekly_loss",
+    "drawdown",
+    "manual"
+  ],
+  "short_term_holding_period_days": 365,
+  "tax_disclaimer": "Educational warning only; not tax advice. Consult a qualified tax professional.",
+  "version": "risk-policy-v1",
+  "wash_sale_window_days": 30
+}

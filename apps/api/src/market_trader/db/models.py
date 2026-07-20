@@ -657,3 +657,80 @@ class RiskLockORM(Base):
     payload: Mapped[dict[str, Any]] = mapped_column(JSON)
     payload_schema_version: Mapped[int]
     correlation_id: Mapped[str] = mapped_column(String(64), index=True)
+
+
+class RiskDecisionORM(Base):
+    __tablename__ = "risk_decisions"
+    __table_args__ = (
+        Index("ux_risk_decisions_decision_key", "decision_key", unique=True),
+        Index("ix_risk_decisions_status_as_of", "status", "as_of"),
+        Index("ix_risk_decisions_policy", "policy_version", "policy_hash"),
+        Index(
+            "ix_risk_decisions_reason_summary",
+            "reason_summary",
+            postgresql_using="gin",
+        ),
+        Index(
+            "ix_risk_decisions_decision_payload",
+            "decision_payload",
+            postgresql_using="gin",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    decision_key: Mapped[str] = mapped_column(String(512))
+    status: Mapped[str] = mapped_column(String(40))
+    proposal_kind: Mapped[str] = mapped_column(String(40))
+    policy_version: Mapped[str] = mapped_column(String(128))
+    policy_hash: Mapped[str] = mapped_column(String(64))
+    input_digest: Mapped[str] = mapped_column(String(64))
+    result_digest: Mapped[str] = mapped_column(String(64))
+    as_of: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    reason_summary: Mapped[list[str]] = mapped_column(
+        JSON().with_variant(JSONB(), "postgresql")
+    )
+    sizing_payload: Mapped[dict[str, Any]] = mapped_column(JSON)
+    decision_payload: Mapped[dict[str, Any]] = mapped_column(
+        JSON().with_variant(JSONB(), "postgresql")
+    )
+    correlation_id: Mapped[str] = mapped_column(String(64), index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class RiskCheckORM(Base):
+    __tablename__ = "risk_checks"
+    __table_args__ = (
+        Index("ux_risk_checks_check_key", "check_key", unique=True),
+        Index("ix_risk_checks_decision_id", "decision_id"),
+        Index("ix_risk_checks_code_state", "code", "state"),
+        Index("ix_risk_checks_facts", "facts", postgresql_using="gin"),
+        Index("ix_risk_checks_source_keys", "source_keys", postgresql_using="gin"),
+    )
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    check_key: Mapped[str] = mapped_column(String(512))
+    decision_id: Mapped[str] = mapped_column(ForeignKey("risk_decisions.id"))
+    code: Mapped[str] = mapped_column(String(128))
+    severity: Mapped[str] = mapped_column(String(40))
+    state: Mapped[str] = mapped_column(String(40))
+    facts: Mapped[dict[str, Any]] = mapped_column(JSON().with_variant(JSONB(), "postgresql"))
+    source_keys: Mapped[list[str]] = mapped_column(JSON().with_variant(JSONB(), "postgresql"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class RiskReservationORM(Base):
+    __tablename__ = "risk_reservations"
+    __table_args__ = (
+        Index("ux_risk_reservations_reservation_key", "reservation_key", unique=True),
+        Index("ix_risk_reservations_decision_id", "decision_id"),
+        Index("ix_risk_reservations_payload", "reservation_payload", postgresql_using="gin"),
+    )
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    reservation_key: Mapped[str] = mapped_column(String(512))
+    decision_id: Mapped[str] = mapped_column(ForeignKey("risk_decisions.id"))
+    amount: Mapped[Decimal] = mapped_column(Numeric(20, 8))
+    reservation_payload: Mapped[dict[str, Any]] = mapped_column(
+        JSON().with_variant(JSONB(), "postgresql")
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))

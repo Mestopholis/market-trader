@@ -1,0 +1,53 @@
+{
+  "case_name": "approved one-contract spread",
+  "content_hash": "420daaddcf7930351ca904e8c8682b0953f0b273e2bcdd5581c3f7b8c387f1dd",
+  "expected_status": "approved",
+  "fixture_key": "fixture:risk:approved-spread",
+  "group": "spread-sizing-boundaries",
+  "input": {
+    "account_equity": "5000.00",
+    "as_of": "2026-07-20T15:30:00+00:00",
+    "buying_power": {
+      "borrowed_buying_power": "0.00",
+      "observed_at": "2026-07-20T15:30:00+00:00",
+      "reserved_cash": "0.00",
+      "settled_cash": "5000.00",
+      "snapshot_digest": "bp-digest",
+      "unsettled_cash": "0.00"
+    },
+    "closed_trade_lots": [],
+    "daily_realized_loss": "0.00",
+    "decision_key": "risk:fixture:proposal:spread:spy",
+    "locks": [],
+    "open_tax_lots": [],
+    "open_trades_today": 0,
+    "peak_equity": "5000.00",
+    "policy_hash": "8b8bc6ee1a72c6cf192cadacb7420f4d9b18972cfce5d08bcac718594e50edbe",
+    "policy_version": "risk-policy-v1",
+    "positions": [
+      {
+        "correlation_group": "other",
+        "market_value": "100.00",
+        "maximum_loss": "5.00",
+        "position_key": "position:seed",
+        "quantity": 1,
+        "symbol": "MSFT"
+      }
+    ],
+    "proposal": {
+      "contracts": 1,
+      "debit": "2.50",
+      "expiration": "2026-07-20T15:30:00+00:00",
+      "long_contract_id": "SPY260918C00490000",
+      "maximum_loss": "0.50",
+      "proposal_key": "proposal:spread:spy",
+      "short_contract_id": "SPY260918C00500000",
+      "short_strike": "500.00",
+      "symbol": "SPY"
+    },
+    "weekly_realized_loss": "0.00",
+    "working_orders": []
+  },
+  "policy_path": "config/risk/risk-policy-v1.json",
+  "schema_version": 1
+}

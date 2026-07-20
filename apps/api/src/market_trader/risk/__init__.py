@@ -1,0 +1,2 @@
+"""Deterministic risk decision domain."""
+

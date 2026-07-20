@@ -186,6 +186,13 @@ and [operator runbook](milestone-6-options-analysis-and-spread-construction.md).
 
 ## Milestone 7: Risk, sizing, exposure, and tax warnings
 
+**Status:** Complete.
+
+**Completion:** Delivered by the approved
+[specification](plans/2026-07-20-milestone-7-risk-sizing-exposure-and-tax-warnings-spec.md),
+[implementation plan](plans/2026-07-20-milestone-7-risk-sizing-exposure-and-tax-warnings-implementation-plan.md),
+and [operator runbook](milestone-7-risk-sizing-exposure-and-tax-warnings.md).
+
 **Objective:** Enforce the approved capital, loss, correlation, settlement, and taxable-account boundaries before a proposal can be approval-ready.
 
 **Depends on:** Milestones 1–6.
@@ -205,6 +212,8 @@ and [operator runbook](milestone-6-options-analysis-and-spread-construction.md).
 **Explicitly excluded:** Broker account balances, broker order previews, and live trading.
 
 ## Milestone 8: Decision-support dashboard expansion
+
+**Next planning action:** Write and review the Milestone 8 specification and implementation plan before implementation begins.
 
 **Objective:** Present market state, candidates, risks, and audit information without exposing executable trading controls.
 

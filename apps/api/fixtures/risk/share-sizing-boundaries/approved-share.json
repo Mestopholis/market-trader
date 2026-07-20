@@ -1,0 +1,49 @@
+{
+  "case_name": "approved share boundary",
+  "content_hash": "8f9f5bc90ca44480d61f47bbec821640b8e6b0a9d908a6d8b40cd24bb33d7ae4",
+  "expected_status": "approved",
+  "fixture_key": "fixture:risk:approved-share",
+  "group": "share-sizing-boundaries",
+  "input": {
+    "account_equity": "10000.00",
+    "as_of": "2026-07-20T15:30:00+00:00",
+    "buying_power": {
+      "borrowed_buying_power": "0.00",
+      "observed_at": "2026-07-20T15:30:00+00:00",
+      "reserved_cash": "0.00",
+      "settled_cash": "10000.00",
+      "snapshot_digest": "bp-digest",
+      "unsettled_cash": "0.00"
+    },
+    "closed_trade_lots": [],
+    "daily_realized_loss": "0.00",
+    "decision_key": "risk:fixture:approved-share",
+    "locks": [],
+    "open_tax_lots": [],
+    "open_trades_today": 0,
+    "peak_equity": "10000.00",
+    "policy_hash": "8b8bc6ee1a72c6cf192cadacb7420f4d9b18972cfce5d08bcac718594e50edbe",
+    "policy_version": "risk-policy-v1",
+    "positions": [
+      {
+        "correlation_group": "other",
+        "market_value": "100.00",
+        "maximum_loss": "5.00",
+        "position_key": "position:seed",
+        "quantity": 1,
+        "symbol": "MSFT"
+      }
+    ],
+    "proposal": {
+      "direction": "long",
+      "entry_price": "100.00",
+      "proposal_key": "proposal:shares:aapl",
+      "stop_price": "95.00",
+      "symbol": "AAPL"
+    },
+    "weekly_realized_loss": "0.00",
+    "working_orders": []
+  },
+  "policy_path": "config/risk/risk-policy-v1.json",
+  "schema_version": 1
+}
