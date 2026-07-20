@@ -105,6 +105,35 @@ class CandidateListItem(DashboardModel):
         return tuple(sorted(value))
 
 
+class CandidateListResponse(DashboardModel):
+    as_of: datetime
+    data_state: DataState
+    candidates: tuple[CandidateListItem, ...]
+    next_cursor: str | None
+    sources: tuple[SourceSummary, ...]
+    warnings: tuple[WarningSummary, ...]
+
+    @field_validator("as_of")
+    @classmethod
+    def _as_of_must_be_utc(cls, value: datetime) -> datetime:
+        return ensure_utc(value)
+
+    @field_validator("candidates")
+    @classmethod
+    def _sort_candidates(
+        cls,
+        value: tuple[CandidateListItem, ...],
+    ) -> tuple[CandidateListItem, ...]:
+        return tuple(
+            sorted(value, key=lambda candidate: (candidate.symbol, candidate.candidate_key))
+        )
+
+    @field_validator("sources")
+    @classmethod
+    def _sort_sources(cls, value: tuple[SourceSummary, ...]) -> tuple[SourceSummary, ...]:
+        return tuple(sorted(value, key=lambda source: source.name))
+
+
 class CandidateDetail(DashboardModel):
     candidate_key: str
     symbol: str

@@ -3,6 +3,8 @@ from __future__ import annotations
 from market_trader.api.health import database_state
 from market_trader.config import get_settings
 from market_trader.dashboard.models import (
+    CandidateDetail,
+    CandidateListResponse,
     DashboardOverview,
     DataState,
     SourceSummary,
@@ -107,6 +109,35 @@ class DashboardReadModel:
             sources=tuple(sources),
             warnings=tuple(warnings),
         )
+
+    def candidates(self, *, limit: int, cursor: str | None) -> CandidateListResponse:
+        as_of = self._clock.now()
+        return CandidateListResponse(
+            as_of=as_of,
+            data_state=DataState.UNAVAILABLE,
+            candidates=(),
+            next_cursor=None,
+            sources=(
+                SourceSummary(
+                    name="scanner",
+                    state=DataState.UNAVAILABLE,
+                    version="scanner-policy-v1",
+                    observed_at=as_of,
+                    stable_key="scanner:latest",
+                ),
+            ),
+            warnings=(
+                WarningSummary(
+                    code="candidates.unavailable",
+                    severity="warning",
+                    message="Candidate records are unavailable",
+                    source_keys=("scanner:latest",),
+                ),
+            ),
+        )
+
+    def candidate_detail(self, candidate_key: str) -> CandidateDetail | None:
+        return None
 
     def _market_state(self) -> MarketStateService:
         if self._market_state_service is not None:
