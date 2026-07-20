@@ -1,13 +1,12 @@
 import { useEffect, useState } from 'react'
 
-import { fetchHealth, type HealthResponse } from './api'
+import { fetchHealth } from './api'
 import DashboardShell from './dashboard/DashboardShell'
-import MarketStatus from './MarketStatus'
 import './index.css'
 
 type LoadState =
   | { kind: 'loading' }
-  | { kind: 'ready'; health: HealthResponse }
+  | { kind: 'ready' }
   | { kind: 'error' }
 
 export default function App() {
@@ -16,7 +15,7 @@ export default function App() {
   useEffect(() => {
     const controller = new AbortController()
     fetchHealth(controller.signal)
-      .then((health) => setState({ kind: 'ready', health }))
+      .then(() => setState({ kind: 'ready' }))
       .catch(() => {
         if (!controller.signal.aborted) setState({ kind: 'error' })
       })
@@ -38,23 +37,5 @@ export default function App() {
     )
   }
 
-  return (
-    <DashboardShell
-      panels={{
-        overview: (
-          <div className="dashboard-stack">
-            <MarketStatus />
-            <section className="system-status" aria-labelledby="system-status-title">
-              <h2 id="system-status-title">System status</h2>
-              <dl className="system-status-details">
-                <dt>Environment</dt><dd>{state.health.environment}</dd>
-                <dt>Version</dt><dd>{state.health.version}</dd>
-                <dt>Database</dt><dd>{state.health.database}</dd>
-              </dl>
-            </section>
-          </div>
-        ),
-      }}
-    />
-  )
+  return <DashboardShell />
 }
