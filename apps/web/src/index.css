@@ -137,6 +137,8 @@ dd { min-width: 0; margin: 0; overflow-wrap: anywhere; }
 .state-stale, .state-partial { color: #ffd66b; border-color: #e3b341; }
 .state-unavailable { color: #ffb4ad; border-color: #ff7b72; }
 .dashboard-warnings { padding-left: 1.25rem; color: #ffd66b; }
+.dashboard-list { padding-left: 1.25rem; }
+.dashboard-subsection { min-width: 0; }
 .filter-label {
   display: grid;
   gap: 0.3rem;

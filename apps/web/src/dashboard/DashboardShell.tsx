@@ -1,8 +1,12 @@
 import { type ReactNode, useState } from 'react'
 
 import DashboardErrorBoundary from './DashboardErrorBoundary'
+import AnalyticsPanel from './AnalyticsPanel'
+import CandidateDetailPanel from './CandidateDetailPanel'
+import JournalPanel from './JournalPanel'
 import { dashboardNavigation, type DashboardView } from './navigation'
 import OverviewPanel from './OverviewPanel'
+import RiskPanel from './RiskPanel'
 import ScannerPanel from './ScannerPanel'
 
 type DashboardShellProps = {
@@ -12,10 +16,10 @@ type DashboardShellProps = {
 const defaultPanels: Record<DashboardView, ReactNode> = {
   overview: <OverviewPanel />,
   scanner: <ScannerPanel />,
-  candidate: <PlaceholderPanel title="Candidate" />,
-  risk: <PlaceholderPanel title="Risk" />,
-  journal: <PlaceholderPanel title="Journal" />,
-  analytics: <PlaceholderPanel title="Analytics" />,
+  candidate: <CandidateDetailPanel />,
+  risk: <RiskPanel />,
+  journal: <JournalPanel />,
+  analytics: <AnalyticsPanel />,
 }
 
 export default function DashboardShell({ panels = {} }: DashboardShellProps) {
@@ -53,14 +57,5 @@ export default function DashboardShell({ panels = {} }: DashboardShellProps) {
         </DashboardErrorBoundary>
       </section>
     </main>
-  )
-}
-
-function PlaceholderPanel({ title }: { title: string }) {
-  return (
-    <section className="dashboard-panel" aria-labelledby={`${title.toLowerCase()}-panel-title`}>
-      <h2 id={`${title.toLowerCase()}-panel-title`}>{title}</h2>
-      <p className="muted">Read-only dashboard data will appear here.</p>
-    </section>
   )
 }
