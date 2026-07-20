@@ -1,0 +1,20 @@
+{
+  "approval_state": "approved",
+  "case_name": "paper expired approval rejection path",
+  "expected_no_external_reference": true,
+  "expected_order_status": "timed_out",
+  "expected_position_status": null,
+  "expected_recovery_counts": {
+    "open_approvals": 0,
+    "open_orders": 1,
+    "open_positions": 0,
+    "timed_out_orders": 1,
+    "working_orders": 0
+  },
+  "fixture_hash": "fa426e49c5db92d148a015ab51476975eb23bd00438d14370c843a3ec4a51825",
+  "fixture_id": "expired-approval",
+  "paper_lifecycle_fixture_schema_version": 1,
+  "paper_mode": true,
+  "paper_reference_prefix": "sim-paper",
+  "scenario": "timeout"
+}

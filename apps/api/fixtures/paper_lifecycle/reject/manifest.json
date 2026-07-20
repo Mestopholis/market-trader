@@ -1,0 +1,20 @@
+{
+  "approval_state": "approved",
+  "case_name": "paper reject terminal order",
+  "expected_no_external_reference": true,
+  "expected_order_status": "rejected",
+  "expected_position_status": null,
+  "expected_recovery_counts": {
+    "open_approvals": 0,
+    "open_orders": 0,
+    "open_positions": 0,
+    "timed_out_orders": 0,
+    "working_orders": 0
+  },
+  "fixture_hash": "d74240f26ccee217397b8295bc8800f1fb010a1a4793e76fd115edfcb11fc164",
+  "fixture_id": "reject",
+  "paper_lifecycle_fixture_schema_version": 1,
+  "paper_mode": true,
+  "paper_reference_prefix": "sim-paper",
+  "scenario": "reject"
+}

@@ -1,0 +1,20 @@
+{
+  "approval_state": "approved",
+  "case_name": "paper simulated assignment position",
+  "expected_no_external_reference": true,
+  "expected_order_status": "filled",
+  "expected_position_status": "assigned",
+  "expected_recovery_counts": {
+    "open_approvals": 0,
+    "open_orders": 0,
+    "open_positions": 1,
+    "timed_out_orders": 0,
+    "working_orders": 0
+  },
+  "fixture_hash": "7fcbd9ec543d8d48ccd536e4f7f7b73ed96bacea74c565509198b28ecb1b5a83",
+  "fixture_id": "simulated-assignment",
+  "paper_lifecycle_fixture_schema_version": 1,
+  "paper_mode": true,
+  "paper_reference_prefix": "sim-paper",
+  "scenario": "assignment"
+}

@@ -1,0 +1,20 @@
+{
+  "approval_state": "approved",
+  "case_name": "paper stale quote rejection path",
+  "expected_no_external_reference": true,
+  "expected_order_status": "timed_out",
+  "expected_position_status": null,
+  "expected_recovery_counts": {
+    "open_approvals": 1,
+    "open_orders": 1,
+    "open_positions": 0,
+    "timed_out_orders": 1,
+    "working_orders": 0
+  },
+  "fixture_hash": "2cd4a6d09fdaee8d21a35c3852644a165677656db7bbeafe549607eef3ed512f",
+  "fixture_id": "stale-quote",
+  "paper_lifecycle_fixture_schema_version": 1,
+  "paper_mode": true,
+  "paper_reference_prefix": "sim-paper",
+  "scenario": "timeout"
+}
