@@ -68,6 +68,7 @@ def _create_decisions() -> None:
     op.create_index("ux_risk_decisions_decision_key", "risk_decisions", ["decision_key"], unique=True)
     op.create_index("ix_risk_decisions_status_as_of", "risk_decisions", ["status", "as_of"])
     op.create_index("ix_risk_decisions_policy", "risk_decisions", ["policy_version", "policy_hash"])
+    op.create_index("ix_risk_decisions_correlation_id", "risk_decisions", ["correlation_id"])
     op.create_index(
         "ix_risk_decisions_reason_summary",
         "risk_decisions",
