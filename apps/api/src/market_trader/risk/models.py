@@ -96,11 +96,13 @@ class BuyingPowerSnapshot:
     reserved_cash: Decimal
     observed_at: datetime
     snapshot_digest: str
+    borrowed_buying_power: Decimal = Decimal("0.00")
 
     def __post_init__(self) -> None:
         _require_non_negative_decimal(self.settled_cash, "settled_cash")
         _require_non_negative_decimal(self.unsettled_cash, "unsettled_cash")
         _require_non_negative_decimal(self.reserved_cash, "reserved_cash")
+        _require_non_negative_decimal(self.borrowed_buying_power, "borrowed_buying_power")
         _require_non_empty(self.snapshot_digest, "snapshot_digest")
         object.__setattr__(self, "observed_at", ensure_utc(self.observed_at))
 
@@ -205,12 +207,28 @@ class RiskInput:
     policy_hash: str
     as_of: datetime
     display_note: str = ""
+    account_equity: Decimal = Decimal("0.00")
+    daily_realized_loss: Decimal = Decimal("0.00")
+    weekly_realized_loss: Decimal = Decimal("0.00")
+    peak_equity: Decimal | None = None
+    open_trades_today: int = 0
 
     def __post_init__(self) -> None:
         _require_non_empty(self.decision_key, "decision_key")
         _require_non_empty(self.policy_version, "policy_version")
         _require_non_empty(self.policy_hash, "policy_hash")
+        if self.open_trades_today < 0:
+            raise ValueError("open_trades_today must be non-negative")
+        _require_non_negative_decimal(self.account_equity, "account_equity")
+        _require_non_negative_decimal(self.daily_realized_loss, "daily_realized_loss")
+        _require_non_negative_decimal(self.weekly_realized_loss, "weekly_realized_loss")
+        if self.peak_equity is not None:
+            _require_non_negative_decimal(self.peak_equity, "peak_equity")
         object.__setattr__(self, "as_of", ensure_utc(self.as_of))
+        if self.account_equity == 0:
+            object.__setattr__(self, "account_equity", self.buying_power.settled_cash)
+        if self.peak_equity is None:
+            object.__setattr__(self, "peak_equity", self.account_equity)
         object.__setattr__(
             self,
             "positions",
