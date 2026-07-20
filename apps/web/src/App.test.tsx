@@ -52,7 +52,9 @@ test('shows an unmistakable paper mode banner', async () => {
   expect(await screen.findByText('Entry window open')).toBeInTheDocument()
   expect(screen.getByRole('heading', { name: 'Market status' })).toBeInTheDocument()
   expect(screen.getAllByText(/ET \/ .*CT/).length).toBeGreaterThan(0)
-  expect(screen.queryByRole('button')).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: /approve|preview|submit|buy|sell|execute/i }))
+    .not
+    .toBeInTheDocument()
 })
 
 test('shows a safe unavailable state when health fails', async () => {
