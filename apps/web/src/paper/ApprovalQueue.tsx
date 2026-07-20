@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { fetchPaperApprovalCards } from '../api'
 import { formatDashboardTime, labelize } from '../dashboard/formatting'
 import ApprovalCardDetail from './ApprovalCardDetail'
+import PaperActionPanel from './PaperActionPanel'
 import type { PaperApprovalCard, PaperApprovalCardListResponse } from './types'
 
 type LoadState =
@@ -65,7 +66,12 @@ export default function ApprovalQueue() {
             selectedKey={selectedCard?.card_key ?? null}
             onSelect={setSelectedKey}
           />
-          {selectedCard && <ApprovalCardDetail card={selectedCard} />}
+          {selectedCard && (
+            <div className="paper-selected-stack">
+              <ApprovalCardDetail card={selectedCard} />
+              <PaperActionPanel card={selectedCard} />
+            </div>
+          )}
         </div>
       )}
     </section>
