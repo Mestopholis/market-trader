@@ -21,6 +21,17 @@ assert payload["calendar_timezone"] == "America/New_York"
 assert payload["display_timezone"] == "America/Chicago"
 '
 
+dashboard_overview="$(curl --fail --silent --show-error "${base_url}/api/dashboard/overview")"
+printf '%s' "$dashboard_overview" | python3 -c '
+import json
+import sys
+
+payload = json.load(sys.stdin)
+assert payload["paper_mode"] is True
+assert payload["data_state"] in {"ready", "stale", "partial", "unavailable"}
+assert isinstance(payload["sources"], list)
+'
+
 curl --fail --silent --show-error "$base_url/" | grep -q '<div id="root"></div>'
 
 docker compose exec -T api \
