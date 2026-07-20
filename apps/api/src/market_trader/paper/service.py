@@ -38,6 +38,9 @@ from market_trader.repositories.orders import (
 PREVIEW_TTL = timedelta(minutes=1)
 OPEN_ORDER_STATUSES = {"accepted", "working", "partially_filled", "timed_out"}
 OPEN_POSITION_STATUSES = {"open", "partially_closed"}
+OPEN_APPROVAL_STATUSES = {"approved"}
+WORKING_ORDER_STATUSES = {"accepted", "working", "partially_filled"}
+TIMED_OUT_ORDER_STATUSES = {"timed_out"}
 
 
 class PaperLifecycleError(ValueError):
@@ -55,6 +58,9 @@ class SubmittedPaperOrder:
 
 @dataclass(frozen=True)
 class PaperRecoveryState:
+    open_approvals: tuple[Approval, ...]
+    working_orders: tuple[OrderRecord, ...]
+    timed_out_orders: tuple[OrderRecord, ...]
     open_orders: tuple[OrderRecord, ...]
     open_positions: tuple[Position, ...]
 
@@ -224,9 +230,26 @@ class PaperLifecycleService:
         return updated
 
     def recover(self) -> PaperRecoveryState:
+        working_orders = self._repository.list_orders_by_status(WORKING_ORDER_STATUSES)
+        timed_out_orders = self._repository.list_orders_by_status(TIMED_OUT_ORDER_STATUSES)
         return PaperRecoveryState(
-            open_orders=self._repository.list_orders_by_status(OPEN_ORDER_STATUSES),
+            open_approvals=self._recoverable_approvals(),
+            working_orders=working_orders,
+            timed_out_orders=timed_out_orders,
+            open_orders=(*working_orders, *timed_out_orders),
             open_positions=self._repository.list_positions_by_status(OPEN_POSITION_STATUSES),
+        )
+
+    def _recoverable_approvals(self) -> tuple[Approval, ...]:
+        open_approvals = self._repository.list_approvals_by_status(OPEN_APPROVAL_STATUSES)
+        orders = self._repository.list_orders_by_status(
+            OPEN_ORDER_STATUSES | {"filled", "replaced", "canceled"}
+        )
+        submitted_approval_ids = {
+            order.approval_id for order in orders if order.approval_id is not None
+        }
+        return tuple(
+            approval for approval in open_approvals if approval.id not in submitted_approval_ids
         )
 
     def _create_approval(

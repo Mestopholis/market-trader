@@ -428,6 +428,16 @@ class TradeLifecycleRepository:
         ).all()
         return tuple(_fill_to_domain(record) for record in records)
 
+    def list_approvals_by_status(self, statuses: set[str]) -> tuple[Approval, ...]:
+        if not statuses:
+            return ()
+        records = self._session.scalars(
+            select(ApprovalORM)
+            .where(ApprovalORM.status.in_(statuses))
+            .order_by(ApprovalORM.updated_at, ApprovalORM.id)
+        ).all()
+        return tuple(_approval_to_domain(record) for record in records)
+
     def list_positions_by_status(self, statuses: set[str]) -> tuple[Position, ...]:
         if not statuses:
             return ()
