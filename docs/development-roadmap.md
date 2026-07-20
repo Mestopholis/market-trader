@@ -239,7 +239,12 @@ and [operator runbook](milestone-8-decision-support-dashboard.md).
 
 ## Milestone 9: Paper approval, execution, and position lifecycle
 
-**Next planning action:** Write and review the Milestone 9 specification and implementation plan before implementation begins.
+**Status:** Complete. See the
+[specification](plans/2026-07-20-milestone-9-paper-approval-execution-position-lifecycle-spec.md),
+[implementation plan](plans/2026-07-20-milestone-9-paper-approval-execution-position-lifecycle-implementation-plan.md),
+and [operator runbook](milestone-9-paper-approval-execution-position-lifecycle.md).
+
+**Next planning action:** Write and review the Milestone 10 reliability, recovery, observability, and security specification and implementation plan.
 
 **Objective:** Validate the complete user workflow using a deterministic simulated broker only.
 
@@ -367,7 +372,6 @@ Every milestone specification and implementation plan must identify:
 
 ## Next planning action
 
-Review and approve the Milestone 6 options-analysis and spread-construction
-specification, followed by its implementation plan. Milestone 6 must consume
-qualified scanner candidates and authoritative structured context without adding
-sizing, approval, broker-preview, or order behavior.
+Write and review the Milestone 10 reliability, recovery, observability, and
+security specification, followed by its implementation plan. Milestone 10 must
+harden the local paper system before any brokerage credentials are introduced.
