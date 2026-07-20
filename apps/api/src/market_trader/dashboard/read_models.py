@@ -3,10 +3,13 @@ from __future__ import annotations
 from market_trader.api.health import database_state
 from market_trader.config import get_settings
 from market_trader.dashboard.models import (
+    AnalyticsSummary,
     CandidateDetail,
     CandidateListResponse,
     DashboardOverview,
     DataState,
+    JournalEventListResponse,
+    RiskSummary,
     SourceSummary,
     WarningSummary,
 )
@@ -138,6 +141,97 @@ class DashboardReadModel:
 
     def candidate_detail(self, candidate_key: str) -> CandidateDetail | None:
         return None
+
+    def risk(self) -> RiskSummary:
+        as_of = self._clock.now()
+        return RiskSummary(
+            as_of=as_of,
+            data_state=DataState.UNAVAILABLE,
+            latest_decision_key=None,
+            status="unavailable",
+            checks=(),
+            active_locks=(),
+            tax_disclaimer="Informational estimate only; not tax advice.",
+            sources=(
+                SourceSummary(
+                    name="risk",
+                    state=DataState.UNAVAILABLE,
+                    version="risk-policy-v1",
+                    observed_at=as_of,
+                    stable_key="risk:latest",
+                ),
+            ),
+            warnings=(
+                WarningSummary(
+                    code="risk.unavailable",
+                    severity="warning",
+                    message="Risk decisions are unavailable",
+                    source_keys=("risk:latest",),
+                ),
+            ),
+        )
+
+    def journal(
+        self,
+        *,
+        limit: int,
+        cursor: str | None,
+        event_type: str | None,
+        correlation_id: str | None,
+    ) -> JournalEventListResponse:
+        as_of = self._clock.now()
+        return JournalEventListResponse(
+            as_of=as_of,
+            data_state=DataState.UNAVAILABLE,
+            events=(),
+            next_cursor=None,
+            sources=(
+                SourceSummary(
+                    name="journal",
+                    state=DataState.UNAVAILABLE,
+                    version="audit-v1",
+                    observed_at=as_of,
+                    stable_key="journal:latest",
+                ),
+            ),
+            warnings=(
+                WarningSummary(
+                    code="journal.unavailable",
+                    severity="warning",
+                    message="Journal events are unavailable",
+                    source_keys=("journal:latest",),
+                ),
+            ),
+        )
+
+    def analytics(self) -> AnalyticsSummary:
+        as_of = self._clock.now()
+        return AnalyticsSummary(
+            as_of=as_of,
+            data_state=DataState.UNAVAILABLE,
+            candidate_counts={},
+            strategy_mix={},
+            block_reasons={},
+            stale_counts={},
+            risk_status_distribution={},
+            sources=(
+                SourceSummary(
+                    name="analytics",
+                    state=DataState.UNAVAILABLE,
+                    version="dashboard-analytics-v1",
+                    observed_at=as_of,
+                    stable_key="analytics:local",
+                ),
+            ),
+            warnings=(
+                WarningSummary(
+                    code="analytics.unavailable",
+                    severity="warning",
+                    message="Dashboard analytics are unavailable",
+                    source_keys=("analytics:local",),
+                ),
+            ),
+        )
 
     def _market_state(self) -> MarketStateService:
         if self._market_state_service is not None:

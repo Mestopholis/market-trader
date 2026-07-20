@@ -215,6 +215,33 @@ class JournalEventSummary(DashboardModel):
         return self
 
 
+class JournalEventListResponse(DashboardModel):
+    as_of: datetime
+    data_state: DataState
+    events: tuple[JournalEventSummary, ...]
+    next_cursor: str | None
+    sources: tuple[SourceSummary, ...]
+    warnings: tuple[WarningSummary, ...]
+
+    @field_validator("as_of")
+    @classmethod
+    def _as_of_must_be_utc(cls, value: datetime) -> datetime:
+        return ensure_utc(value)
+
+    @field_validator("events")
+    @classmethod
+    def _sort_events(
+        cls,
+        value: tuple[JournalEventSummary, ...],
+    ) -> tuple[JournalEventSummary, ...]:
+        return tuple(sorted(value, key=lambda event: event.event_key))
+
+    @field_validator("sources")
+    @classmethod
+    def _sort_sources(cls, value: tuple[SourceSummary, ...]) -> tuple[SourceSummary, ...]:
+        return tuple(sorted(value, key=lambda source: source.name))
+
+
 class AnalyticsSummary(DashboardModel):
     as_of: datetime
     data_state: DataState
