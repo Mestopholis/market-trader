@@ -35,4 +35,8 @@ docker compose exec -T api \
   python -m market_trader.catalysts.cli validate \
   /app/fixtures/catalysts/company-and-earnings >/dev/null
 
+docker compose exec -T api \
+  python -m market_trader.options_analysis.cli validate \
+  /app/fixtures/options_analysis/bull-call-qualified >/dev/null
+
 printf 'Foundation verification passed at %s\n' "$base_url"

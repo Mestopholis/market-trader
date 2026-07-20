@@ -160,7 +160,12 @@ and [operator runbook](milestone-5-catalysts-events-news-and-filings.md).
 
 ## Milestone 6: Options analysis and spread construction
 
-**Status:** Next planning action.
+**Status:** Complete.
+
+**Completion:** Delivered by the approved
+[specification](plans/2026-07-19-milestone-6-options-analysis-and-spread-construction-spec.md),
+[implementation plan](plans/2026-07-19-milestone-6-options-analysis-and-spread-construction-implementation-plan.md),
+and [operator runbook](milestone-6-options-analysis-and-spread-construction.md).
 
 **Objective:** Analyze standard option contracts and construct defined-risk candidates without placing orders.
 

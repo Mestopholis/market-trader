@@ -87,7 +87,8 @@ def test_options_analysis_migration_creates_append_only_tables_at_head(tmp_path:
     command.upgrade(alembic_config(database_url), "head")
     engine = create_engine(database_url)
     try:
-        tables = set(engine.dialect.get_table_names(engine.connect()))
+        with engine.connect() as connection:
+            tables = set(engine.dialect.get_table_names(connection))
         assert {
             "options_analysis_runs",
             "option_contract_evaluations",
