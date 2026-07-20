@@ -6,6 +6,7 @@ import CandidateDetailPanel from './CandidateDetailPanel'
 import JournalPanel from './JournalPanel'
 import { dashboardNavigation, type DashboardView } from './navigation'
 import OverviewPanel from './OverviewPanel'
+import ApprovalQueue from '../paper/ApprovalQueue'
 import RiskPanel from './RiskPanel'
 import ScannerPanel from './ScannerPanel'
 
@@ -20,6 +21,7 @@ const defaultPanels: Record<DashboardView, ReactNode> = {
   risk: <RiskPanel />,
   journal: <JournalPanel />,
   analytics: <AnalyticsPanel />,
+  paperApprovals: <ApprovalQueue />,
 }
 
 export default function DashboardShell({ panels = {} }: DashboardShellProps) {
