@@ -1,0 +1,58 @@
+{
+  "case_name": "blocked by daily loss lock",
+  "content_hash": "8f806a661b2a099b3e033b6df98de979c969f0cdced3d8826d843eebc21bf6c3",
+  "expected_status": "blocked",
+  "fixture_key": "fixture:risk:blocked-lock",
+  "group": "portfolio-limits-and-locks",
+  "input": {
+    "account_equity": "10000.00",
+    "as_of": "2026-07-20T15:30:00+00:00",
+    "buying_power": {
+      "borrowed_buying_power": "0.00",
+      "observed_at": "2026-07-20T15:30:00+00:00",
+      "reserved_cash": "0.00",
+      "settled_cash": "10000.00",
+      "snapshot_digest": "bp-digest",
+      "unsettled_cash": "0.00"
+    },
+    "closed_trade_lots": [],
+    "daily_realized_loss": "0.00",
+    "decision_key": "risk:fixture:approved-share",
+    "locks": [
+      {
+        "activated_at": "2026-07-20T15:30:00+00:00",
+        "lock_id": "lock:daily-loss",
+        "lock_type": "daily_loss",
+        "reason": "daily loss limit hit",
+        "source_event_id": "event:daily-loss",
+        "status": "active"
+      }
+    ],
+    "open_tax_lots": [],
+    "open_trades_today": 0,
+    "peak_equity": "10000.00",
+    "policy_hash": "8b8bc6ee1a72c6cf192cadacb7420f4d9b18972cfce5d08bcac718594e50edbe",
+    "policy_version": "risk-policy-v1",
+    "positions": [
+      {
+        "correlation_group": "other",
+        "market_value": "100.00",
+        "maximum_loss": "5.00",
+        "position_key": "position:seed",
+        "quantity": 1,
+        "symbol": "MSFT"
+      }
+    ],
+    "proposal": {
+      "direction": "long",
+      "entry_price": "100.00",
+      "proposal_key": "proposal:shares:aapl",
+      "stop_price": "95.00",
+      "symbol": "AAPL"
+    },
+    "weekly_realized_loss": "0.00",
+    "working_orders": []
+  },
+  "policy_path": "config/risk/risk-policy-v1.json",
+  "schema_version": 1
+}

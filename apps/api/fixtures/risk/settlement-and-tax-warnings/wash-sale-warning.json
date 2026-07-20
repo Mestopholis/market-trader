@@ -1,0 +1,59 @@
+{
+  "case_name": "wash-sale warning",
+  "content_hash": "35a2f5a748638847b98bff928f7e7b08796fdc4b72347c9570456e5a67db91ae",
+  "expected_status": "warning",
+  "fixture_key": "fixture:risk:wash-sale-warning",
+  "group": "settlement-and-tax-warnings",
+  "input": {
+    "account_equity": "10000.00",
+    "as_of": "2026-07-20T15:30:00+00:00",
+    "buying_power": {
+      "borrowed_buying_power": "0.00",
+      "observed_at": "2026-07-20T15:30:00+00:00",
+      "reserved_cash": "0.00",
+      "settled_cash": "10000.00",
+      "snapshot_digest": "bp-digest",
+      "unsettled_cash": "0.00"
+    },
+    "closed_trade_lots": [
+      {
+        "account_taxable": true,
+        "closed_at": "2026-07-15T15:30:00+00:00",
+        "loss_amount": "10.00",
+        "lot_key": "closed:aapl-loss",
+        "quantity": 1,
+        "realized_pl": "-10.00",
+        "symbol": "AAPL"
+      }
+    ],
+    "daily_realized_loss": "0.00",
+    "decision_key": "risk:fixture:approved-share",
+    "locks": [],
+    "open_tax_lots": [],
+    "open_trades_today": 0,
+    "peak_equity": "10000.00",
+    "policy_hash": "8b8bc6ee1a72c6cf192cadacb7420f4d9b18972cfce5d08bcac718594e50edbe",
+    "policy_version": "risk-policy-v1",
+    "positions": [
+      {
+        "correlation_group": "other",
+        "market_value": "100.00",
+        "maximum_loss": "5.00",
+        "position_key": "position:seed",
+        "quantity": 1,
+        "symbol": "MSFT"
+      }
+    ],
+    "proposal": {
+      "direction": "long",
+      "entry_price": "100.00",
+      "proposal_key": "proposal:shares:aapl",
+      "stop_price": "95.00",
+      "symbol": "AAPL"
+    },
+    "weekly_realized_loss": "0.00",
+    "working_orders": []
+  },
+  "policy_path": "config/risk/risk-policy-v1.json",
+  "schema_version": 1
+}
