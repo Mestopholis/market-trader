@@ -2,14 +2,16 @@ import { type ReactNode, useState } from 'react'
 
 import DashboardErrorBoundary from './DashboardErrorBoundary'
 import { dashboardNavigation, type DashboardView } from './navigation'
+import OverviewPanel from './OverviewPanel'
+import ScannerPanel from './ScannerPanel'
 
 type DashboardShellProps = {
   panels?: Partial<Record<DashboardView, ReactNode>>
 }
 
 const defaultPanels: Record<DashboardView, ReactNode> = {
-  overview: <PlaceholderPanel title="Overview" />,
-  scanner: <PlaceholderPanel title="Scanner" />,
+  overview: <OverviewPanel />,
+  scanner: <ScannerPanel />,
   candidate: <PlaceholderPanel title="Candidate" />,
   risk: <PlaceholderPanel title="Risk" />,
   journal: <PlaceholderPanel title="Journal" />,
