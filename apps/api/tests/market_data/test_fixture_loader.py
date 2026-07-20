@@ -2,6 +2,7 @@ import hashlib
 import json
 import shutil
 from pathlib import Path
+from typing import Any, cast
 
 import pytest
 
@@ -31,7 +32,7 @@ def test_rejects_stream_hash_mismatch(tmp_path: Path) -> None:
 def test_rejects_event_count_mismatch(tmp_path: Path) -> None:
     dataset_path = copy_fixture(tmp_path)
     manifest = read_manifest(dataset_path)
-    manifest["streams"][0]["event_count"] = 3
+    _streams(manifest)[0]["event_count"] = 3
     write_manifest(dataset_path, manifest)
 
     with pytest.raises(FixtureValidationError, match="event count mismatch"):
@@ -101,7 +102,9 @@ def test_rejects_undeclared_stream(tmp_path: Path) -> None:
 def test_rejects_credential_like_payload_keys(tmp_path: Path) -> None:
     dataset_path = copy_fixture(tmp_path)
     events = read_events(dataset_path)
-    events[0]["payload"]["Authorization"] = "Bearer must-not-appear"
+    payload = events[0]["payload"]
+    assert isinstance(payload, dict)
+    payload["Authorization"] = "Bearer must-not-appear"
     rewrite_stream(dataset_path, [json.dumps(event, separators=(",", ":")) for event in events])
 
     with pytest.raises(FixtureValidationError) as error:
@@ -118,7 +121,10 @@ def copy_fixture(tmp_path: Path) -> Path:
 
 
 def read_manifest(dataset_path: Path) -> dict[str, object]:
-    return json.loads((dataset_path / "manifest.json").read_text(encoding="utf-8"))
+    return cast(
+        dict[str, object],
+        json.loads((dataset_path / "manifest.json").read_text(encoding="utf-8")),
+    )
 
 
 def write_manifest(dataset_path: Path, manifest: dict[str, object]) -> None:
@@ -139,6 +145,13 @@ def rewrite_stream(dataset_path: Path, lines: list[str]) -> None:
     content = "\n".join(lines) + "\n"
     (dataset_path / "quotes.ndjson").write_text(content, encoding="utf-8")
     manifest = read_manifest(dataset_path)
-    manifest["streams"][0]["sha256"] = hashlib.sha256(content.encode("utf-8")).hexdigest()
-    manifest["streams"][0]["event_count"] = len(lines)
+    stream = _streams(manifest)[0]
+    stream["sha256"] = hashlib.sha256(content.encode("utf-8")).hexdigest()
+    stream["event_count"] = len(lines)
     write_manifest(dataset_path, manifest)
+
+
+def _streams(manifest: dict[str, object]) -> list[dict[str, Any]]:
+    streams = manifest["streams"]
+    assert isinstance(streams, list)
+    return cast(list[dict[str, Any]], streams)
