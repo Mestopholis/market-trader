@@ -245,6 +245,28 @@ dd { min-width: 0; margin: 0; overflow-wrap: anywhere; }
 }
 .paper-action-error { color: #ffb4ad; }
 .paper-preview-facts { margin-top: 0.75rem; }
+.paper-order-controls {
+  display: grid;
+  grid-template-columns: minmax(10rem, 1fr);
+  gap: 0.5rem;
+}
+.paper-position-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+.paper-position-row {
+  min-width: 0;
+  padding: 1rem 0;
+  border-top: 1px solid #3b4248;
+}
+.paper-recovery-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
 .paper-token-list {
   display: flex;
   flex-wrap: wrap;
