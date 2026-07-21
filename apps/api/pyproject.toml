@@ -44,3 +44,8 @@ select = ["E", "F", "I", "B", "UP", "SIM"]
 python_version = "3.12"
 strict = true
 packages = ["market_trader"]
+
+[tool.market_trader.security]
+forbidden_capability_scan = true
+openapi_scan = true
+container_config_scan = true

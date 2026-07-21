@@ -1,14 +1,64 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+root_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 base_url="${MARKET_TRADER_URL:-http://127.0.0.1:8080}"
+
+"$root_dir/scripts/security-check.sh"
+
 health="$(curl --fail --silent --show-error "${base_url}/api/health")"
 
 test "$(printf '%s' "$health" | python3 -c 'import json,sys; print(json.load(sys.stdin)["trading_mode"])')" = "paper"
 database="$(printf '%s' "$health" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("database", ""))')"
 test -z "$database" || test "$database" = "ok"
 
-market_state="$(curl --fail --silent --show-error "${base_url}/api/market-state")"
+auth_username="${MARKET_TRADER_AUTH_USERNAME:-${MARKET_TRADER_USERNAME:-}}"
+auth_password="${MARKET_TRADER_AUTH_PASSWORD:-${MARKET_TRADER_PASSWORD:-}}"
+if [ -z "$auth_username" ] || [ -z "$auth_password" ]; then
+  printf 'MARKET_TRADER_AUTH_USERNAME and MARKET_TRADER_AUTH_PASSWORD are required for protected endpoint verification.\n' >&2
+  exit 1
+fi
+
+login_headers="$(mktemp)"
+trap 'rm -f "$login_headers"' EXIT
+login_payload="$(MARKET_TRADER_LOGIN_USERNAME="$auth_username" MARKET_TRADER_LOGIN_PASSWORD="$auth_password" python3 - <<'PY'
+import json
+import os
+
+print(json.dumps({
+    "username": os.environ["MARKET_TRADER_LOGIN_USERNAME"],
+    "password": os.environ["MARKET_TRADER_LOGIN_PASSWORD"],
+}))
+PY
+)"
+
+curl --fail --silent --show-error \
+  -D "$login_headers" \
+  -o /dev/null \
+  -H 'Content-Type: application/json' \
+  --data "$login_payload" \
+  "${base_url}/api/auth/login"
+
+session_cookie="$(python3 - "$login_headers" <<'PY'
+from pathlib import Path
+import sys
+
+for line in Path(sys.argv[1]).read_text(encoding="utf-8").splitlines():
+    if not line.lower().startswith("set-cookie:"):
+        continue
+    cookie = line.split(":", 1)[1].strip().split(";", 1)[0]
+    if cookie.startswith("market_trader_session="):
+        print(cookie)
+        raise SystemExit(0)
+raise SystemExit("login did not set market_trader_session")
+PY
+)"
+
+auth_curl() {
+  curl --fail --silent --show-error -H "Cookie: $session_cookie" "$1"
+}
+
+market_state="$(auth_curl "${base_url}/api/market-state")"
 printf '%s' "$market_state" | python3 -c '
 import json
 import sys
@@ -21,7 +71,7 @@ assert payload["calendar_timezone"] == "America/New_York"
 assert payload["display_timezone"] == "America/Chicago"
 '
 
-dashboard_overview="$(curl --fail --silent --show-error "${base_url}/api/dashboard/overview")"
+dashboard_overview="$(auth_curl "${base_url}/api/dashboard/overview")"
 printf '%s' "$dashboard_overview" | python3 -c '
 import json
 import sys
@@ -34,32 +84,39 @@ assert isinstance(payload["sources"], list)
 
 curl --fail --silent --show-error "$base_url/" | grep -q '<div id="root"></div>'
 
-docker compose exec -T api \
-  python -m market_trader.market_data.cli validate \
-  /app/fixtures/market_data/regular-session >/dev/null
+if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
+  fixture_root=/app/fixtures
+  run_api_python() {
+    docker compose exec -T api python "$@"
+  }
+else
+  fixture_root=fixtures
+  run_api_python() {
+    (cd "$root_dir/apps/api" && ./.venv/bin/python "$@")
+  }
+fi
 
-docker compose exec -T api \
-  python -m market_trader.scanner.cli validate \
-  /app/fixtures/scanner/bullish >/dev/null
+run_api_python -m market_trader.market_data.cli validate \
+  "$fixture_root/market_data/regular-session" >/dev/null
 
-docker compose exec -T api \
-  python -m market_trader.catalysts.cli validate \
-  /app/fixtures/catalysts/company-and-earnings >/dev/null
+run_api_python -m market_trader.scanner.cli validate \
+  "$fixture_root/scanner/bullish" >/dev/null
 
-docker compose exec -T api \
-  python -m market_trader.options_analysis.cli validate \
-  /app/fixtures/options_analysis/bull-call-qualified >/dev/null
+run_api_python -m market_trader.catalysts.cli validate \
+  "$fixture_root/catalysts/company-and-earnings" >/dev/null
 
-docker compose exec -T api \
-  python -m market_trader.risk.cli validate \
-  /app/fixtures/risk/share-sizing-boundaries/approved-share.json >/dev/null
+run_api_python -m market_trader.options_analysis.cli validate \
+  "$fixture_root/options_analysis/bull-call-qualified" >/dev/null
 
-docker compose exec -T api \
-  python - <<'PY'
+run_api_python -m market_trader.risk.cli validate \
+  "$fixture_root/risk/share-sizing-boundaries/approved-share.json" >/dev/null
+
+run_api_python - "$fixture_root/paper_lifecycle" <<'PY'
 import json
 from pathlib import Path
+import sys
 
-root = Path("/app/fixtures/paper_lifecycle")
+root = Path(sys.argv[1])
 required = {
     "success",
     "partial-fill",

@@ -22,12 +22,13 @@ from tests.db_helpers import migrated_engine
 
 AS_OF = datetime(2026, 7, 20, 15, 30, tzinfo=UTC)
 FORBIDDEN_TERMS = ("schwab", "live_mode", "api_key", "secret", "password")
+OPENAPI_FORBIDDEN_TERMS = ("schwab", "live_mode", "api_key", "secret")
 
 
 def test_paper_api_openapi_excludes_live_broker_and_credential_contracts() -> None:
     openapi = TestClient(app).get("/api/openapi.json").text.lower()
 
-    for forbidden in (*FORBIDDEN_TERMS, "broker_reference"):
+    for forbidden in (*OPENAPI_FORBIDDEN_TERMS, "broker_reference"):
         assert forbidden not in openapi
 
 

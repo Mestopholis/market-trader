@@ -2,7 +2,6 @@ from collections.abc import Iterator
 from datetime import UTC, date, datetime
 
 import pytest
-from fastapi.testclient import TestClient
 
 from market_trader.api.market_state import get_market_state_service
 from market_trader.domain.time import FrozenClock
@@ -11,6 +10,7 @@ from market_trader.market_calendar.adapter import XNYSCalendarAdapter
 from market_trader.market_calendar.models import CalendarUnavailableError
 from market_trader.market_calendar.policy import EntryWindowPolicy
 from market_trader.market_calendar.service import MarketStateService
+from tests.auth_helpers import authenticated_client
 
 
 @pytest.fixture(autouse=True)
@@ -29,12 +29,12 @@ def service_at(observed_at: datetime) -> MarketStateService:
     )
 
 
-def test_market_state_returns_exact_read_only_contract() -> None:
+def test_market_state_returns_exact_read_only_contract(monkeypatch: pytest.MonkeyPatch) -> None:
     app.dependency_overrides[get_market_state_service] = lambda: service_at(
         datetime(2026, 7, 20, 15, 30, tzinfo=UTC)
     )
 
-    response = TestClient(app).get("/api/market-state")
+    response = authenticated_client(monkeypatch, app).get("/api/market-state")
 
     assert response.status_code == 200
     assert response.headers["cache-control"] == "no-store"
@@ -59,12 +59,12 @@ def test_market_state_returns_exact_read_only_contract() -> None:
     }
 
 
-def test_weekend_response_has_no_current_session() -> None:
+def test_weekend_response_has_no_current_session(monkeypatch: pytest.MonkeyPatch) -> None:
     app.dependency_overrides[get_market_state_service] = lambda: service_at(
         datetime(2026, 7, 18, 15, 0, tzinfo=UTC)
     )
 
-    body = TestClient(app).get("/api/market-state").json()
+    body = authenticated_client(monkeypatch, app).get("/api/market-state").json()
 
     assert body["market_state"] == "closed"
     assert body["entry_allowed"] is False
@@ -79,10 +79,12 @@ class UnavailableService:
         raise CalendarUnavailableError("internal dependency detail")
 
 
-def test_calendar_failure_returns_structured_fail_closed_response() -> None:
+def test_calendar_failure_returns_structured_fail_closed_response(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     app.dependency_overrides[get_market_state_service] = lambda: UnavailableService()
 
-    response = TestClient(app).get("/api/market-state")
+    response = authenticated_client(monkeypatch, app).get("/api/market-state")
 
     assert response.status_code == 503
     assert response.headers["cache-control"] == "no-store"
@@ -94,13 +96,16 @@ def test_calendar_failure_returns_structured_fail_closed_response() -> None:
     assert "internal dependency detail" not in response.text
 
 
-def test_calendar_failure_during_service_construction_is_structured() -> None:
+def test_calendar_failure_during_service_construction_is_structured(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     def unavailable_dependency() -> None:
         raise CalendarUnavailableError("calendar initialization detail")
 
     app.dependency_overrides[get_market_state_service] = unavailable_dependency
 
-    response = TestClient(app, raise_server_exceptions=False).get("/api/market-state")
+    client = authenticated_client(monkeypatch, app)
+    response = client.get("/api/market-state")
 
     assert response.status_code == 503
     assert response.headers["cache-control"] == "no-store"

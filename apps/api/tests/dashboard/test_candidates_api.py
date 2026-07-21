@@ -2,7 +2,6 @@ from collections.abc import Iterator
 from datetime import UTC, datetime
 
 import pytest
-from fastapi.testclient import TestClient
 
 from market_trader.api.dashboard import get_dashboard_read_model
 from market_trader.dashboard.models import (
@@ -14,6 +13,7 @@ from market_trader.dashboard.models import (
     WarningSummary,
 )
 from market_trader.main import app
+from tests.auth_helpers import authenticated_client
 
 AS_OF = datetime(2026, 7, 20, 15, 30, tzinfo=UTC)
 
@@ -131,11 +131,15 @@ def clear_dependency_overrides() -> Iterator[None]:
     app.dependency_overrides.clear()
 
 
-def test_dashboard_candidates_returns_sorted_bounded_list() -> None:
+def test_dashboard_candidates_returns_sorted_bounded_list(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     read_model = FakeCandidateReadModel()
     app.dependency_overrides[get_dashboard_read_model] = lambda: read_model
 
-    response = TestClient(app).get("/api/dashboard/candidates?limit=2&cursor=cursor:start")
+    response = authenticated_client(monkeypatch, app).get(
+        "/api/dashboard/candidates?limit=2&cursor=cursor:start"
+    )
 
     assert response.status_code == 200
     assert response.headers["cache-control"] == "no-store"
@@ -150,18 +154,24 @@ def test_dashboard_candidates_returns_sorted_bounded_list() -> None:
     assert body["next_cursor"] == "cursor:next"
 
 
-def test_dashboard_candidates_rejects_invalid_limit_and_cursor() -> None:
-    client = TestClient(app)
+def test_dashboard_candidates_rejects_invalid_limit_and_cursor(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = authenticated_client(monkeypatch, app)
 
     assert client.get("/api/dashboard/candidates?limit=0").status_code == 422
     assert client.get("/api/dashboard/candidates?limit=101").status_code == 422
     assert client.get("/api/dashboard/candidates?cursor=bad cursor").status_code == 422
 
 
-def test_dashboard_candidate_detail_traces_downstream_sections() -> None:
+def test_dashboard_candidate_detail_traces_downstream_sections(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     app.dependency_overrides[get_dashboard_read_model] = lambda: FakeCandidateReadModel()
 
-    response = TestClient(app).get("/api/dashboard/candidates/candidate:aapl:2026-07-20")
+    response = authenticated_client(monkeypatch, app).get(
+        "/api/dashboard/candidates/candidate:aapl:2026-07-20"
+    )
 
     assert response.status_code == 200
     assert response.headers["cache-control"] == "no-store"
@@ -175,10 +185,14 @@ def test_dashboard_candidate_detail_traces_downstream_sections() -> None:
     assert "order_payload" not in response.text
 
 
-def test_dashboard_candidate_detail_returns_safe_missing_state() -> None:
+def test_dashboard_candidate_detail_returns_safe_missing_state(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     app.dependency_overrides[get_dashboard_read_model] = lambda: FakeCandidateReadModel()
 
-    response = TestClient(app).get("/api/dashboard/candidates/candidate:missing")
+    response = authenticated_client(monkeypatch, app).get(
+        "/api/dashboard/candidates/candidate:missing"
+    )
 
     assert response.status_code == 404
     assert response.json() == {"detail": "candidate_not_found"}

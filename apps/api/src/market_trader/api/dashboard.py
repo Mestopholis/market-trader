@@ -2,6 +2,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 
+from market_trader.api.auth import require_authenticated_session
 from market_trader.dashboard.models import (
     AnalyticsSummary,
     CandidateDetail,
@@ -12,7 +13,7 @@ from market_trader.dashboard.models import (
 )
 from market_trader.dashboard.read_models import DashboardReadModel
 
-router = APIRouter(tags=["dashboard"])
+router = APIRouter(tags=["dashboard"], dependencies=[Depends(require_authenticated_session)])
 
 Cursor = Annotated[str | None, Query(pattern=r"^[A-Za-z0-9:_-]+$")]
 EventFilter = Annotated[str | None, Query(pattern=r"^[A-Za-z0-9:_.-]+$")]

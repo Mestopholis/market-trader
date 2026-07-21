@@ -15,6 +15,7 @@ from market_trader.dashboard.models import (
     WarningSummary,
 )
 from market_trader.main import app
+from tests.auth_helpers import authenticated_client
 
 AS_OF = datetime(2026, 7, 20, 15, 30, tzinfo=UTC)
 
@@ -130,10 +131,12 @@ def clear_dependency_overrides() -> Iterator[None]:
     app.dependency_overrides.clear()
 
 
-def test_dashboard_risk_returns_checks_locks_and_tax_disclaimer() -> None:
+def test_dashboard_risk_returns_checks_locks_and_tax_disclaimer(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     app.dependency_overrides[get_dashboard_read_model] = lambda: FakeRiskJournalAnalyticsReadModel()
 
-    response = TestClient(app).get("/api/dashboard/risk")
+    response = authenticated_client(monkeypatch, app).get("/api/dashboard/risk")
 
     assert response.status_code == 200
     assert response.headers["cache-control"] == "no-store"
@@ -146,11 +149,13 @@ def test_dashboard_risk_returns_checks_locks_and_tax_disclaimer() -> None:
     assert "order_payload" not in response.text
 
 
-def test_dashboard_journal_supports_filters_and_redacted_bounded_events() -> None:
+def test_dashboard_journal_supports_filters_and_redacted_bounded_events(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     read_model = FakeRiskJournalAnalyticsReadModel()
     app.dependency_overrides[get_dashboard_read_model] = lambda: read_model
 
-    response = TestClient(app).get(
+    response = authenticated_client(monkeypatch, app).get(
         "/api/dashboard/journal"
         "?limit=2&cursor=journal:start"
         "&event_type=risk_decision.recorded&correlation_id=corr:1"
@@ -169,8 +174,10 @@ def test_dashboard_journal_supports_filters_and_redacted_bounded_events() -> Non
     assert "secret" not in response.text
 
 
-def test_dashboard_journal_rejects_invalid_pagination_and_filters() -> None:
-    client = TestClient(app)
+def test_dashboard_journal_rejects_invalid_pagination_and_filters(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = authenticated_client(monkeypatch, app)
 
     assert client.get("/api/dashboard/journal?limit=0").status_code == 422
     assert client.get("/api/dashboard/journal?limit=101").status_code == 422
@@ -178,10 +185,12 @@ def test_dashboard_journal_rejects_invalid_pagination_and_filters() -> None:
     assert client.get("/api/dashboard/journal?event_type=bad event").status_code == 422
 
 
-def test_dashboard_analytics_returns_local_deterministic_counts() -> None:
+def test_dashboard_analytics_returns_local_deterministic_counts(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     app.dependency_overrides[get_dashboard_read_model] = lambda: FakeRiskJournalAnalyticsReadModel()
 
-    response = TestClient(app).get("/api/dashboard/analytics")
+    response = authenticated_client(monkeypatch, app).get("/api/dashboard/analytics")
 
     assert response.status_code == 200
     assert response.headers["cache-control"] == "no-store"

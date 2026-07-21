@@ -9,6 +9,7 @@ export type DashboardView =
   | 'paperOrders'
   | 'paperPositions'
   | 'paperRecovery'
+  | 'operations'
 
 export type DashboardNavItem = {
   id: DashboardView
@@ -26,4 +27,5 @@ export const dashboardNavigation: DashboardNavItem[] = [
   { id: 'paperOrders', label: 'Paper Orders' },
   { id: 'paperPositions', label: 'Paper Positions' },
   { id: 'paperRecovery', label: 'Paper Recovery' },
+  { id: 'operations', label: 'Operations' },
 ]

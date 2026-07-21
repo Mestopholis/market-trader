@@ -44,6 +44,7 @@ const approvalCards: PaperApprovalCardListResponse = {
 
 afterEach(() => {
   vi.restoreAllMocks()
+  document.cookie = 'market_trader_csrf=; Max-Age=0; path=/'
 })
 
 function jsonResponse(body: unknown, status = 200): Response {
@@ -78,10 +79,32 @@ test('fetches approval cards, orders, positions, and recovery with no-store head
   })
 
   expect(fetchMock.mock.calls.map((call) => call[1])).toEqual([
-    { headers: { Accept: 'application/json' }, cache: 'no-store', signal: undefined },
-    { headers: { Accept: 'application/json' }, cache: 'no-store', signal: undefined },
-    { headers: { Accept: 'application/json' }, cache: 'no-store', signal: undefined },
-    { method: 'POST', headers: { Accept: 'application/json' }, cache: 'no-store', signal: undefined },
+    {
+      headers: { Accept: 'application/json' },
+      cache: 'no-store',
+      credentials: 'same-origin',
+      signal: undefined,
+    },
+    {
+      headers: { Accept: 'application/json' },
+      cache: 'no-store',
+      credentials: 'same-origin',
+      signal: undefined,
+    },
+    {
+      headers: { Accept: 'application/json' },
+      cache: 'no-store',
+      credentials: 'same-origin',
+      signal: undefined,
+    },
+    {
+      method: 'POST',
+      headers: { Accept: 'application/json', 'X-CSRF-Token': '' },
+      body: undefined,
+      cache: 'no-store',
+      credentials: 'same-origin',
+      signal: undefined,
+    },
   ])
 })
 
@@ -97,21 +120,40 @@ test('posts paper approval actions with encoded keys and JSON payloads', async (
   expect(fetchMock.mock.calls).toEqual([
     [
       '/api/paper/approval-cards/card%3Aa/approve',
-      { method: 'POST', headers: { Accept: 'application/json' }, cache: 'no-store', signal: undefined },
+      {
+        method: 'POST',
+        headers: { Accept: 'application/json', 'X-CSRF-Token': '' },
+        body: undefined,
+        cache: 'no-store',
+        credentials: 'same-origin',
+        signal: undefined,
+      },
     ],
     [
       '/api/paper/approval-cards/card%3Aa/modify',
       {
         method: 'POST',
-        headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+        headers: {
+          Accept: 'application/json',
+          'X-CSRF-Token': '',
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({ quantity: 1, limit_price: '1.15' }),
         cache: 'no-store',
+        credentials: 'same-origin',
         signal: undefined,
       },
     ],
     [
       '/api/paper/approval-cards/card%3Aa/reject',
-      { method: 'POST', headers: { Accept: 'application/json' }, cache: 'no-store', signal: undefined },
+      {
+        method: 'POST',
+        headers: { Accept: 'application/json', 'X-CSRF-Token': '' },
+        body: undefined,
+        cache: 'no-store',
+        credentials: 'same-origin',
+        signal: undefined,
+      },
     ],
   ])
 })

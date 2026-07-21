@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 
 import { fetchPaperPositions } from '../api'
 import { formatDashboardTime, labelize } from '../dashboard/formatting'
+import { usePaperActionBlock } from '../dashboard/SystemReadinessHooks'
 import type { PaperPosition, PaperPositionsResponse } from './types'
 
 type LoadState =
@@ -10,6 +11,7 @@ type LoadState =
   | { kind: 'error' }
 
 export default function PaperPositionsPanel() {
+  const actionBlock = usePaperActionBlock()
   const [state, setState] = useState<LoadState>({ kind: 'loading' })
 
   useEffect(() => {
@@ -42,6 +44,8 @@ export default function PaperPositionsPanel() {
         <span className="state-chip">{state.positions.positions.length} open</span>
       </div>
 
+      {actionBlock && <p className="paper-action-error">Paper actions blocked: {actionBlock.code}</p>}
+
       {state.positions.positions.length === 0 ? (
         <p className="muted">No paper positions are open.</p>
       ) : (
@@ -63,6 +67,13 @@ export default function PaperPositionsPanel() {
                 <dt>Risk decision</dt><dd>{position.risk_decision_key}</dd>
               </dl>
               <PaperExitRules position={position} />
+              <button
+                type="button"
+                className="paper-action-button"
+                disabled={actionBlock !== null}
+              >
+                Exit paper position {position.position_key}
+              </button>
               {position.status === 'assigned' && <p className="muted">Assignment scenario warning</p>}
             </article>
           ))}

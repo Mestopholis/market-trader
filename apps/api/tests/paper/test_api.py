@@ -8,6 +8,7 @@ from types import SimpleNamespace
 import pytest
 from fastapi.testclient import TestClient
 
+from market_trader.api.auth import require_authenticated_session, require_csrf_protection
 from market_trader.api.paper import get_paper_lifecycle_service
 from market_trader.main import app
 from market_trader.paper.models import (
@@ -19,6 +20,7 @@ from market_trader.paper.models import (
     PaperPreview,
 )
 from market_trader.paper.service import PaperLifecycleError
+from market_trader.security.session import SessionClaims
 
 AS_OF = datetime(2026, 7, 20, 15, 30, tzinfo=UTC)
 
@@ -33,7 +35,7 @@ def clear_dependency_overrides() -> Iterator[None]:
 def test_paper_routes_return_no_store_and_paper_mode_fields() -> None:
     fake = FakePaperService()
     app.dependency_overrides[get_paper_lifecycle_service] = lambda: fake
-    client = TestClient(app)
+    client = _authorized_client()
 
     cards = client.get("/api/paper/approval-cards")
     approved = client.post("/api/paper/approval-cards/card-a/approve")
@@ -60,7 +62,7 @@ def test_paper_routes_return_no_store_and_paper_mode_fields() -> None:
 def test_paper_action_routes_and_validation_errors() -> None:
     fake = FakePaperService()
     app.dependency_overrides[get_paper_lifecycle_service] = lambda: fake
-    client = TestClient(app)
+    client = _authorized_client()
 
     modified = client.post(
         "/api/paper/approval-cards/card-a/modify",
@@ -86,6 +88,15 @@ def test_paper_action_routes_and_validation_errors() -> None:
     assert bad_payload.status_code == 422
     assert stale.status_code == 409
     assert stale.json()["detail"] == "stale_preview"
+
+
+def _authorized_client() -> TestClient:
+    app.dependency_overrides[require_authenticated_session] = lambda: SessionClaims(
+        username="operator",
+        issued_at=AS_OF,
+    )
+    app.dependency_overrides[require_csrf_protection] = lambda: None
+    return TestClient(app)
 
 
 def test_paper_openapi_excludes_live_and_external_broker_contracts() -> None:

@@ -45,6 +45,7 @@ test('fetches dashboard overview with no-store cache headers', async () => {
   expect(fetchMock).toHaveBeenCalledWith('/api/dashboard/overview', {
     headers: { Accept: 'application/json' },
     cache: 'no-store',
+    credentials: 'same-origin',
     signal: undefined,
   })
 })
@@ -68,6 +69,7 @@ test('encodes candidate pagination parameters', async () => {
     {
       headers: { Accept: 'application/json' },
       cache: 'no-store',
+      credentials: 'same-origin',
       signal: undefined,
     },
   )
@@ -97,6 +99,7 @@ test('encodes journal filters and pagination parameters', async () => {
     {
       headers: { Accept: 'application/json' },
       cache: 'no-store',
+      credentials: 'same-origin',
       signal: undefined,
     },
   )

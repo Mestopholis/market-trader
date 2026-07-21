@@ -23,6 +23,10 @@ class Settings(BaseSettings):
     app_version: str = "0.1.0"
     database_url: str = "sqlite:///./data/market_trader.db"
     display_timezone: str = "America/Chicago"
+    auth_username: str | None = None
+    auth_password_hash: str | None = None
+    session_secret: str | None = None
+    session_ttl_seconds: int = 3600
 
     @model_validator(mode="after")
     def validate_safety_settings(self) -> "Settings":
