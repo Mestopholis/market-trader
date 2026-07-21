@@ -84,32 +84,39 @@ assert isinstance(payload["sources"], list)
 
 curl --fail --silent --show-error "$base_url/" | grep -q '<div id="root"></div>'
 
-docker compose exec -T api \
-  python -m market_trader.market_data.cli validate \
-  /app/fixtures/market_data/regular-session >/dev/null
+if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
+  fixture_root=/app/fixtures
+  run_api_python() {
+    docker compose exec -T api python "$@"
+  }
+else
+  fixture_root=fixtures
+  run_api_python() {
+    (cd "$root_dir/apps/api" && ./.venv/bin/python "$@")
+  }
+fi
 
-docker compose exec -T api \
-  python -m market_trader.scanner.cli validate \
-  /app/fixtures/scanner/bullish >/dev/null
+run_api_python -m market_trader.market_data.cli validate \
+  "$fixture_root/market_data/regular-session" >/dev/null
 
-docker compose exec -T api \
-  python -m market_trader.catalysts.cli validate \
-  /app/fixtures/catalysts/company-and-earnings >/dev/null
+run_api_python -m market_trader.scanner.cli validate \
+  "$fixture_root/scanner/bullish" >/dev/null
 
-docker compose exec -T api \
-  python -m market_trader.options_analysis.cli validate \
-  /app/fixtures/options_analysis/bull-call-qualified >/dev/null
+run_api_python -m market_trader.catalysts.cli validate \
+  "$fixture_root/catalysts/company-and-earnings" >/dev/null
 
-docker compose exec -T api \
-  python -m market_trader.risk.cli validate \
-  /app/fixtures/risk/share-sizing-boundaries/approved-share.json >/dev/null
+run_api_python -m market_trader.options_analysis.cli validate \
+  "$fixture_root/options_analysis/bull-call-qualified" >/dev/null
 
-docker compose exec -T api \
-  python - <<'PY'
+run_api_python -m market_trader.risk.cli validate \
+  "$fixture_root/risk/share-sizing-boundaries/approved-share.json" >/dev/null
+
+run_api_python - "$fixture_root/paper_lifecycle" <<'PY'
 import json
 from pathlib import Path
+import sys
 
-root = Path("/app/fixtures/paper_lifecycle")
+root = Path(sys.argv[1])
 required = {
     "success",
     "partial-fill",

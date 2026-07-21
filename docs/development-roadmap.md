@@ -244,7 +244,7 @@ and [operator runbook](milestone-8-decision-support-dashboard.md).
 [implementation plan](plans/2026-07-20-milestone-9-paper-approval-execution-position-lifecycle-implementation-plan.md),
 and [operator runbook](milestone-9-paper-approval-execution-position-lifecycle.md).
 
-**Next planning action:** Review and approve the Milestone 10 reliability, recovery, observability, and security specification and implementation plan.
+**Next planning action:** Completed by Milestone 10.
 
 **Objective:** Validate the complete user workflow using a deterministic simulated broker only.
 
@@ -265,10 +265,10 @@ and [operator runbook](milestone-9-paper-approval-execution-position-lifecycle.m
 
 ## Milestone 10: Reliability, recovery, observability, and security
 
-**Status:** Draft specification and implementation plan ready for review. See the
-[specification](plans/2026-07-21-milestone-10-reliability-recovery-observability-security-spec.md)
-and
-[implementation plan](plans/2026-07-21-milestone-10-reliability-recovery-observability-security-implementation-plan.md).
+**Status:** Complete. See the
+[specification](plans/2026-07-21-milestone-10-reliability-recovery-observability-security-spec.md),
+[implementation plan](plans/2026-07-21-milestone-10-reliability-recovery-observability-security-implementation-plan.md),
+and [operator runbook](milestone-10-reliability-recovery-observability-security.md).
 
 **Objective:** Harden the local paper system before any brokerage credentials are introduced.
 
@@ -377,6 +377,6 @@ Every milestone specification and implementation plan must identify:
 
 ## Next planning action
 
-Review and approve the Milestone 10 reliability, recovery, observability, and
-security specification and implementation plan. Milestone 10 must harden the
-local paper system before any brokerage credentials are introduced.
+Review and approve the Milestone 11 Schwab OAuth and read-only integration
+specification and implementation plan. Milestone 11 must keep every order path
+disabled while adding read-only broker data access.

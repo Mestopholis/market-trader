@@ -12,6 +12,7 @@ from market_trader.dashboard.models import (
     WarningSummary,
 )
 from market_trader.main import app
+from tests.auth_helpers import authenticated_client
 
 AS_OF = datetime(2026, 7, 20, 15, 30, tzinfo=UTC)
 
@@ -33,7 +34,7 @@ def clear_dependency_overrides() -> Iterator[None]:
     app.dependency_overrides.clear()
 
 
-def test_dashboard_overview_returns_read_only_contract() -> None:
+def test_dashboard_overview_returns_read_only_contract(monkeypatch: pytest.MonkeyPatch) -> None:
     read_model = FakeDashboardReadModel(
         DashboardOverview(
             as_of=AS_OF,
@@ -69,7 +70,7 @@ def test_dashboard_overview_returns_read_only_contract() -> None:
     )
     app.dependency_overrides[get_dashboard_read_model] = lambda: read_model
 
-    response = TestClient(app).get("/api/dashboard/overview")
+    response = authenticated_client(monkeypatch, app).get("/api/dashboard/overview")
 
     assert response.status_code == 200
     assert response.headers["cache-control"] == "no-store"
@@ -109,8 +110,8 @@ def test_dashboard_overview_returns_read_only_contract() -> None:
     assert read_model.overview_calls == 1
 
 
-def test_dashboard_overview_default_empty_state_is_safe() -> None:
-    response = TestClient(app).get("/api/dashboard/overview")
+def test_dashboard_overview_default_empty_state_is_safe(monkeypatch: pytest.MonkeyPatch) -> None:
+    response = authenticated_client(monkeypatch, app).get("/api/dashboard/overview")
 
     assert response.status_code == 200
     body = response.json()
