@@ -74,11 +74,11 @@
 
 **Steps:**
 
-- [ ] Write failing tests proving API requests emit structured records with timestamp, level, event, component, request id, correlation id, path template, status, and latency.
-- [ ] Add tests proving exceptions return safe error codes, correlation ids, and redacted summaries without raw exception text or secret values.
-- [ ] Run RED: `.venv/bin/pytest tests/reliability/test_structured_logging.py tests/reliability/test_safe_errors.py -q`.
-- [ ] Add FastAPI middleware and exception handling for structured logs and safe error responses.
-- [ ] Run GREEN: `.venv/bin/ruff check src/market_trader/observability src/market_trader/main.py tests/reliability/test_structured_logging.py tests/reliability/test_safe_errors.py && .venv/bin/mypy src/market_trader/observability src/market_trader/main.py tests/reliability/test_structured_logging.py tests/reliability/test_safe_errors.py && .venv/bin/pytest tests/reliability/test_structured_logging.py tests/reliability/test_safe_errors.py -q`.
+- [x] Write failing tests proving API requests emit structured records with timestamp, level, event, component, request id, correlation id, path template, status, and latency.
+- [x] Add tests proving exceptions return safe error codes, correlation ids, and redacted summaries without raw exception text or secret values.
+- [x] Run RED: `.venv/bin/pytest tests/reliability/test_structured_logging.py tests/reliability/test_safe_errors.py -q`.
+- [x] Add FastAPI middleware and exception handling for structured logs and safe error responses.
+- [x] Run GREEN: `.venv/bin/ruff check src/market_trader/observability src/market_trader/main.py tests/reliability/test_structured_logging.py tests/reliability/test_safe_errors.py && .venv/bin/mypy src/market_trader/observability src/market_trader/main.py tests/reliability/test_structured_logging.py tests/reliability/test_safe_errors.py && .venv/bin/pytest tests/reliability/test_structured_logging.py tests/reliability/test_safe_errors.py -q`.
 - [ ] Commit: `git add apps/api/src/market_trader/observability apps/api/src/market_trader/main.py apps/api/tests/reliability && git commit -m "feat: emit structured safe api diagnostics"`.
 
 ### Task 3: System State And Readiness

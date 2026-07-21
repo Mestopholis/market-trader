@@ -37,7 +37,6 @@ _DATABASE_URL_WITH_CREDENTIALS = re.compile(
 )
 _BEARER_VALUE = re.compile(r"(?i)\bbearer\s+[a-z0-9._~+/=-]{8,}")
 _SCHWAB_TOKEN_HINT = re.compile(r"(?i)\bschwab[-_a-z0-9]*token[-_a-z0-9]*")
-_LONG_SECRETISH_TOKEN = re.compile(r"(?i)\b(?:xox[baprs]-)?[a-z0-9][a-z0-9._=-]{20,}\b")
 
 
 def redact_value(value: object) -> RedactedValue:
@@ -97,5 +96,4 @@ def _is_secret_value(value: str) -> bool:
     return bool(
         _DATABASE_URL_WITH_CREDENTIALS.search(value)
         or _SCHWAB_TOKEN_HINT.search(value)
-        or _LONG_SECRETISH_TOKEN.fullmatch(value)
     )
