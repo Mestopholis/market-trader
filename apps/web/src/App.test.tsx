@@ -38,8 +38,13 @@ const overview = {
 test('shows the dashboard overview on first load', async () => {
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
     const url = String(input)
-    const body = url.includes('/api/health') ? health : overview
-    return new Response(JSON.stringify(body), { status: 200 })
+    if (url.includes('/api/health')) {
+      return new Response(JSON.stringify(health), { status: 200 })
+    }
+    if (url.includes('/api/auth/session')) {
+      return new Response(JSON.stringify({ authenticated: true, username: 'operator' }), { status: 200 })
+    }
+    return new Response(JSON.stringify(overview), { status: 200 })
   })
 
   render(<App />)
@@ -64,8 +69,12 @@ test('shows a safe unavailable state when health fails', async () => {
 
 test('keeps paper state visible when the dashboard overview is unavailable', async () => {
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
-    if (String(input).includes('/api/health')) {
+    const url = String(input)
+    if (url.includes('/api/health')) {
       return new Response(JSON.stringify(health), { status: 200 })
+    }
+    if (url.includes('/api/auth/session')) {
+      return new Response(JSON.stringify({ authenticated: true, username: 'operator' }), { status: 200 })
     }
     return new Response(
       JSON.stringify({ message: 'dashboard unavailable' }),

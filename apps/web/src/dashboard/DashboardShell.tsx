@@ -10,10 +10,12 @@ import ApprovalQueue from '../paper/ApprovalQueue'
 import PaperOrdersPanel from '../paper/PaperOrdersPanel'
 import PaperPositionsPanel from '../paper/PaperPositionsPanel'
 import PaperRecoveryPanel from '../paper/PaperRecoveryPanel'
+import OperationsPanel from '../operations/OperationsPanel'
 import RiskPanel from './RiskPanel'
 import ScannerPanel from './ScannerPanel'
 
 type DashboardShellProps = {
+  onSignOut?: () => void
   panels?: Partial<Record<DashboardView, ReactNode>>
 }
 
@@ -28,9 +30,10 @@ const defaultPanels: Record<DashboardView, ReactNode> = {
   paperOrders: <PaperOrdersPanel />,
   paperPositions: <PaperPositionsPanel />,
   paperRecovery: <PaperRecoveryPanel />,
+  operations: <OperationsPanel />,
 }
 
-export default function DashboardShell({ panels = {} }: DashboardShellProps) {
+export default function DashboardShell({ onSignOut, panels = {} }: DashboardShellProps) {
   const [activeView, setActiveView] = useState<DashboardView>('overview')
   const activeItem = dashboardNavigation.find((item) => item.id === activeView)
   const activeLabel = activeItem?.label ?? 'Overview'
@@ -44,6 +47,11 @@ export default function DashboardShell({ panels = {} }: DashboardShellProps) {
       </section>
       <header className="dashboard-header">
         <h1>Market Trader</h1>
+        {onSignOut ? (
+          <button type="button" className="dashboard-tab" onClick={onSignOut}>
+            Sign out
+          </button>
+        ) : null}
       </header>
       <nav aria-label="Dashboard views" className="dashboard-tabs">
         {dashboardNavigation.map((item) => (

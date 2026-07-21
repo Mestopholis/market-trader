@@ -6,6 +6,27 @@ export type HealthResponse = {
   database: 'ok' | 'unavailable'
 }
 
+export type ComponentState = {
+  name: string
+  status: 'ok' | 'warning' | 'blocking' | 'unavailable' | 'unknown'
+  code: string
+  summary: string
+  blocking: boolean
+  details: Record<string, string | number | boolean>
+}
+
+export type ReadinessResponse = {
+  status: 'ok' | 'blocking' | 'unavailable'
+  trading_mode: 'paper'
+  blocking: boolean
+  components: ComponentState[]
+}
+
+export type ApiResult<T> = {
+  data: T
+  correlationId?: string
+}
+
 export type MarketState =
   | 'closed'
   | 'pre_market'
@@ -39,6 +60,8 @@ export type MarketStateUnavailableResponse = {
   entry_allowed: false
   error_code: 'market_calendar_unavailable'
 }
+
+import { csrfToken } from './auth/api'
 
 import type {
   AnalyticsSummary,
@@ -77,12 +100,24 @@ export async function fetchMarketState(signal?: AbortSignal): Promise<MarketStat
   const response = await fetch('/api/market-state', {
     headers: { Accept: 'application/json' },
     cache: 'no-store',
+    credentials: 'same-origin',
     signal,
   })
   if (!response.ok) {
     throw new Error(`Market state request failed with ${response.status}`)
   }
   return (await response.json()) as MarketStateResponse
+}
+
+export async function fetchReadiness(signal?: AbortSignal): Promise<ReadinessResponse> {
+  const result = await fetchReadinessWithMeta(signal)
+  return result.data
+}
+
+export async function fetchReadinessWithMeta(
+  signal?: AbortSignal,
+): Promise<ApiResult<ReadinessResponse>> {
+  return getWithMeta('/api/readiness', 'System readiness', signal)
 }
 
 export type CandidateQuery = {
@@ -258,7 +293,14 @@ export async function fetchPaperPositions(
 export async function recoverPaperLifecycle(
   signal?: AbortSignal,
 ): Promise<PaperRecoveryResponse> {
-  return paperPost('/api/paper/recover', 'Paper recovery', undefined, signal)
+  const result = await recoverPaperLifecycleWithMeta(signal)
+  return result.data
+}
+
+export async function recoverPaperLifecycleWithMeta(
+  signal?: AbortSignal,
+): Promise<ApiResult<PaperRecoveryResponse>> {
+  return postWithMeta('/api/paper/recover', 'Paper recovery', undefined, signal)
 }
 
 async function dashboardGet<T>(
@@ -266,15 +308,8 @@ async function dashboardGet<T>(
   label: string,
   signal?: AbortSignal,
 ): Promise<T> {
-  const response = await fetch(url, {
-    headers: { Accept: 'application/json' },
-    cache: 'no-store',
-    signal,
-  })
-  if (!response.ok) {
-    throw new Error(`${label} request failed with ${response.status}`)
-  }
-  return (await response.json()) as T
+  const result = await getWithMeta<T>(url, label, signal)
+  return result.data
 }
 
 async function paperGet<T>(
@@ -282,15 +317,8 @@ async function paperGet<T>(
   label: string,
   signal?: AbortSignal,
 ): Promise<T> {
-  const response = await fetch(url, {
-    headers: { Accept: 'application/json' },
-    cache: 'no-store',
-    signal,
-  })
-  if (!response.ok) {
-    throw new Error(`${label} request failed with ${response.status}`)
-  }
-  return (await response.json()) as T
+  const result = await getWithMeta<T>(url, label, signal)
+  return result.data
 }
 
 async function paperPost<T>(
@@ -299,30 +327,56 @@ async function paperPost<T>(
   body?: Record<string, unknown>,
   signal?: AbortSignal,
 ): Promise<T> {
-  const response = await fetch(
-    url,
-    body === undefined
-      ? {
-          method: 'POST',
-          headers: { Accept: 'application/json' },
-          cache: 'no-store',
-          signal,
-        }
-      : {
-          method: 'POST',
-          headers: {
-            Accept: 'application/json',
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(body),
-          cache: 'no-store',
-          signal,
-        },
-  )
+  const result = await postWithMeta<T>(url, label, body, signal)
+  return result.data
+}
+
+async function getWithMeta<T>(
+  url: string,
+  label: string,
+  signal?: AbortSignal,
+): Promise<ApiResult<T>> {
+  const response = await fetch(url, {
+    headers: { Accept: 'application/json' },
+    cache: 'no-store',
+    credentials: 'same-origin',
+    signal,
+  })
   if (!response.ok) {
     throw new Error(`${label} request failed with ${response.status}`)
   }
-  return (await response.json()) as T
+  return { data: (await response.json()) as T, correlationId: correlationId(response) }
+}
+
+async function postWithMeta<T>(
+  url: string,
+  label: string,
+  body?: Record<string, unknown>,
+  signal?: AbortSignal,
+): Promise<ApiResult<T>> {
+  const headers: Record<string, string> = {
+    Accept: 'application/json',
+    'X-CSRF-Token': csrfToken(),
+  }
+  if (body !== undefined) {
+    headers['Content-Type'] = 'application/json'
+  }
+  const response = await fetch(url, {
+    method: 'POST',
+    headers,
+    body: body === undefined ? undefined : JSON.stringify(body),
+    cache: 'no-store',
+    credentials: 'same-origin',
+    signal,
+  })
+  if (!response.ok) {
+    throw new Error(`${label} request failed with ${response.status}`)
+  }
+  return { data: (await response.json()) as T, correlationId: correlationId(response) }
+}
+
+function correlationId(response: Response): string | undefined {
+  return response.headers.get('X-Correlation-ID') ?? undefined
 }
 
 function queryString(query: Record<string, string | number | undefined>): string {
