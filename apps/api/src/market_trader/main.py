@@ -8,6 +8,8 @@ from market_trader.api.auth import (
     CsrfFailedError,
     auth_required_exception_handler,
     csrf_failed_exception_handler,
+)
+from market_trader.api.auth import (
     router as auth_router,
 )
 from market_trader.api.dashboard import router as dashboard_router

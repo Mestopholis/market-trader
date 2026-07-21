@@ -22,10 +22,10 @@ from market_trader.security.passwords import hash_password
     ],
 )
 def test_sensitive_read_endpoints_reject_unauthenticated_requests(
-    monkeypatch,
+    monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
     path: str,
-) -> None:  # type: ignore[no-untyped-def]
+) -> None:
     _configure_auth(monkeypatch, tmp_path)
 
     response = TestClient(create_app(), base_url="https://testserver").get(path)
@@ -36,9 +36,9 @@ def test_sensitive_read_endpoints_reject_unauthenticated_requests(
 
 
 def test_health_remains_public_when_auth_is_configured(
-    monkeypatch,
+    monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
-) -> None:  # type: ignore[no-untyped-def]
+) -> None:
     _configure_auth(monkeypatch, tmp_path)
 
     response = TestClient(create_app(), base_url="https://testserver").get("/api/health")
@@ -47,9 +47,9 @@ def test_health_remains_public_when_auth_is_configured(
 
 
 def test_mutating_paper_endpoint_rejects_unauthenticated_request(
-    monkeypatch,
+    monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
-) -> None:  # type: ignore[no-untyped-def]
+) -> None:
     _configure_auth(monkeypatch, tmp_path)
 
     response = TestClient(create_app(), base_url="https://testserver").post("/api/paper/recover")
@@ -60,9 +60,9 @@ def test_mutating_paper_endpoint_rejects_unauthenticated_request(
 
 
 def test_mutating_paper_endpoint_requires_csrf_for_authenticated_session(
-    monkeypatch,
+    monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
-) -> None:  # type: ignore[no-untyped-def]
+) -> None:
     _configure_auth(monkeypatch, tmp_path)
     client = TestClient(create_app(), base_url="https://testserver")
     login = client.post(
@@ -79,9 +79,9 @@ def test_mutating_paper_endpoint_requires_csrf_for_authenticated_session(
 
 
 def test_mutating_paper_endpoint_accepts_authenticated_csrf_request(
-    monkeypatch,
+    monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
-) -> None:  # type: ignore[no-untyped-def]
+) -> None:
     _configure_auth(monkeypatch, tmp_path)
     client = TestClient(create_app(), base_url="https://testserver")
     login = client.post(
@@ -99,7 +99,7 @@ def test_mutating_paper_endpoint_accepts_authenticated_csrf_request(
     assert response.json()["paper_mode"] is True
 
 
-def _configure_auth(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
+def _configure_auth(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     database = tmp_path / "sensitive.db"
     upgrade_to_head(f"sqlite:///{database}")
     get_settings.cache_clear()
