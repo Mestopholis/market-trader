@@ -110,12 +110,12 @@
 
 **Steps:**
 
-- [ ] Write failing tests proving stale data, provider loss, required risk locks, failed reconciliation, backup integrity failure, and restart recovery gaps block dependent paper mutations with stable failure codes.
-- [ ] Add tests proving read-only paper and dashboard views can still render safe unavailable states.
-- [ ] Run RED: `.venv/bin/pytest tests/reliability/test_blocking_state.py -q`.
-- [ ] Implement blocking policy checks in paper mutation paths and safe response contracts.
-- [ ] Run GREEN: `.venv/bin/ruff check src/market_trader/system_state src/market_trader/paper src/market_trader/api/paper.py tests/reliability/test_blocking_state.py && .venv/bin/mypy src/market_trader/system_state src/market_trader/paper src/market_trader/api/paper.py tests/reliability/test_blocking_state.py && .venv/bin/pytest tests/reliability/test_blocking_state.py -q`.
-- [ ] Commit: `git add apps/api/src/market_trader/system_state apps/api/src/market_trader/paper apps/api/src/market_trader/api/paper.py apps/api/tests/reliability/test_blocking_state.py && git commit -m "feat: block unsafe paper actions from system state"`.
+- [x] Write failing tests proving stale data, provider loss, required risk locks, failed reconciliation, backup integrity failure, and restart recovery gaps block dependent paper mutations with stable failure codes.
+- [x] Add tests proving read-only paper and dashboard views can still render safe unavailable states.
+- [x] Run RED: `.venv/bin/pytest tests/reliability/test_blocking_state.py -q`.
+- [x] Implement blocking policy checks in paper mutation paths and safe response contracts.
+- [x] Run GREEN: `.venv/bin/ruff check src/market_trader/system_state src/market_trader/paper src/market_trader/api/paper.py tests/reliability/test_blocking_state.py && .venv/bin/mypy src/market_trader/system_state src/market_trader/paper src/market_trader/api/paper.py tests/reliability/test_blocking_state.py && .venv/bin/pytest tests/reliability/test_blocking_state.py -q`.
+- [x] Commit: `git add apps/api/src/market_trader/system_state apps/api/src/market_trader/paper apps/api/src/market_trader/api/paper.py apps/api/tests/reliability/test_blocking_state.py && git commit -m "feat: block unsafe paper actions from system state"`.
 
 ### Task 5: Backup Metadata And Integrity Validation
 

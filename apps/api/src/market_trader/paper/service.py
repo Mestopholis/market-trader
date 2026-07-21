@@ -34,6 +34,11 @@ from market_trader.repositories.orders import (
     ProposedTradeCreate,
     TradeLifecycleRepository,
 )
+from market_trader.system_state.blocking import (
+    BlockingStatePolicy,
+    SystemBlockedError,
+    allow_all_policy,
+)
 
 PREVIEW_TTL = timedelta(minutes=1)
 OPEN_ORDER_STATUSES = {"accepted", "working", "partially_filled", "timed_out"}
@@ -73,32 +78,38 @@ class PaperLifecycleService:
         clock: Clock | None = None,
         entry_window_open: bool = True,
         broker: DeterministicPaperBroker | None = None,
+        blocking_policy: BlockingStatePolicy | None = None,
     ) -> None:
         self._session = session
         self._clock = clock or SystemClock()
         self._entry_window_open = entry_window_open
         self._broker = broker or DeterministicPaperBroker()
+        self._blocking_policy = blocking_policy or allow_all_policy()
         self._repository = TradeLifecycleRepository(session)
 
     def approval_cards(self) -> tuple[ApprovalCard, ...]:
         return assemble_approval_cards(self._session, as_of=self._now())
 
     def approve_card(self, card: ApprovalCard) -> Approval:
+        self._ensure_paper_mutation_allowed()
         self._ensure_card_actionable(card)
         return self._create_approval(card, status="approved", intent=_intent_from_card(card))
 
     def modify_card(
         self, card: ApprovalCard, *, quantity: int, limit_price: Decimal
     ) -> Approval:
+        self._ensure_paper_mutation_allowed()
         self._ensure_card_actionable(card)
         intent = _intent_from_card(card, quantity=quantity, limit_price=limit_price)
         return self._create_approval(card, status="approved", intent=intent)
 
     def reject_card(self, card: ApprovalCard) -> Approval:
+        self._ensure_paper_mutation_allowed()
         self._ensure_card_actionable(card, allow_expired=True)
         return self._create_approval(card, status="rejected", intent=None, terminal=True)
 
     def preview_approval(self, approval_id: str) -> PaperPreview:
+        self._ensure_paper_mutation_allowed()
         approval_record = self._approval_record(approval_id)
         payload = _payload(approval_record.decision_payload)
         intent = _intent_from_payload(payload)
@@ -131,6 +142,7 @@ class PaperLifecycleService:
         preview_digest: str,
         scenario: PaperBrokerScenario = PaperBrokerScenario.FULL_FILL,
     ) -> SubmittedPaperOrder:
+        self._ensure_paper_mutation_allowed()
         if not self._entry_window_open:
             raise PaperLifecycleError("entry_window_closed")
         approval_record = self._approval_record(approval_id)
@@ -202,6 +214,7 @@ class PaperLifecycleService:
         )
 
     def cancel_order(self, order_id: str) -> OrderRecord:
+        self._ensure_paper_mutation_allowed()
         now = self._now()
         updated = self._repository.update_order_status(
             self._persisted_order_id(order_id),
@@ -215,6 +228,7 @@ class PaperLifecycleService:
         return updated
 
     def replace_order(self, order_id: str, *, limit_price: Decimal) -> OrderRecord:
+        self._ensure_paper_mutation_allowed()
         if limit_price <= 0:
             raise PaperLifecycleError("invalid_limit_price")
         now = self._now()
@@ -239,6 +253,13 @@ class PaperLifecycleService:
             open_orders=(*working_orders, *timed_out_orders),
             open_positions=self._repository.list_positions_by_status(OPEN_POSITION_STATUSES),
         )
+
+
+    def _ensure_paper_mutation_allowed(self) -> None:
+        try:
+            self._blocking_policy.ensure_paper_mutation_allowed()
+        except SystemBlockedError as error:
+            raise PaperLifecycleError(error.code) from error
 
     def _recoverable_approvals(self) -> tuple[Approval, ...]:
         open_approvals = self._repository.list_approvals_by_status(OPEN_APPROVAL_STATUSES)
