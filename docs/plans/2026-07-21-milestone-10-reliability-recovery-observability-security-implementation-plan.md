@@ -56,11 +56,11 @@
 
 **Steps:**
 
-- [ ] Write failing tests for redacting passwords, cookies, authorization headers, CSRF tokens, database URLs with credentials, Schwab-shaped tokens, broker account numbers, and nested secret-shaped payload keys.
-- [ ] Write failing tests for stable request id and correlation id generation, propagation, validation, and response header behavior.
-- [ ] Run RED: `.venv/bin/pytest tests/reliability/test_redaction.py tests/reliability/test_correlation.py -q`.
-- [ ] Implement bounded redaction and correlation helpers without logging raw payloads.
-- [ ] Run GREEN: `.venv/bin/ruff check src/market_trader/observability tests/reliability/test_redaction.py tests/reliability/test_correlation.py && .venv/bin/mypy src/market_trader/observability tests/reliability/test_redaction.py tests/reliability/test_correlation.py && .venv/bin/pytest tests/reliability/test_redaction.py tests/reliability/test_correlation.py -q`.
+- [x] Write failing tests for redacting passwords, cookies, authorization headers, CSRF tokens, database URLs with credentials, Schwab-shaped tokens, broker account numbers, and nested secret-shaped payload keys.
+- [x] Write failing tests for stable request id and correlation id generation, propagation, validation, and response header behavior.
+- [x] Run RED: `.venv/bin/pytest tests/reliability/test_redaction.py tests/reliability/test_correlation.py -q`.
+- [x] Implement bounded redaction and correlation helpers without logging raw payloads.
+- [x] Run GREEN: `.venv/bin/ruff check src/market_trader/observability tests/reliability/test_redaction.py tests/reliability/test_correlation.py && .venv/bin/mypy src/market_trader/observability tests/reliability/test_redaction.py tests/reliability/test_correlation.py && .venv/bin/pytest tests/reliability/test_redaction.py tests/reliability/test_correlation.py -q`.
 - [ ] Commit: `git add apps/api/src/market_trader/observability apps/api/tests/reliability && git commit -m "feat: add redaction and correlation contracts"`.
 
 ### Task 2: Structured Logging And Safe Errors
