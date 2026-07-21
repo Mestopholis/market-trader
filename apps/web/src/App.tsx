@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 
-import { fetchHealth } from './api'
+import { fetchHealth, fetchReadiness, type ReadinessResponse } from './api'
 import AuthProvider from './auth/AuthProvider'
 import { fetchSession, login, logout } from './auth/api'
 import type { AuthenticatedSession, LoginRequest } from './auth/types'
@@ -10,7 +10,7 @@ import './index.css'
 
 type LoadState =
   | { kind: 'loading' }
-  | { kind: 'ready'; session: AuthenticatedSession }
+  | { kind: 'ready'; readiness: ReadinessResponse; session: AuthenticatedSession }
   | { kind: 'login'; message?: string }
   | { kind: 'error' }
 
@@ -24,7 +24,8 @@ export default function App() {
         await fetchHealth(controller.signal)
         const session = await fetchSession(controller.signal)
         if (session.authenticated) {
-          setState({ kind: 'ready', session })
+          const readiness = await safeReadiness(controller.signal)
+          setState({ kind: 'ready', readiness, session })
         } else {
           setState({ kind: 'login' })
         }
@@ -38,7 +39,8 @@ export default function App() {
 
   async function handleLogin(request: LoginRequest) {
     const session = await login(request)
-    setState({ kind: 'ready', session })
+    const readiness = await safeReadiness()
+    setState({ kind: 'ready', readiness, session })
   }
 
   async function handleLogout() {
@@ -67,7 +69,31 @@ export default function App() {
 
   return (
     <AuthProvider session={state.session} signOut={handleLogout}>
-      <DashboardShell onSignOut={handleLogout} />
+      <DashboardShell readiness={state.readiness} onSignOut={handleLogout} />
     </AuthProvider>
   )
+}
+
+function safeUnavailableReadiness(): ReadinessResponse {
+  return {
+    status: 'unavailable',
+    trading_mode: 'paper',
+    blocking: true,
+    components: [{
+      name: 'readiness',
+      status: 'unavailable',
+      code: 'readiness_unavailable',
+      summary: 'System readiness is unavailable.',
+      blocking: true,
+      details: {},
+    }],
+  }
+}
+
+async function safeReadiness(signal?: AbortSignal): Promise<ReadinessResponse> {
+  try {
+    return await fetchReadiness(signal)
+  } catch {
+    return safeUnavailableReadiness()
+  }
 }

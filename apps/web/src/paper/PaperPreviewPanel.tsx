@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 
 import { previewPaperApproval, submitPaperApproval } from '../api'
 import { formatDashboardTime } from '../dashboard/formatting'
+import { usePaperActionBlock } from '../dashboard/SystemReadinessHooks'
 import type { PaperBrokerScenario, PaperPreview, SubmittedPaperOrder } from './types'
 
 type PaperPreviewPanelProps = {
@@ -19,6 +20,7 @@ export default function PaperPreviewPanel({
   const [submitted, setSubmitted] = useState<SubmittedPaperOrder | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busyAction, setBusyAction] = useState<'preview' | 'submit' | null>(null)
+  const actionBlock = usePaperActionBlock()
 
   const previewIsCurrent = useMemo(() => {
     if (!preview) return false
@@ -26,6 +28,7 @@ export default function PaperPreviewPanel({
   }, [now, preview])
 
   async function handlePreview() {
+    if (actionBlock) return
     setBusyAction('preview')
     setError(null)
     setSubmitted(null)
@@ -39,7 +42,7 @@ export default function PaperPreviewPanel({
   }
 
   async function handleSubmit() {
-    if (!preview || !previewIsCurrent) return
+    if (actionBlock || !preview || !previewIsCurrent) return
     setBusyAction('submit')
     setError(null)
     try {
@@ -61,12 +64,14 @@ export default function PaperPreviewPanel({
         <span className="state-chip">paper-only</span>
       </div>
 
+      {actionBlock && <p className="paper-action-error">Paper actions blocked: {actionBlock.code}</p>}
+
       <div className="paper-action-row">
         <button
           type="button"
           className="paper-action-button"
           onClick={handlePreview}
-          disabled={busyAction !== null}
+          disabled={actionBlock !== null || busyAction !== null}
         >
           Preview paper order
         </button>
@@ -74,7 +79,7 @@ export default function PaperPreviewPanel({
           type="button"
           className="paper-action-button"
           onClick={handleSubmit}
-          disabled={!previewIsCurrent || busyAction !== null}
+          disabled={actionBlock !== null || !previewIsCurrent || busyAction !== null}
         >
           Submit paper order
         </button>

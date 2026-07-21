@@ -4,6 +4,7 @@ import DashboardErrorBoundary from './DashboardErrorBoundary'
 import AnalyticsPanel from './AnalyticsPanel'
 import CandidateDetailPanel from './CandidateDetailPanel'
 import JournalPanel from './JournalPanel'
+import SystemReadinessProvider from './SystemReadinessProvider'
 import { dashboardNavigation, type DashboardView } from './navigation'
 import OverviewPanel from './OverviewPanel'
 import ApprovalQueue from '../paper/ApprovalQueue'
@@ -13,8 +14,10 @@ import PaperRecoveryPanel from '../paper/PaperRecoveryPanel'
 import OperationsPanel from '../operations/OperationsPanel'
 import RiskPanel from './RiskPanel'
 import ScannerPanel from './ScannerPanel'
+import type { ReadinessResponse } from '../api'
 
 type DashboardShellProps = {
+  readiness?: ReadinessResponse
   onSignOut?: () => void
   panels?: Partial<Record<DashboardView, ReactNode>>
 }
@@ -33,18 +36,27 @@ const defaultPanels: Record<DashboardView, ReactNode> = {
   operations: <OperationsPanel />,
 }
 
-export default function DashboardShell({ onSignOut, panels = {} }: DashboardShellProps) {
+export default function DashboardShell({ readiness, onSignOut, panels = {} }: DashboardShellProps) {
   const [activeView, setActiveView] = useState<DashboardView>('overview')
   const activeItem = dashboardNavigation.find((item) => item.id === activeView)
   const activeLabel = activeItem?.label ?? 'Overview'
   const mergedPanels = { ...defaultPanels, ...panels }
 
+  const blockingComponent = readiness?.components?.find((component) => component.blocking) ?? null
+
   return (
+    <SystemReadinessProvider value={readiness ?? null}>
     <main className="dashboard-shell">
       <section role="status" className="paper-banner">
         <strong>PAPER MODE</strong>
         <span>No live orders can be submitted.</span>
       </section>
+      {blockingComponent ? (
+        <section role="alert" className="paper-block-banner">
+          <strong>Paper actions blocked: {blockingComponent.code}</strong>
+          <span>{blockingComponent.summary}</span>
+        </section>
+      ) : null}
       <header className="dashboard-header">
         <h1>Market Trader</h1>
         {onSignOut ? (
@@ -73,5 +85,6 @@ export default function DashboardShell({ onSignOut, panels = {} }: DashboardShel
         </DashboardErrorBoundary>
       </section>
     </main>
+    </SystemReadinessProvider>
   )
 }

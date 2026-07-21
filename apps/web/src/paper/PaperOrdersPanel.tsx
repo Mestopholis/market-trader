@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 
 import { cancelPaperOrder, fetchPaperOrders, replacePaperOrder } from '../api'
 import { formatDashboardTime, labelize } from '../dashboard/formatting'
+import { usePaperActionBlock } from '../dashboard/SystemReadinessHooks'
 import type { PaperOrder, PaperOrdersResponse } from './types'
 
 type LoadState =
@@ -14,6 +15,7 @@ export default function PaperOrdersPanel() {
   const [replaceLimits, setReplaceLimits] = useState<Record<string, string>>({})
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const actionBlock = usePaperActionBlock()
 
   useEffect(() => {
     const controller = new AbortController()
@@ -26,6 +28,7 @@ export default function PaperOrdersPanel() {
   }, [])
 
   async function handleCancel(orderId: string) {
+    if (actionBlock) return
     setMessage(null)
     setError(null)
     try {
@@ -37,6 +40,7 @@ export default function PaperOrdersPanel() {
   }
 
   async function handleReplace(order: PaperOrder) {
+    if (actionBlock) return
     setMessage(null)
     setError(null)
     try {
@@ -68,6 +72,7 @@ export default function PaperOrdersPanel() {
         <h2 id="paper-orders-title">Paper orders</h2>
         <span className="state-chip">{state.orders.orders.length} open</span>
       </div>
+      {actionBlock && <p className="paper-action-error">Paper actions blocked: {actionBlock.code}</p>}
       {message && <p>{message}</p>}
       {error && <p role="alert" className="paper-action-error">{error}</p>}
 
@@ -99,6 +104,7 @@ export default function PaperOrdersPanel() {
                       <button
                         type="button"
                         className="paper-action-button"
+                        disabled={actionBlock !== null}
                         onClick={() => handleCancel(order.order_id)}
                       >
                         Cancel paper order {order.order_id}
@@ -117,6 +123,7 @@ export default function PaperOrdersPanel() {
                       <button
                         type="button"
                         className="paper-action-button"
+                        disabled={actionBlock !== null}
                         onClick={() => handleReplace(order)}
                       >
                         Replace paper order {order.order_id}

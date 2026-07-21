@@ -5,6 +5,7 @@ import {
   modifyPaperApprovalCard,
   rejectPaperApprovalCard,
 } from '../api'
+import { usePaperActionBlock } from '../dashboard/SystemReadinessHooks'
 import type { PaperApproval, PaperApprovalCard } from './types'
 import PaperPreviewPanel from './PaperPreviewPanel'
 
@@ -23,9 +24,10 @@ export default function PaperActionPanel({
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busyAction, setBusyAction] = useState<string | null>(null)
+  const actionBlock = usePaperActionBlock()
 
   const isExpired = new Date(card.expires_at).getTime() <= now.getTime()
-  const isActionable = card.state === 'ready' && !isExpired
+  const isActionable = card.state === 'ready' && !isExpired && actionBlock === null
 
   async function runAction(
     action: string,
@@ -76,6 +78,7 @@ export default function PaperActionPanel({
       </div>
 
       {isExpired && <p className="muted">Approval expired. Refresh the approval queue.</p>}
+      {actionBlock && <p className="paper-action-error">Paper actions blocked: {actionBlock.code}</p>}
 
       <div className="paper-action-row">
         <button
