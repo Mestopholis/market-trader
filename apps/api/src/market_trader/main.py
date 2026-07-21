@@ -3,6 +3,7 @@ import time
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
+from market_trader.api.auth import router as auth_router
 from market_trader.api.dashboard import router as dashboard_router
 from market_trader.api.health import router as health_router
 from market_trader.api.market_state import MarketStateUnavailableResponse
@@ -127,6 +128,7 @@ def create_app() -> FastAPI:
         calendar_unavailable_handler,
     )
     application.include_router(health_router, prefix="/api")
+    application.include_router(auth_router, prefix="/api")
     application.include_router(market_state_router, prefix="/api")
     application.include_router(dashboard_router, prefix="/api/dashboard")
     application.include_router(paper_router, prefix="/api/paper")

@@ -167,12 +167,12 @@
 
 **Steps:**
 
-- [ ] Write failing tests for login, logout, session expiry, secure cookie attributes, password hash verification, safe unauthenticated responses, and CSRF protection for mutating requests.
-- [ ] Add tests proving `/api/health` remains unauthenticated and sensitive diagnostics remain protected.
-- [ ] Run RED: `.venv/bin/pytest tests/reliability/test_auth.py tests/reliability/test_csrf.py -q`.
-- [ ] Implement local password/session/CSRF modules and auth routes without external identity providers.
-- [ ] Run GREEN: `.venv/bin/ruff check src/market_trader/security src/market_trader/api/auth.py src/market_trader/config.py src/market_trader/main.py tests/reliability/test_auth.py tests/reliability/test_csrf.py && .venv/bin/mypy src/market_trader/security src/market_trader/api/auth.py src/market_trader/config.py src/market_trader/main.py tests/reliability/test_auth.py tests/reliability/test_csrf.py && .venv/bin/pytest tests/reliability/test_auth.py tests/reliability/test_csrf.py -q`.
-- [ ] Commit: `git add apps/api/src/market_trader/security apps/api/src/market_trader/api/auth.py apps/api/src/market_trader/config.py apps/api/src/market_trader/main.py apps/api/tests/reliability && git commit -m "feat: add local session authentication"`.
+- [x] Write failing tests for login, logout, session expiry, secure cookie attributes, password hash verification, safe unauthenticated responses, and CSRF protection for mutating requests.
+- [x] Add tests proving `/api/health` remains unauthenticated and sensitive diagnostics remain protected.
+- [x] Run RED: `.venv/bin/pytest tests/reliability/test_auth.py tests/reliability/test_csrf.py -q`.
+- [x] Implement local password/session/CSRF modules and auth routes without external identity providers.
+- [x] Run GREEN: `.venv/bin/ruff check src/market_trader/security src/market_trader/api/auth.py src/market_trader/config.py src/market_trader/main.py tests/reliability/test_auth.py tests/reliability/test_csrf.py && .venv/bin/mypy src/market_trader/security src/market_trader/api/auth.py src/market_trader/config.py src/market_trader/main.py tests/reliability/test_auth.py tests/reliability/test_csrf.py && .venv/bin/pytest tests/reliability/test_auth.py tests/reliability/test_csrf.py -q`.
+- [x] Commit: `git add apps/api/src/market_trader/security apps/api/src/market_trader/api/auth.py apps/api/src/market_trader/config.py apps/api/src/market_trader/main.py apps/api/tests/reliability && git commit -m "feat: add local session authentication"`.
 
 ### Task 8: Protect Sensitive APIs
 
