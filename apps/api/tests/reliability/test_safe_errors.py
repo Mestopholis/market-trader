@@ -2,18 +2,18 @@ import json
 import logging
 from typing import Any, cast
 
-import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from market_trader.main import create_app
 from market_trader.observability.correlation import CORRELATION_ID_HEADER, REQUEST_ID_HEADER
+from market_trader.observability.logging import LOGGER_NAME
 
 
-def test_unhandled_exception_returns_safe_redacted_error(caplog: pytest.LogCaptureFixture) -> None:
+def test_unhandled_exception_returns_safe_redacted_error() -> None:
     app = create_app()
     _add_boom_route(app)
-    caplog.set_level(logging.INFO, logger="market_trader.observability")
+    records = _capture_observability_records()
 
     response = TestClient(app, raise_server_exceptions=False).get(
         "/api/boom",
@@ -34,7 +34,7 @@ def test_unhandled_exception_returns_safe_redacted_error(caplog: pytest.LogCaptu
     assert "postgresql://" not in serialized
     assert "Bearer" not in serialized
     assert "secret" not in serialized
-    payload = _single_error_log(caplog.records)
+    payload = _single_error_log(records)
     assert payload["event"] == "api.request.failed"
     assert payload["component"] == "api"
     assert payload["error_code"] == "internal_error"
@@ -53,13 +53,26 @@ def _add_boom_route(app: FastAPI) -> None:
         )
 
 
+def _capture_observability_records() -> list[logging.LogRecord]:
+    records: list[logging.LogRecord] = []
+
+    class ListHandler(logging.Handler):
+        def emit(self, record: logging.LogRecord) -> None:
+            records.append(record)
+
+    logging.disable(logging.NOTSET)
+    logger = logging.getLogger(LOGGER_NAME)
+    logger.disabled = False
+    logger.handlers.clear()
+    logger.setLevel(logging.INFO)
+    logger.addHandler(ListHandler())
+    return records
+
+
 def _single_error_log(records: list[logging.LogRecord]) -> dict[str, Any]:
     matches: list[dict[str, Any]] = []
     for record in records:
-        if (
-            record.name == "market_trader.observability"
-            and '"event":"api.request.failed"' in record.getMessage()
-        ):
+        if record.name == LOGGER_NAME and '"event":"api.request.failed"' in record.getMessage():
             loaded = json.loads(record.getMessage())
             assert isinstance(loaded, dict)
             matches.append(cast(dict[str, Any], loaded))

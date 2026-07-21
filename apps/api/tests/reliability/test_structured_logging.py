@@ -2,25 +2,23 @@ import json
 import logging
 from typing import Any, cast
 
-import pytest
 from fastapi.testclient import TestClient
 
 from market_trader.main import create_app
 from market_trader.observability.correlation import CORRELATION_ID_HEADER, REQUEST_ID_HEADER
+from market_trader.observability.logging import LOGGER_NAME
 
 
-def test_api_request_emits_structured_log_and_correlation_headers(
-    caplog: pytest.LogCaptureFixture,
-) -> None:
+def test_api_request_emits_structured_log_and_correlation_headers() -> None:
     app = create_app()
-    caplog.set_level(logging.INFO, logger="market_trader.observability")
+    records = _capture_observability_records()
 
     response = TestClient(app).get("/api/health", headers={CORRELATION_ID_HEADER: "corr-test"})
 
     assert response.status_code == 200
     assert response.headers[CORRELATION_ID_HEADER] == "corr-test"
     assert response.headers[REQUEST_ID_HEADER].startswith("req_")
-    payload = _single_request_log(caplog.records)
+    payload = _single_request_log(records)
     assert payload["event"] == "api.request.completed"
     assert payload["component"] == "api"
     assert payload["method"] == "GET"
@@ -33,11 +31,27 @@ def test_api_request_emits_structured_log_and_correlation_headers(
     assert "timestamp" in payload
 
 
+def _capture_observability_records() -> list[logging.LogRecord]:
+    records: list[logging.LogRecord] = []
+
+    class ListHandler(logging.Handler):
+        def emit(self, record: logging.LogRecord) -> None:
+            records.append(record)
+
+    logging.disable(logging.NOTSET)
+    logger = logging.getLogger(LOGGER_NAME)
+    logger.disabled = False
+    logger.handlers.clear()
+    logger.setLevel(logging.INFO)
+    logger.addHandler(ListHandler())
+    return records
+
+
 def _single_request_log(records: list[logging.LogRecord]) -> dict[str, Any]:
     matches: list[dict[str, Any]] = []
     for record in records:
         if (
-            record.name == "market_trader.observability"
+            record.name == LOGGER_NAME
             and '"event":"api.request.completed"' in record.getMessage()
         ):
             loaded = json.loads(record.getMessage())

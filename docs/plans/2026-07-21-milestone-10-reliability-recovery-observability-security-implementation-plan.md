@@ -61,7 +61,7 @@
 - [x] Run RED: `.venv/bin/pytest tests/reliability/test_redaction.py tests/reliability/test_correlation.py -q`.
 - [x] Implement bounded redaction and correlation helpers without logging raw payloads.
 - [x] Run GREEN: `.venv/bin/ruff check src/market_trader/observability tests/reliability/test_redaction.py tests/reliability/test_correlation.py && .venv/bin/mypy src/market_trader/observability tests/reliability/test_redaction.py tests/reliability/test_correlation.py && .venv/bin/pytest tests/reliability/test_redaction.py tests/reliability/test_correlation.py -q`.
-- [ ] Commit: `git add apps/api/src/market_trader/observability apps/api/tests/reliability && git commit -m "feat: add redaction and correlation contracts"`.
+- [x] Commit: `git add apps/api/src/market_trader/observability apps/api/tests/reliability && git commit -m "feat: add redaction and correlation contracts"`.
 
 ### Task 2: Structured Logging And Safe Errors
 
@@ -79,7 +79,7 @@
 - [x] Run RED: `.venv/bin/pytest tests/reliability/test_structured_logging.py tests/reliability/test_safe_errors.py -q`.
 - [x] Add FastAPI middleware and exception handling for structured logs and safe error responses.
 - [x] Run GREEN: `.venv/bin/ruff check src/market_trader/observability src/market_trader/main.py tests/reliability/test_structured_logging.py tests/reliability/test_safe_errors.py && .venv/bin/mypy src/market_trader/observability src/market_trader/main.py tests/reliability/test_structured_logging.py tests/reliability/test_safe_errors.py && .venv/bin/pytest tests/reliability/test_structured_logging.py tests/reliability/test_safe_errors.py -q`.
-- [ ] Commit: `git add apps/api/src/market_trader/observability apps/api/src/market_trader/main.py apps/api/tests/reliability && git commit -m "feat: emit structured safe api diagnostics"`.
+- [x] Commit: `git add apps/api/src/market_trader/observability apps/api/src/market_trader/main.py apps/api/tests/reliability && git commit -m "feat: emit structured safe api diagnostics"`.
 
 ### Task 3: System State And Readiness
 
@@ -93,12 +93,12 @@
 
 **Steps:**
 
-- [ ] Write failing tests for database, migration head, backup freshness, market data freshness, scheduler jobs, risk locks, paper reconciliation, authentication configuration, and security-scan component states.
-- [ ] Add tests proving `/api/health` stays safe and detailed readiness redacts sensitive diagnostics.
-- [ ] Run RED: `.venv/bin/pytest tests/reliability/test_system_state.py tests/reliability/test_readiness_api.py -q`.
-- [ ] Implement health/readiness models, state aggregation, and detailed readiness endpoint.
-- [ ] Run GREEN: `.venv/bin/ruff check src/market_trader/system_state src/market_trader/api/health.py tests/reliability/test_system_state.py tests/reliability/test_readiness_api.py && .venv/bin/mypy src/market_trader/system_state src/market_trader/api/health.py tests/reliability/test_system_state.py tests/reliability/test_readiness_api.py && .venv/bin/pytest tests/reliability/test_system_state.py tests/reliability/test_readiness_api.py -q`.
-- [ ] Commit: `git add apps/api/src/market_trader/system_state apps/api/src/market_trader/api/health.py apps/api/tests/reliability && git commit -m "feat: expose detailed system readiness state"`.
+- [x] Write failing tests for database, migration head, backup freshness, market data freshness, scheduler jobs, risk locks, paper reconciliation, authentication configuration, and security-scan component states.
+- [x] Add tests proving `/api/health` stays safe and detailed readiness redacts sensitive diagnostics.
+- [x] Run RED: `.venv/bin/pytest tests/reliability/test_system_state.py tests/reliability/test_readiness_api.py -q`.
+- [x] Implement health/readiness models, state aggregation, and detailed readiness endpoint.
+- [x] Run GREEN: `.venv/bin/ruff check src/market_trader/system_state src/market_trader/api/health.py tests/reliability/test_system_state.py tests/reliability/test_readiness_api.py && .venv/bin/mypy src/market_trader/system_state src/market_trader/api/health.py tests/reliability/test_system_state.py tests/reliability/test_readiness_api.py && .venv/bin/pytest tests/reliability/test_system_state.py tests/reliability/test_readiness_api.py -q`.
+- [x] Commit: `git add apps/api/src/market_trader/system_state apps/api/src/market_trader/api/health.py apps/api/tests/reliability && git commit -m "feat: expose detailed system readiness state"`.
 
 ### Task 4: Blocking State Enforcement
 
