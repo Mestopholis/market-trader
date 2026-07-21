@@ -7,10 +7,15 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from market_trader.db.engine import create_engine_from_url
 from market_trader.db.migrations import alembic_config
+from market_trader.faults.injectors import FaultInjector
 from market_trader.system_state.models import ComponentState, ReadinessStatus, SystemReadiness
 
 
-def collect_system_state(database_url: str) -> SystemReadiness:
+def collect_system_state(
+    database_url: str,
+    *,
+    fault_injector: FaultInjector | None = None,
+) -> SystemReadiness:
     engine: Engine | None = None
     components: list[ComponentState] = []
     try:
@@ -49,6 +54,8 @@ def collect_system_state(database_url: str) -> SystemReadiness:
     finally:
         if engine is not None:
             engine.dispose()
+    if fault_injector is not None:
+        components = _merge_fault_components(components, fault_injector.components())
     return _readiness_from_components(components)
 
 
@@ -163,6 +170,22 @@ def _post_risk_placeholder_components() -> list[ComponentState]:
 
 def _unknown_component(name: str, code: str, summary: str) -> ComponentState:
     return ComponentState(name=name, status="unknown", code=code, summary=summary)
+
+
+def _merge_fault_components(
+    components: Sequence[ComponentState],
+    faults: Sequence[ComponentState],
+) -> list[ComponentState]:
+    merged = list(components)
+    by_name = {component.name: index for index, component in enumerate(merged)}
+    for fault in faults:
+        index = by_name.get(fault.name)
+        if index is None:
+            by_name[fault.name] = len(merged)
+            merged.append(fault)
+        else:
+            merged[index] = fault
+    return merged
 
 
 def _readiness_from_components(components: Sequence[ComponentState]) -> SystemReadiness:
