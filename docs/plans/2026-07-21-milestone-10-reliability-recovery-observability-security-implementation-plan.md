@@ -128,11 +128,11 @@
 
 **Steps:**
 
-- [ ] Write failing tests for backup metadata, schema revision, row counts, checksums, SQLite integrity checks, audit-table consistency, paper lifecycle consistency, and safe destination handling.
-- [ ] Run RED: `.venv/bin/pytest tests/reliability/test_backup_integrity.py -q`.
-- [ ] Implement metadata generation and integrity validation around the existing SQLite backup helpers.
-- [ ] Run GREEN: `.venv/bin/ruff check src/market_trader/recovery src/market_trader/db/backup.py tests/reliability/test_backup_integrity.py && .venv/bin/mypy src/market_trader/recovery src/market_trader/db/backup.py tests/reliability/test_backup_integrity.py && .venv/bin/pytest tests/reliability/test_backup_integrity.py -q`.
-- [ ] Commit: `git add apps/api/src/market_trader/recovery apps/api/src/market_trader/db/backup.py apps/api/tests/reliability/test_backup_integrity.py && git commit -m "feat: validate backup integrity metadata"`.
+- [x] Write failing tests for backup metadata, schema revision, row counts, checksums, SQLite integrity checks, audit-table consistency, paper lifecycle consistency, and safe destination handling.
+- [x] Run RED: `.venv/bin/pytest tests/reliability/test_backup_integrity.py -q`.
+- [x] Implement metadata generation and integrity validation around the existing SQLite backup helpers.
+- [x] Run GREEN: `.venv/bin/ruff check src/market_trader/recovery src/market_trader/db/backup.py tests/reliability/test_backup_integrity.py && .venv/bin/mypy src/market_trader/recovery src/market_trader/db/backup.py tests/reliability/test_backup_integrity.py && .venv/bin/pytest tests/reliability/test_backup_integrity.py -q`.
+- [x] Commit: `git add apps/api/src/market_trader/recovery apps/api/src/market_trader/db/backup.py apps/api/tests/reliability/test_backup_integrity.py && git commit -m "feat: validate backup integrity metadata"`.
 
 ### Task 6: Restore And Restart Recovery Drills
 
