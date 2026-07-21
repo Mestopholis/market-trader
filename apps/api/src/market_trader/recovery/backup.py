@@ -8,7 +8,7 @@ from pydantic import BaseModel
 
 from market_trader.recovery.integrity import validate_sqlite_integrity
 
-_TRACKED_TABLES = (
+TRACKED_BACKUP_TABLES = (
     "journal_events",
     "proposed_trades",
     "approvals",
@@ -43,7 +43,7 @@ def collect_backup_metadata(
         created_at=datetime.now(UTC),
         schema_revision=_schema_revision(source),
         row_counts=_row_counts(source),
-        sha256=_sha256(source),
+        sha256=file_sha256(source),
         correlation_id=correlation_id,
         integrity_ok=integrity.ok,
     )
@@ -59,11 +59,11 @@ def _row_counts(database: Path) -> dict[str, int]:
     with closing(sqlite3.connect(database)) as connection:
         return {
             table: int(connection.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0])
-            for table in _TRACKED_TABLES
+            for table in TRACKED_BACKUP_TABLES
         }
 
 
-def _sha256(path: Path) -> str:
+def file_sha256(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as handle:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):

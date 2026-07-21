@@ -145,12 +145,12 @@
 
 **Steps:**
 
-- [ ] Write failing tests proving restore validation preserves audit records, approvals, orders, fills, positions, risk locks, and recovery events.
-- [ ] Write failing tests proving restart recovery prioritizes open paper positions, working orders, timed-out broker requests, and expiring approvals.
-- [ ] Run RED: `.venv/bin/pytest tests/reliability/test_restore_recovery.py tests/reliability/test_restart_recovery.py -q`.
-- [ ] Implement restore validation and restart-recovery drill services using existing repositories and paper lifecycle read models.
-- [ ] Run GREEN: `.venv/bin/ruff check src/market_trader/recovery scripts/run_recovery_drill.py tests/reliability/test_restore_recovery.py tests/reliability/test_restart_recovery.py && .venv/bin/mypy src/market_trader/recovery scripts/run_recovery_drill.py tests/reliability/test_restore_recovery.py tests/reliability/test_restart_recovery.py && .venv/bin/pytest tests/reliability/test_restore_recovery.py tests/reliability/test_restart_recovery.py -q`.
-- [ ] Commit: `git add apps/api/src/market_trader/recovery apps/api/scripts/run_recovery_drill.py apps/api/tests/reliability && git commit -m "feat: add restore and restart recovery drills"`.
+- [x] Write failing tests proving restore validation preserves audit records, approvals, orders, fills, positions, risk locks, and recovery events.
+- [x] Write failing tests proving restart recovery prioritizes open paper positions, working orders, timed-out broker requests, and expiring approvals.
+- [x] Run RED: `.venv/bin/pytest tests/reliability/test_restore_recovery.py tests/reliability/test_restart_recovery.py -q`.
+- [x] Implement restore validation and restart-recovery drill services using existing repositories and paper lifecycle read models.
+- [x] Run GREEN: `.venv/bin/ruff check src/market_trader/recovery scripts/run_recovery_drill.py tests/reliability/test_restore_recovery.py tests/reliability/test_restart_recovery.py && .venv/bin/mypy src/market_trader/recovery scripts/run_recovery_drill.py tests/reliability/test_restore_recovery.py tests/reliability/test_restart_recovery.py && .venv/bin/pytest tests/reliability/test_restore_recovery.py tests/reliability/test_restart_recovery.py -q`.
+- [x] Commit: `git add apps/api/src/market_trader/recovery apps/api/scripts/run_recovery_drill.py apps/api/tests/reliability && git commit -m "feat: add restore and restart recovery drills"`.
 
 ### Task 7: Local Authentication And CSRF
 

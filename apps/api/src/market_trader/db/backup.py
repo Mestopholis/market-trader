@@ -2,7 +2,7 @@ import sqlite3
 from contextlib import closing
 from pathlib import Path
 
-from market_trader.recovery.backup import BackupMetadata, collect_backup_metadata
+from market_trader.recovery.backup import BackupMetadata, collect_backup_metadata, file_sha256
 
 
 def backup_sqlite_database(
@@ -20,7 +20,7 @@ def backup_sqlite_database(
         correlation_id=correlation_id,
     )
     _copy_sqlite_database(source, destination, force=force)
-    return metadata
+    return metadata.model_copy(update={"sha256": file_sha256(destination)})
 
 
 def restore_sqlite_database(backup: Path, destination: Path, *, force: bool = False) -> None:
