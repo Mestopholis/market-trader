@@ -3,7 +3,13 @@ import time
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
-from market_trader.api.auth import router as auth_router
+from market_trader.api.auth import (
+    AuthRequiredError,
+    CsrfFailedError,
+    auth_required_exception_handler,
+    csrf_failed_exception_handler,
+    router as auth_router,
+)
 from market_trader.api.dashboard import router as dashboard_router
 from market_trader.api.health import router as health_router
 from market_trader.api.market_state import MarketStateUnavailableResponse
@@ -127,6 +133,8 @@ def create_app() -> FastAPI:
         CalendarUnavailableError,
         calendar_unavailable_handler,
     )
+    application.add_exception_handler(AuthRequiredError, auth_required_exception_handler)
+    application.add_exception_handler(CsrfFailedError, csrf_failed_exception_handler)
     application.include_router(health_router, prefix="/api")
     application.include_router(auth_router, prefix="/api")
     application.include_router(market_state_router, prefix="/api")

@@ -5,6 +5,7 @@ from typing import Annotated, Literal
 from fastapi import APIRouter, Depends, Response
 from pydantic import BaseModel
 
+from market_trader.api.auth import require_authenticated_session
 from market_trader.config import get_settings
 from market_trader.domain.time import SystemClock
 from market_trader.market_calendar.adapter import XNYSCalendarAdapter
@@ -15,7 +16,7 @@ from market_trader.market_calendar.models import (
 from market_trader.market_calendar.policy import EntryWindowPolicy
 from market_trader.market_calendar.service import MarketStateService
 
-router = APIRouter(tags=["market-state"])
+router = APIRouter(tags=["market-state"], dependencies=[Depends(require_authenticated_session)])
 
 
 class MarketStateResponse(BaseModel):

@@ -11,13 +11,16 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session
 
+from market_trader.api.auth import require_authenticated_session, require_csrf_protection
 from market_trader.config import get_settings
 from market_trader.db.engine import create_engine_from_url
 from market_trader.paper.models import ApprovalCard, PaperBrokerScenario
 from market_trader.paper.service import PaperLifecycleError, PaperLifecycleService
 from market_trader.system_state.blocking import SystemBlockedError
 
-router = APIRouter(tags=["paper"])
+MUTATING_DEPENDENCIES = [Depends(require_csrf_protection)]
+
+router = APIRouter(tags=["paper"], dependencies=[Depends(require_authenticated_session)])
 
 
 class ModifyApprovalRequest(BaseModel):
@@ -61,7 +64,7 @@ def approval_cards(
     return {"paper_mode": True, "approval_cards": _json(service.approval_cards())}
 
 
-@router.post("/approval-cards/{card_key}/approve")
+@router.post("/approval-cards/{card_key}/approve", dependencies=MUTATING_DEPENDENCIES)
 def approve_card(
     card_key: str,
     response: Response,
@@ -80,7 +83,7 @@ def approve_card(
         ) from error
 
 
-@router.post("/approval-cards/{card_key}/modify")
+@router.post("/approval-cards/{card_key}/modify", dependencies=MUTATING_DEPENDENCIES)
 def modify_card(
     card_key: str,
     request: ModifyApprovalRequest,
@@ -106,7 +109,7 @@ def modify_card(
         ) from error
 
 
-@router.post("/approval-cards/{card_key}/reject")
+@router.post("/approval-cards/{card_key}/reject", dependencies=MUTATING_DEPENDENCIES)
 def reject_card(
     card_key: str,
     response: Response,
@@ -125,7 +128,7 @@ def reject_card(
         ) from error
 
 
-@router.post("/approvals/{approval_id}/preview")
+@router.post("/approvals/{approval_id}/preview", dependencies=MUTATING_DEPENDENCIES)
 def preview_approval(
     approval_id: str,
     response: Response,
@@ -144,7 +147,7 @@ def preview_approval(
         ) from error
 
 
-@router.post("/approvals/{approval_id}/submit")
+@router.post("/approvals/{approval_id}/submit", dependencies=MUTATING_DEPENDENCIES)
 def submit_approval(
     approval_id: str,
     request: SubmitApprovalRequest,
@@ -170,7 +173,7 @@ def submit_approval(
         ) from error
 
 
-@router.post("/orders/{order_id}/cancel")
+@router.post("/orders/{order_id}/cancel", dependencies=MUTATING_DEPENDENCIES)
 def cancel_order(
     order_id: str,
     response: Response,
@@ -189,7 +192,7 @@ def cancel_order(
         ) from error
 
 
-@router.post("/orders/{order_id}/replace")
+@router.post("/orders/{order_id}/replace", dependencies=MUTATING_DEPENDENCIES)
 def replace_order(
     order_id: str,
     request: ReplaceOrderRequest,
@@ -229,7 +232,7 @@ def positions(
     return {"paper_mode": True, "positions": _json(_field(recovery, "open_positions"))}
 
 
-@router.post("/recover")
+@router.post("/recover", dependencies=MUTATING_DEPENDENCIES)
 def recover(
     response: Response,
     service: Annotated[PaperLifecycleService, Depends(get_paper_lifecycle_service)],

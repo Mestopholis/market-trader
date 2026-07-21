@@ -1,10 +1,11 @@
 from typing import Literal
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy import Engine, text
 from sqlalchemy.exc import SQLAlchemyError
 
+from market_trader.api.auth import require_authenticated_session
 from market_trader.config import get_settings
 from market_trader.db.engine import create_engine_from_url
 from market_trader.system_state.models import SystemReadiness
@@ -33,7 +34,11 @@ def health() -> HealthResponse:
     )
 
 
-@router.get("/readiness", response_model=SystemReadiness)
+@router.get(
+    "/readiness",
+    response_model=SystemReadiness,
+    dependencies=[Depends(require_authenticated_session)],
+)
 def readiness() -> SystemReadiness:
     settings = get_settings()
     return collect_system_state(settings.database_url)

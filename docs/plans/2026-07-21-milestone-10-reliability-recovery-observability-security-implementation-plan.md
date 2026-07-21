@@ -184,12 +184,12 @@
 
 **Steps:**
 
-- [ ] Write failing API tests proving dashboard, paper, detailed readiness, and mutating market/paper endpoints reject unauthenticated requests where sensitive or actionable data is exposed.
-- [ ] Add tests proving mutating requests require CSRF and safe no-store headers.
-- [ ] Run RED: `.venv/bin/pytest tests/reliability/test_sensitive_api_protection.py -q`.
-- [ ] Apply auth dependencies and CSRF guards to sensitive routes while keeping safe health checks available.
-- [ ] Run GREEN: `.venv/bin/ruff check src/market_trader/api src/market_trader/security tests/reliability/test_sensitive_api_protection.py && .venv/bin/mypy src/market_trader/api src/market_trader/security tests/reliability/test_sensitive_api_protection.py && .venv/bin/pytest tests/reliability/test_sensitive_api_protection.py -q`.
-- [ ] Commit: `git add apps/api/src/market_trader/api apps/api/src/market_trader/security apps/api/tests/reliability/test_sensitive_api_protection.py && git commit -m "feat: require local auth for sensitive apis"`.
+- [x] Write failing API tests proving dashboard, paper, detailed readiness, and mutating market/paper endpoints reject unauthenticated requests where sensitive or actionable data is exposed.
+- [x] Add tests proving mutating requests require CSRF and safe no-store headers.
+- [x] Run RED: `.venv/bin/pytest tests/reliability/test_sensitive_api_protection.py -q`.
+- [x] Apply auth dependencies and CSRF guards to sensitive routes while keeping safe health checks available.
+- [x] Run GREEN: `.venv/bin/ruff check src/market_trader/api src/market_trader/security tests/reliability/test_sensitive_api_protection.py && .venv/bin/mypy src/market_trader/api src/market_trader/security tests/reliability/test_sensitive_api_protection.py && .venv/bin/pytest tests/reliability/test_sensitive_api_protection.py -q`.
+- [x] Commit: `git add apps/api/src/market_trader/api apps/api/src/market_trader/security apps/api/tests/reliability/test_sensitive_api_protection.py && git commit -m "feat: require local auth for sensitive apis"`.
 
 ### Task 9: Security And CI Gates
 

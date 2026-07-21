@@ -1,4 +1,5 @@
 from collections.abc import Iterator
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -6,10 +7,12 @@ from alembic import command
 from fastapi.testclient import TestClient
 from pytest import MonkeyPatch
 
+from market_trader.api.auth import require_authenticated_session
 from market_trader.config import get_settings
 from market_trader.db.migrations import alembic_config
 from market_trader.main import create_app
 from market_trader.observability.correlation import CORRELATION_ID_HEADER, REQUEST_ID_HEADER
+from market_trader.security.session import SessionClaims
 
 
 @pytest.fixture(autouse=True)
@@ -28,7 +31,13 @@ def test_readiness_api_returns_redacted_component_state(
     monkeypatch.setenv("MARKET_TRADER_DATABASE_URL", database_url)
     get_settings.cache_clear()
 
-    response = TestClient(create_app()).get(
+    app = create_app()
+    app.dependency_overrides[require_authenticated_session] = lambda: SessionClaims(
+        username="operator",
+        issued_at=datetime(2026, 7, 21, tzinfo=UTC),
+    )
+
+    response = TestClient(app).get(
         "/api/readiness",
         headers={CORRELATION_ID_HEADER: "corr-readiness"},
     )

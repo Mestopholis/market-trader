@@ -9,11 +9,13 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
+from market_trader.api.auth import require_authenticated_session, require_csrf_protection
 from market_trader.api.paper import get_paper_lifecycle_service
 from market_trader.dashboard.models import DataState
 from market_trader.main import app
 from market_trader.paper.models import ApprovalCard, ApprovalCardState, PaperAction
 from market_trader.paper.service import PaperLifecycleError, PaperLifecycleService
+from market_trader.security.session import SessionClaims
 from market_trader.system_state.blocking import BlockingStatePolicy, SystemBlockedError
 from market_trader.system_state.models import ComponentState, SystemReadiness
 from tests.db_helpers import migrated_engine
@@ -70,6 +72,7 @@ def test_paper_mutation_routes_return_safe_blocked_response() -> None:
     app.dependency_overrides[get_paper_lifecycle_service] = lambda: BlockingFakePaperService(
         expose_card=True
     )
+    _authorize_app(csrf=True)
 
     response = TestClient(app).post("/api/paper/approval-cards/card-a/approve")
 
@@ -87,6 +90,7 @@ def test_paper_mutation_routes_return_safe_blocked_response() -> None:
 def test_read_only_paper_and_dashboard_routes_still_render_when_state_blocks() -> None:
     fake = BlockingFakePaperService(expose_card=False)
     app.dependency_overrides[get_paper_lifecycle_service] = lambda: fake
+    _authorize_app()
     client = TestClient(app)
 
     cards = client.get("/api/paper/approval-cards")
@@ -98,6 +102,15 @@ def test_read_only_paper_and_dashboard_routes_still_render_when_state_blocks() -
     assert overview.status_code == 200
     assert overview.json()["paper_mode"] is True
     assert overview.json()["data_state"] in {DataState.PARTIAL.value, DataState.UNAVAILABLE.value}
+
+
+def _authorize_app(*, csrf: bool = False) -> None:
+    app.dependency_overrides[require_authenticated_session] = lambda: SessionClaims(
+        username="operator",
+        issued_at=AS_OF,
+    )
+    if csrf:
+        app.dependency_overrides[require_csrf_protection] = lambda: None
 
 
 class BlockingFakePaperService:

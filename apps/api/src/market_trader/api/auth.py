@@ -20,6 +20,14 @@ from market_trader.security.session import (
 router = APIRouter(prefix="/auth")
 
 
+class AuthRequiredError(Exception):
+    pass
+
+
+class CsrfFailedError(Exception):
+    pass
+
+
 class LoginRequest(BaseModel):
     username: str
     password: str
@@ -39,6 +47,20 @@ def csrf_failed_response() -> JSONResponse:
         content={"code": "csrf_failed", "summary": "CSRF token required."},
         headers={"Cache-Control": "no-store"},
     )
+
+
+async def auth_required_exception_handler(
+    _request: Request,
+    _error: Exception,
+) -> JSONResponse:
+    return unauthorized_response()
+
+
+async def csrf_failed_exception_handler(
+    _request: Request,
+    _error: Exception,
+) -> JSONResponse:
+    return csrf_failed_response()
 
 
 @router.post("/login", response_model=None)
@@ -122,3 +144,16 @@ def current_session(request: Request) -> SessionClaims | None:
 
 def _auth_configured(settings: Settings) -> bool:
     return bool(settings.auth_username and settings.auth_password_hash and settings.session_secret)
+
+
+def require_authenticated_session(request: Request) -> SessionClaims:
+    claims = current_session(request)
+    if claims is None:
+        raise AuthRequiredError
+    return claims
+
+
+def require_csrf_protection(request: Request) -> None:
+    require_authenticated_session(request)
+    if not csrf_token_valid(request):
+        raise CsrfFailedError
