@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:executing-plans` to implement this plan task-by-task. Use `superpowers:test-driven-development` for every behavior change.
 
-**Goal:** Add Schwab OAuth and read-only market/account integration while keeping every order path disabled and preserving paper mode.
+**Goal:** Add Schwab OAuth and read-only market-data integration first, then add read-only account integration after separate Accounts and Trading Production approval, while keeping every order path disabled and preserving paper mode.
 
-**Architecture:** Add Schwab as a backend-only provider behind explicit OAuth, token-storage, market-data, and broker-read interfaces. Persist encrypted token metadata and bounded normalized observations, expose safe authenticated status/read models to the operations UI, and keep deterministic fixtures available for tests and local verification.
+**Architecture:** Add Schwab as a backend-only provider behind explicit OAuth, token-storage, market-data, and broker-read interfaces. Sequence implementation around Schwab's product approvals: Market Data Production first, Accounts and Trading Production second. Persist encrypted token metadata and bounded normalized observations, expose safe authenticated status/read models to the operations UI, and keep deterministic fixtures available for tests and local verification.
 
 **Tech Stack:** Python 3.12/3.13, FastAPI, Pydantic, SQLAlchemy 2, Alembic, httpx, pytest, Ruff, strict mypy, React 19, TypeScript, Vite, Vitest, Testing Library, Docker Compose.
 
@@ -16,6 +16,9 @@
 - Use TDD for every behavior change: RED, GREEN, refactor, commit.
 - Verify current Schwab portal OAuth, endpoint, scope, token, and rate-limit
   details before implementing HTTP clients.
+- Implement Market Data Production first because that app is available before
+  Accounts and Trading Production. Do not implement account, balance, position,
+  transaction, or reconciliation behavior until the account app is approved.
 - Do not commit Schwab credentials, tokens, account numbers, portal exports, or
   raw response payloads containing account identifiers.
 - Do not add order preview, order placement, cancel, replace, saved-order,
@@ -59,13 +62,17 @@
 **Steps:**
 
 - [ ] Log in to the Schwab developer portal and record non-secret facts only:
-  approved products, callback URL, OAuth URLs, base URLs, token lifetime,
-  refresh behavior, rate-limit guidance, and read-only endpoint list.
+  Market Data app status, callback URL, OAuth URLs, base URLs, token lifetime,
+  refresh behavior, rate-limit guidance, and read-only market-data endpoint
+  list.
+- [ ] Record that Accounts and Trading Production is pending/not yet in scope
+  until separately approved.
 - [ ] Update the spec if any portal detail conflicts with the draft.
-- [ ] Add `.env.example` placeholders for Schwab enablement, callback URL,
-  client id, client secret, token-encryption key, and expected account hash.
-- [ ] Write the initial runbook with portal setup, callback registration,
-  local secret generation, and explicit non-capabilities.
+- [ ] Add `.env.example` placeholders for Schwab market-data enablement,
+  callback URL, client id, client secret, and token-encryption key. Add expected
+  account hash placeholders only when the account slice begins.
+- [ ] Write the initial runbook with Market Data app setup, callback
+  registration, local secret generation, and explicit non-capabilities.
 - [ ] Run: `rg -n "SCHWAB|Schwab|schwab" .env.example docs/milestone-11-schwab-oauth-read-only-integration.md docs/plans/2026-07-26-milestone-11-schwab-oauth-read-only-integration-spec.md`.
   Expected: only placeholders, setup instructions, and explicit exclusions.
 - [ ] Commit: `git add .env.example docs/milestone-11-schwab-oauth-read-only-integration.md docs/plans/2026-07-26-milestone-11-schwab-oauth-read-only-integration-spec.md && git commit -m "docs: add schwab read-only setup guardrails"`.

@@ -7,10 +7,13 @@ Roadmap milestone: 11
 
 ## Purpose
 
-Milestone 11 connects an approved Schwab Trader API developer application to
-the local paper system for read-only market and account information. It adds
-OAuth authorization, encrypted token storage, read-only Schwab adapters, account
-identity verification, broker-data freshness state, and reconciliation views.
+Milestone 11 connects approved Schwab developer applications to the local paper
+system for read-only market and account information. Schwab approval may arrive
+one product at a time, so the milestone is sequenced in two slices: Market Data
+Production first, then Accounts and Trading Production after separate approval.
+It adds OAuth authorization, encrypted token storage, read-only Schwab adapters,
+broker-data freshness state, and, after the account app is approved, account
+identity verification and reconciliation views.
 
 The milestone must keep all order paths disabled. Schwab order preview, order
 submission, cancel, replace, live-mode arming, public deployment, and automatic
@@ -18,12 +21,15 @@ trading remain unavailable.
 
 ## Operator Inputs Required Before Implementation
 
-- Confirm the Schwab app is approved for the required read-only products in the
-  developer portal.
+- Confirm the Market Data Production app is `Ready for use` in the developer
+  portal before implementing the first slice.
+- Confirm the Accounts and Trading Production app separately before
+  implementing account, balance, position, transaction, or reconciliation
+  behavior.
 - Confirm the exact callback URL registered in Schwab. The default local design
-  is `http://127.0.0.1:8080/api/broker/schwab/oauth/callback`.
+  is `https://127.0.0.1:8182`.
 - Export local-only client configuration through environment variables. Do not
-  commit credentials.
+  commit credentials or paste them into chats, docs, logs, fixtures, or tests.
 - Export a local token-encryption key generated for this app instance.
 - Confirm whether the approved Schwab product exposes trading/order endpoints.
   Even if it does, this milestone must not request, store, call, render, or test
@@ -61,16 +67,18 @@ trading remain unavailable.
   local authentication.
 - Persist encrypted Schwab access and refresh tokens with issued-at,
   expires-at, rotation, revocation, and audit metadata.
-- Add read-only Schwab market-data adapters for quotes, candles, option chains,
-  provider status, and market-data freshness using existing normalized
-  contracts.
-- Add read-only account adapters for account identity, balances, positions, and
-  transactions needed for reconciliation and risk visibility.
-- Add authentication, account-mismatch, rate-limit, provider-stale, and
-  provider-unavailable locks to readiness.
-- Add backend and frontend views showing broker connection status, freshness,
-  account identity confirmation, balances, positions, and reconciliation
-  summaries without trading controls.
+- First slice: add read-only Schwab market-data adapters for quotes, candles,
+  option chains, provider status, and market-data freshness using existing
+  normalized contracts.
+- Second slice, after Accounts and Trading Production approval: add read-only
+  account adapters for account identity, balances, positions, and transactions
+  needed for reconciliation and risk visibility.
+- Add authentication, rate-limit, provider-stale, and provider-unavailable locks
+  to readiness in the first slice. Add account-mismatch locks in the second
+  slice.
+- Add backend and frontend views showing market-data connection status and
+  freshness first. Add account identity confirmation, balances, positions, and
+  reconciliation summaries only after the account app is approved.
 - Add security and forbidden-capability tests proving no order submission,
   preview, cancel, replace, or live-mode paths are introduced.
 - Document local setup, portal verification, callback registration, token
