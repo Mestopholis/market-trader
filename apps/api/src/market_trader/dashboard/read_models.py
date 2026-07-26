@@ -412,9 +412,13 @@ class DashboardReadModel:
 
         if candidate_rows or risk_rows:
             observed = [
-                _db_utc(value)
-                for *_unused, value in (*candidate_rows, *risk_rows)
-                if value is not None
+                _db_utc(created_at)
+                for _status, _strategy, created_at in candidate_rows
+                if created_at is not None
+            ] + [
+                _db_utc(risk_as_of)
+                for _status, risk_as_of in risk_rows
+                if risk_as_of is not None
             ]
             observed_at = max(observed, default=as_of)
             return AnalyticsSummary(
