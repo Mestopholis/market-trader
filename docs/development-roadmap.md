@@ -289,6 +289,11 @@ and [operator runbook](milestone-10-reliability-recovery-observability-security.
 
 ## Milestone 11: Schwab OAuth and read-only integration
 
+**Status:** Draft planning. See the
+[specification](plans/2026-07-26-milestone-11-schwab-oauth-read-only-integration-spec.md)
+and
+[implementation plan](plans/2026-07-26-milestone-11-schwab-oauth-read-only-integration-implementation-plan.md).
+
 **Objective:** Connect Schwab for read-only market and account information while keeping every order path disabled.
 
 **Depends on:** Milestone 10 and a separately approved Schwab integration specification.
