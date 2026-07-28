@@ -1,6 +1,6 @@
 import { csrfToken } from '../auth/api'
 import type { ApiResult } from '../api'
-import type { SchwabBrokerStatus, SchwabTokenStatus } from './types'
+import type { SchwabBrokerStatus, SchwabQuoteRefreshResponse, SchwabTokenStatus } from './types'
 
 export async function fetchSchwabBrokerStatusWithMeta(
   signal?: AbortSignal,
@@ -33,10 +33,32 @@ export async function revokeSchwabAccountsToken(signal?: AbortSignal): Promise<S
   return schwabPost('/api/broker/schwab/accounts/oauth/revoke', 'Schwab accounts token revoke', signal)
 }
 
-async function schwabPost<T>(url: string, label: string, signal?: AbortSignal): Promise<T> {
+export async function refreshSchwabQuotes(
+  symbols: string[],
+  signal?: AbortSignal,
+): Promise<SchwabQuoteRefreshResponse> {
+  return schwabPost(
+    '/api/broker/schwab/market-data/quotes/refresh',
+    'Schwab quote refresh',
+    signal,
+    { symbols },
+  )
+}
+
+async function schwabPost<T>(
+  url: string,
+  label: string,
+  signal?: AbortSignal,
+  body?: unknown,
+): Promise<T> {
   const response = await fetch(url, {
     method: 'POST',
-    headers: { Accept: 'application/json', 'X-CSRF-Token': csrfToken() },
+    headers: {
+      Accept: 'application/json',
+      'X-CSRF-Token': csrfToken(),
+      ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
+    },
+    body: body === undefined ? undefined : JSON.stringify(body),
     cache: 'no-store',
     credentials: 'same-origin',
     signal,

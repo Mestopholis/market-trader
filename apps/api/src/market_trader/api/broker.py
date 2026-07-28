@@ -9,11 +9,18 @@ import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import HTMLResponse
+from pydantic import BaseModel, Field
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session
 
 from market_trader.api.auth import require_authenticated_session, require_csrf_protection
 from market_trader.broker.read_models import SchwabBrokerStatus, SchwabBrokerStatusReader
+from market_trader.broker.schwab.client import SchwabReadOnlyClient
+from market_trader.broker.schwab.live_data import (
+    SchwabLiveMarketDataIngestionResult,
+    SchwabLiveMarketDataIngestionService,
+)
+from market_trader.broker.schwab.market_data import SchwabMarketDataProvider
 from market_trader.broker.schwab.oauth import (
     SCHWAB_ACCOUNTS_TRADING_PRODUCT,
     SCHWAB_ACCOUNTS_TRADING_TOKEN_ID,
@@ -36,6 +43,22 @@ MUTATING_DEPENDENCIES = [
 router = APIRouter(prefix="/broker", tags=["broker"])
 
 
+class SchwabQuoteRefreshRequest(BaseModel):
+    symbols: list[str] = Field(min_length=1, max_length=50)
+
+
+class SchwabQuoteRefreshResponse(BaseModel):
+    sync_key: str
+    data_kind: str
+    symbols: tuple[str, ...]
+    provider_state: str
+    accepted: int
+    degraded: int
+    stale: int
+    quarantined: int
+    deduplicated: int
+
+
 def get_schwab_oauth_service() -> SchwabOAuthService:
     settings = get_settings()
     return SchwabOAuthService(
@@ -51,6 +74,29 @@ def get_schwab_oauth_service() -> SchwabOAuthService:
             SchwabTokenCipher(settings.schwab_token_encryption_key or "")
         ),
         http_client=_http_client(),
+    )
+
+
+def get_schwab_live_market_data_service(
+    session: Annotated[Session, Depends(get_schwab_session)],
+) -> SchwabLiveMarketDataIngestionService:
+    settings = get_settings()
+    token_repository = SchwabTokenRepository(
+        SchwabTokenCipher(settings.schwab_token_encryption_key or "")
+    )
+    oauth_service = get_schwab_oauth_service()
+    return SchwabLiveMarketDataIngestionService(
+        provider=SchwabMarketDataProvider(
+            client=SchwabReadOnlyClient(
+                token_repository=token_repository,
+                http_client=_http_client(),
+                refresh_tokens=lambda db_session, correlation_id: oauth_service.refresh(
+                    db_session,
+                    correlation_id=correlation_id,
+                ),
+            ),
+            session=session,
+        )
     )
 
 
@@ -111,6 +157,32 @@ def schwab_status(
         configured=settings.schwab_market_data_enabled,
         accounts_trading_configured=settings.schwab_accounts_trading_enabled,
     ).read()
+
+
+@router.post(
+    "/schwab/market-data/quotes/refresh",
+    response_model=SchwabQuoteRefreshResponse,
+    dependencies=MUTATING_DEPENDENCIES,
+)
+def refresh_schwab_market_data_quotes(
+    request: Request,
+    response: Response,
+    payload: SchwabQuoteRefreshRequest,
+    session: Annotated[Session, Depends(get_schwab_session)],
+    service: Annotated[
+        SchwabLiveMarketDataIngestionService,
+        Depends(get_schwab_live_market_data_service),
+    ],
+) -> SchwabLiveMarketDataIngestionResult:
+    _no_store(response)
+    try:
+        return service.refresh_quotes(
+            session,
+            symbols=tuple(symbol.strip().upper() for symbol in payload.symbols),
+            correlation_id=_correlation_id(request),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
 @router.get("/schwab/oauth/callback", response_model=None)
