@@ -7,7 +7,7 @@ import json
 import sys
 from collections import Counter
 from collections.abc import Sequence
-from datetime import timedelta
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import TextIO, cast
 
@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 
 from market_trader.db.engine import create_engine_from_url
 from market_trader.db.migrations import upgrade_to_head
+from market_trader.domain.time import ensure_utc, utc_now
 from market_trader.market_calendar.adapter import XNYSCalendarAdapter
 from market_trader.market_data.models import NormalizedProviderState
 from market_trader.market_data.replay import ReplayEngine, VirtualReplayClock
@@ -39,6 +40,7 @@ from market_trader.scanner.fixtures import (
     ScannerFixtureValidationError,
     assemble_scanner_input,
 )
+from market_trader.scanner.live_input import build_scanner_input_from_market_data
 from market_trader.scanner.models import ScanResult
 from market_trader.scanner.serialization import canonical_record
 
@@ -47,6 +49,9 @@ _DEFAULT_CONFIGURATION = Path("config/scanner")
 
 def main(argv: Sequence[str] | None = None) -> int:
     arguments = _parser().parse_args(argv)
+    if arguments.command == "scan-live":
+        return _scan_live_command(arguments)
+
     try:
         dataset = ScannerFixtureDataset.load(arguments.dataset)
         configuration = load_scanner_configuration(arguments.config)
@@ -98,6 +103,12 @@ def _parser() -> argparse.ArgumentParser:
         subcommand.add_argument("--config", type=Path, default=_DEFAULT_CONFIGURATION)
         if command == "scan":
             subcommand.add_argument("--database-url")
+    live = commands.add_parser("scan-live")
+    live.add_argument("--database-url", required=True)
+    live.add_argument("--config", type=Path, default=_DEFAULT_CONFIGURATION)
+    live.add_argument("--source", default="schwab")
+    live.add_argument("--as-of")
+    live.add_argument("--observed-lookback-minutes", type=int, default=15)
     return parser
 
 
@@ -108,6 +119,71 @@ def _scan(dataset: ScannerFixtureDataset, configuration: ScannerConfiguration) -
     _replay(dataset, sink)
     scanner_input = assemble_scanner_input(dataset, sink.accepted)
     return ScannerEngine(configuration).scan(scanner_input)
+
+
+def _scan_live_command(arguments: argparse.Namespace) -> int:
+    try:
+        configuration = load_scanner_configuration(arguments.config)
+        as_of = _parse_optional_timestamp(arguments.as_of)
+        observed_from = as_of - timedelta(minutes=arguments.observed_lookback_minutes)
+        result = _scan_live(
+            configuration=configuration,
+            database_url=arguments.database_url,
+            as_of=as_of,
+            observed_from=observed_from,
+            source=arguments.source,
+        )
+    except (ConfigurationError, OSError, ValueError):
+        _print_error("dataset_error", "live scanner input is invalid")
+        return 2
+    except (
+        CommandError,
+        ScannerPersistenceError,
+        SQLAlchemyError,
+    ):
+        _print_error("infrastructure_error", "database operation failed")
+        return 3
+    except Exception:
+        _print_error("infrastructure_error", "scanner operation failed")
+        return 3
+
+    payload = _result_payload(result)
+    payload.update(
+        {
+            "command": arguments.command,
+            "persistence": "database",
+            "source": arguments.source,
+        }
+    )
+    _print_json(payload, stream=sys.stdout)
+    return 0
+
+
+def _scan_live(
+    *,
+    configuration: ScannerConfiguration,
+    database_url: str,
+    as_of: datetime,
+    observed_from: datetime,
+    source: str,
+) -> ScanResult:
+    with contextlib.redirect_stderr(io.StringIO()):
+        upgrade_to_head(database_url)
+    engine = create_engine_from_url(database_url)
+    try:
+        with Session(engine) as session, session.begin():
+            scanner_input = build_scanner_input_from_market_data(
+                session,
+                configuration=configuration,
+                as_of=as_of,
+                observed_from=observed_from,
+                source=source,
+            )
+            result = ScannerEngine(configuration).scan(scanner_input)
+            ScannerRepository(session).persist(result)
+            return result
+    finally:
+        engine.dispose()
 
 
 def _persist(
@@ -184,6 +260,12 @@ def _result_payload(result: ScanResult) -> dict[str, object]:
     result_payload = cast(dict[str, object], payload)
     result_payload["reason_summary"] = _reason_summary(result)
     return result_payload
+
+
+def _parse_optional_timestamp(value: str | None) -> datetime:
+    if value is None:
+        return utc_now()
+    return ensure_utc(datetime.fromisoformat(value.replace("Z", "+00:00")))
 
 
 class _ScannerRepositoryIngestionSink:
