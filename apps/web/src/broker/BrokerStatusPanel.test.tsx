@@ -61,6 +61,7 @@ test('renders connected read-only market data status and safe actions', async ()
   const onAccountsRefresh = vi.fn()
   const onAccountsRevoke = vi.fn()
   const onQuoteRefresh = vi.fn()
+  const onLiveScan = vi.fn()
 
   render(
     <BrokerStatusPanel
@@ -68,6 +69,7 @@ test('renders connected read-only market data status and safe actions', async ()
       onRefresh={onRefresh}
       onRevoke={onRevoke}
       onQuoteRefresh={onQuoteRefresh}
+      onLiveScan={onLiveScan}
       onAccountsRefresh={onAccountsRefresh}
       onAccountsRevoke={onAccountsRevoke}
     />,
@@ -86,10 +88,12 @@ test('renders connected read-only market data status and safe actions', async ()
   await user.click(screen.getByRole('button', { name: 'Refresh Schwab token' }))
   await user.click(screen.getByRole('button', { name: 'Revoke Schwab token' }))
   await user.click(screen.getByRole('button', { name: 'Refresh SPY quote' }))
+  await user.click(screen.getByRole('button', { name: 'Run live scanner' }))
 
   expect(onRefresh).toHaveBeenCalledOnce()
   expect(onRevoke).toHaveBeenCalledOnce()
   expect(onQuoteRefresh).toHaveBeenCalledOnce()
+  expect(onLiveScan).toHaveBeenCalledOnce()
   expect(screen.getByRole('button', { name: 'Refresh Accounts token' })).toBeDisabled()
   expect(screen.getByRole('button', { name: 'Revoke Accounts token' })).toBeDisabled()
 })
@@ -115,6 +119,7 @@ test('renders reconnect guidance when disconnected and disables unsafe actions',
       onRefresh={vi.fn()}
       onRevoke={vi.fn()}
       onQuoteRefresh={vi.fn()}
+      onLiveScan={vi.fn()}
       onAccountsRefresh={vi.fn()}
       onAccountsRevoke={vi.fn()}
     />,
@@ -125,4 +130,5 @@ test('renders reconnect guidance when disconnected and disables unsafe actions',
   expect(screen.getByRole('button', { name: 'Refresh Schwab token' })).toBeDisabled()
   expect(screen.getByRole('button', { name: 'Revoke Schwab token' })).toBeDisabled()
   expect(screen.getByRole('button', { name: 'Refresh SPY quote' })).toBeDisabled()
+  expect(screen.getByRole('button', { name: 'Run live scanner' })).toBeDisabled()
 })

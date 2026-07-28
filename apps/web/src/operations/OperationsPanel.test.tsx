@@ -166,3 +166,42 @@ test('refreshes a live Schwab quote and reloads broker status', async () => {
   expect(await screen.findByText('corr-broker-live')).toBeInTheDocument()
   expect(screen.getByText(/quote available at/)).toBeInTheDocument()
 })
+
+test('runs a live Schwab scanner pass from operations', async () => {
+  const user = userEvent.setup()
+  const fetchMock = vi.spyOn(globalThis, 'fetch')
+    .mockResolvedValueOnce(response(readiness))
+    .mockResolvedValueOnce(response(schwabStatus))
+    .mockResolvedValueOnce(response(recovery))
+    .mockResolvedValueOnce(response({
+      source: 'schwab',
+      run_key: 'scan:live:test',
+      result_digest: 'digest-live-test',
+      counts: {
+        eligible: 1,
+        ineligible: 28,
+        blocked: 1,
+        signals: 5,
+        candidates: 2,
+      },
+    }))
+    .mockResolvedValueOnce(response(schwabStatus, { 'X-Correlation-ID': 'corr-broker-scan' }))
+
+  render(<OperationsPanel />)
+
+  await screen.findByRole('heading', { name: 'Schwab Market Data' })
+  await user.click(screen.getByRole('button', { name: 'Run live scanner' }))
+
+  expect(fetchMock.mock.calls.map((call) => String(call[0]))).toEqual([
+    '/api/readiness',
+    '/api/broker/schwab/status',
+    '/api/paper/recover',
+    '/api/broker/schwab/market-data/scan-live',
+    '/api/broker/schwab/status',
+  ])
+  expect(fetchMock.mock.calls[3][1]).toMatchObject({
+    method: 'POST',
+    body: JSON.stringify({ source: 'schwab', observed_lookback_minutes: 15 }),
+  })
+  expect(await screen.findByText('corr-broker-scan')).toBeInTheDocument()
+})

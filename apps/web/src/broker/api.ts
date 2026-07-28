@@ -1,6 +1,11 @@
 import { csrfToken } from '../auth/api'
 import type { ApiResult } from '../api'
-import type { SchwabBrokerStatus, SchwabQuoteRefreshResponse, SchwabTokenStatus } from './types'
+import type {
+  SchwabBrokerStatus,
+  SchwabLiveScanResponse,
+  SchwabQuoteRefreshResponse,
+  SchwabTokenStatus,
+} from './types'
 
 export async function fetchSchwabBrokerStatusWithMeta(
   signal?: AbortSignal,
@@ -42,6 +47,15 @@ export async function refreshSchwabQuotes(
     'Schwab quote refresh',
     signal,
     { symbols },
+  )
+}
+
+export async function runSchwabLiveScan(signal?: AbortSignal): Promise<SchwabLiveScanResponse> {
+  return schwabPost(
+    '/api/broker/schwab/market-data/scan-live',
+    'Schwab live scanner',
+    signal,
+    { source: 'schwab', observed_lookback_minutes: 15 },
   )
 }
 

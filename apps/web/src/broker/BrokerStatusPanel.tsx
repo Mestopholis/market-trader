@@ -6,6 +6,7 @@ type BrokerStatusPanelProps = {
   onRefresh: () => void
   onRevoke: () => void
   onQuoteRefresh: () => void
+  onLiveScan: () => void
   onAccountsRefresh: () => void
   onAccountsRevoke: () => void
 }
@@ -16,6 +17,7 @@ export default function BrokerStatusPanel({
   onRefresh,
   onRevoke,
   onQuoteRefresh,
+  onLiveScan,
   onAccountsRefresh,
   onAccountsRevoke,
 }: BrokerStatusPanelProps) {
@@ -36,6 +38,14 @@ export default function BrokerStatusPanel({
               disabled={status.connection_state !== 'connected'}
             >
               Refresh SPY quote
+            </button>
+            <button
+              type="button"
+              className="paper-action-button"
+              onClick={onLiveScan}
+              disabled={status.connection_state !== 'connected'}
+            >
+              Run live scanner
             </button>
             <button
               type="button"

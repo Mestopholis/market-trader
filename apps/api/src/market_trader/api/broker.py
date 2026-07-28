@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Generator
+from datetime import datetime
 from functools import lru_cache
 from html import escape
 from typing import Annotated, Any
@@ -34,6 +35,8 @@ from market_trader.broker.schwab.tokens import SchwabTokenCipher, SchwabTokenRep
 from market_trader.config import get_settings
 from market_trader.db.engine import create_engine_from_url
 from market_trader.observability.correlation import CorrelationContext
+from market_trader.scanner.configuration import load_scanner_configuration
+from market_trader.scanner.live_scan import SchwabLiveScannerService, SchwabLiveScanResult
 
 MUTATING_DEPENDENCIES = [
     Depends(require_authenticated_session),
@@ -57,6 +60,19 @@ class SchwabQuoteRefreshResponse(BaseModel):
     stale: int
     quarantined: int
     deduplicated: int
+
+
+class SchwabLiveScanRequest(BaseModel):
+    source: str = Field(default="schwab", min_length=1)
+    as_of: datetime | None = None
+    observed_lookback_minutes: int = Field(default=15, ge=1, le=390)
+
+
+class SchwabLiveScanResponse(BaseModel):
+    source: str
+    run_key: str
+    result_digest: str
+    counts: dict[str, int]
 
 
 def get_schwab_oauth_service() -> SchwabOAuthService:
@@ -97,6 +113,12 @@ def get_schwab_live_market_data_service(
             ),
             session=session,
         )
+    )
+
+
+def get_schwab_live_scanner_service() -> SchwabLiveScannerService:
+    return SchwabLiveScannerService(
+        configuration=load_scanner_configuration("config/scanner")
     )
 
 
@@ -179,6 +201,34 @@ def refresh_schwab_market_data_quotes(
         return service.refresh_quotes(
             session,
             symbols=tuple(symbol.strip().upper() for symbol in payload.symbols),
+            correlation_id=_correlation_id(request),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@router.post(
+    "/schwab/market-data/scan-live",
+    response_model=SchwabLiveScanResponse,
+    dependencies=MUTATING_DEPENDENCIES,
+)
+def scan_live_schwab_market_data(
+    request: Request,
+    response: Response,
+    payload: SchwabLiveScanRequest,
+    session: Annotated[Session, Depends(get_schwab_session)],
+    service: Annotated[
+        SchwabLiveScannerService,
+        Depends(get_schwab_live_scanner_service),
+    ],
+) -> SchwabLiveScanResult:
+    _no_store(response)
+    try:
+        return service.scan(
+            session,
+            source=payload.source.strip().lower(),
+            as_of=payload.as_of,
+            observed_lookback_minutes=payload.observed_lookback_minutes,
             correlation_id=_correlation_id(request),
         )
     except ValueError as exc:

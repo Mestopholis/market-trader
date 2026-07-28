@@ -6,6 +6,7 @@ import {
   refreshSchwabQuotes,
   refreshSchwabAccountsToken,
   refreshSchwabToken,
+  runSchwabLiveScan,
   revokeSchwabAccountsToken,
   revokeSchwabToken,
 } from '../broker/api'
@@ -110,6 +111,21 @@ export default function OperationsPanel() {
     }
   }
 
+  async function runLiveScanner() {
+    if (state.kind !== 'ready') return
+    try {
+      await runSchwabLiveScan()
+      const brokerStatus = await fetchSchwabBrokerStatusWithMeta()
+      setState({
+        ...state,
+        brokerStatus: brokerStatus.data,
+        brokerCorrelationId: brokerStatus.correlationId,
+      })
+    } catch {
+      setState({ kind: 'error', area: 'health' })
+    }
+  }
+
   async function refreshAccountsToken() {
     if (state.kind !== 'ready') return
     try {
@@ -168,6 +184,7 @@ export default function OperationsPanel() {
         onRefresh={refreshBrokerToken}
         onRevoke={revokeBrokerToken}
         onQuoteRefresh={refreshLiveQuote}
+        onLiveScan={runLiveScanner}
         onAccountsRefresh={refreshAccountsToken}
         onAccountsRevoke={revokeAccountsToken}
       />

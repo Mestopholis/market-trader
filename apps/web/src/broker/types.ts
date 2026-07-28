@@ -75,3 +75,16 @@ export type SchwabQuoteRefreshResponse = {
   quarantined: number
   deduplicated: number
 }
+
+export type SchwabLiveScanResponse = {
+  source: string
+  run_key: string
+  result_digest: string
+  counts: {
+    eligible: number
+    ineligible: number
+    blocked: number
+    signals: number
+    candidates: number
+  }
+}
