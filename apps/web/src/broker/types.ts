@@ -5,6 +5,8 @@ export type SchwabConnectionState =
   | 'expired'
   | 'revoked'
 
+export type SchwabAccountsTradingState = SchwabConnectionState
+
 export type SchwabMarketDataState =
   | 'unconfigured'
   | 'unknown'
@@ -44,14 +46,20 @@ export type SchwabMarketDataRefreshStatus = {
 
 export type SchwabBrokerStatus = {
   configured: boolean
+  accounts_trading_configured: boolean
   callback_url: string
   connection_state: SchwabConnectionState
   market_data_state: SchwabMarketDataState
+  accounts_trading_state: SchwabAccountsTradingState
   token: SchwabTokenStatus | null
+  accounts_trading_token: SchwabTokenStatus | null
   last_market_data_refresh: SchwabMarketDataRefreshStatus | null
   actions: {
     oauth_start: boolean
     refresh: boolean
     revoke: boolean
+    accounts_oauth_start: boolean
+    accounts_refresh: boolean
+    accounts_revoke: boolean
   }
 }

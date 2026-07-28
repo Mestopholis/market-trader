@@ -104,6 +104,13 @@ assert payload["market_data_state"] in {
     "unavailable",
     "quarantined",
 }
+assert payload["accounts_trading_state"] in {
+    "unconfigured",
+    "disconnected",
+    "connected",
+    "expired",
+    "revoked",
+}
 assert "client_secret" not in json.dumps(payload)
 assert "access" "_token" not in json.dumps(payload)
 '

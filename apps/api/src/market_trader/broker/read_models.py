@@ -7,12 +7,22 @@ from pydantic import BaseModel
 from sqlalchemy import desc, select
 from sqlalchemy.orm import Session
 
-from market_trader.broker.schwab.oauth import SCHWAB_MARKET_DATA_TOKEN_ID
+from market_trader.broker.schwab.oauth import (
+    SCHWAB_ACCOUNTS_TRADING_TOKEN_ID,
+    SCHWAB_MARKET_DATA_TOKEN_ID,
+)
 from market_trader.broker.schwab.tokens import SchwabTokenCipher, SchwabTokenRepository
 from market_trader.db.models import SchwabMarketDataSyncORM
 from market_trader.domain.time import ensure_utc, utc_now
 
 type SchwabConnectionState = Literal[
+    "unconfigured",
+    "disconnected",
+    "connected",
+    "expired",
+    "revoked",
+]
+type SchwabAccountsTradingState = Literal[
     "unconfigured",
     "disconnected",
     "connected",
@@ -63,7 +73,10 @@ class SchwabBrokerStatus(BaseModel):
     callback_url: str
     connection_state: SchwabConnectionState
     market_data_state: SchwabMarketDataState
+    accounts_trading_configured: bool
+    accounts_trading_state: SchwabAccountsTradingState
     token: SchwabTokenStatus | None
+    accounts_trading_token: SchwabTokenStatus | None
     last_market_data_refresh: SchwabMarketDataRefreshStatus | None
     actions: dict[str, bool]
 
@@ -76,6 +89,7 @@ class SchwabBrokerStatusReader:
         token_key: str | None,
         callback_url: str = "https://127.0.0.1:8182",
         configured: bool = True,
+        accounts_trading_configured: bool = False,
         now: datetime | None = None,
         stale_after: timedelta = timedelta(minutes=15),
     ) -> None:
@@ -83,45 +97,70 @@ class SchwabBrokerStatusReader:
         self._token_key = token_key
         self._callback_url = callback_url
         self._configured = configured
+        self._accounts_trading_configured = accounts_trading_configured
         self._now = ensure_utc(now or utc_now())
         self._stale_after = stale_after
 
     def read(self) -> SchwabBrokerStatus:
-        if not self._configured:
+        if not self._configured and not self._accounts_trading_configured:
             return SchwabBrokerStatus(
                 configured=False,
                 callback_url=self._callback_url,
                 connection_state="unconfigured",
                 market_data_state="unconfigured",
+                accounts_trading_configured=False,
+                accounts_trading_state="unconfigured",
                 token=None,
+                accounts_trading_token=None,
                 last_market_data_refresh=None,
-                actions={"oauth_start": False, "refresh": False, "revoke": False},
+                actions=_actions(
+                    market_data_state="unconfigured",
+                    accounts_trading_state="unconfigured",
+                    market_data_configured=False,
+                    accounts_trading_configured=False,
+                ),
             )
 
-        token = self._token_status()
+        token = self._token_status(SCHWAB_MARKET_DATA_TOKEN_ID) if self._configured else None
+        accounts_trading_token = (
+            self._token_status(SCHWAB_ACCOUNTS_TRADING_TOKEN_ID)
+            if self._accounts_trading_configured
+            else None
+        )
         refresh = self._last_refresh()
         connection_state = _connection_state(token)
+        accounts_trading_state = _connection_state(accounts_trading_token)
+        if not self._configured:
+            connection_state = "unconfigured"
+        if not self._accounts_trading_configured:
+            accounts_trading_state = "unconfigured"
         return SchwabBrokerStatus(
-            configured=True,
+            configured=self._configured,
             callback_url=self._callback_url,
             connection_state=connection_state,
-            market_data_state=_market_data_state(refresh),
+            market_data_state=_market_data_state(refresh)
+            if self._configured
+            else "unconfigured",
+            accounts_trading_configured=self._accounts_trading_configured,
+            accounts_trading_state=accounts_trading_state,
             token=token,
+            accounts_trading_token=accounts_trading_token,
             last_market_data_refresh=refresh,
-            actions={
-                "oauth_start": True,
-                "refresh": connection_state == "connected",
-                "revoke": connection_state == "connected",
-            },
+            actions=_actions(
+                market_data_state=connection_state,
+                accounts_trading_state=accounts_trading_state,
+                market_data_configured=self._configured,
+                accounts_trading_configured=self._accounts_trading_configured,
+            ),
         )
 
-    def _token_status(self) -> SchwabTokenStatus | None:
+    def _token_status(self, token_id: str) -> SchwabTokenStatus | None:
         if not self._token_key:
             return None
         try:
             metadata = SchwabTokenRepository(SchwabTokenCipher(self._token_key)).metadata(
                 self._session,
-                token_id=SCHWAB_MARKET_DATA_TOKEN_ID,
+                token_id=token_id,
                 now=self._now,
             )
         except LookupError:
@@ -178,6 +217,23 @@ def _market_data_state(
     if refresh.is_stale:
         return "stale"
     return "available"
+
+
+def _actions(
+    *,
+    market_data_state: SchwabConnectionState,
+    accounts_trading_state: SchwabAccountsTradingState,
+    market_data_configured: bool,
+    accounts_trading_configured: bool,
+) -> dict[str, bool]:
+    return {
+        "oauth_start": market_data_configured,
+        "refresh": market_data_state == "connected",
+        "revoke": market_data_state == "connected",
+        "accounts_oauth_start": accounts_trading_configured,
+        "accounts_refresh": accounts_trading_state == "connected",
+        "accounts_revoke": accounts_trading_state == "connected",
+    }
 
 
 def _stored_utc(value: datetime) -> datetime:

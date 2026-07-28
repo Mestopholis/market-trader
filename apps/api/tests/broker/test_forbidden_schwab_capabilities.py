@@ -9,16 +9,18 @@ from market_trader.main import create_app
 REPO_ROOT = Path(__file__).resolve().parents[4]
 
 SCHWAB_ORDER_PATTERNS = (
-    re.compile(r"\bschwab\b.*\border preview\b", re.IGNORECASE),
-    re.compile(r"\border preview\b.*\bschwab\b", re.IGNORECASE),
-    re.compile(r"\bschwab\b.*\border submit\b", re.IGNORECASE),
-    re.compile(r"\border submit\b.*\bschwab\b", re.IGNORECASE),
-    re.compile(r"\bschwab\b.*\bsubmit order\b", re.IGNORECASE),
-    re.compile(r"\bsubmit order\b.*\bschwab\b", re.IGNORECASE),
-    re.compile(r"\bschwab\b.*\bcancel\b", re.IGNORECASE),
-    re.compile(r"\bschwab\b.*\breplace\b", re.IGNORECASE),
-    re.compile(r"\bschwab\b.*\bsaved[- ]?order\b", re.IGNORECASE),
-    re.compile(r"\bschwab\b.*\blive[_ -]?mode\b", re.IGNORECASE),
+    re.compile(r"\bschwab\b.{0,120}\border submit\b", re.IGNORECASE),
+    re.compile(r"\border submit\b.{0,120}\bschwab\b", re.IGNORECASE),
+    re.compile(r"\bschwab\b.{0,120}\bsubmit\b", re.IGNORECASE),
+    re.compile(r"\bsubmit\b.{0,120}\bschwab\b", re.IGNORECASE),
+    re.compile(r"\bschwab\b.{0,120}\bsubmit order\b", re.IGNORECASE),
+    re.compile(r"\bsubmit order\b.{0,120}\bschwab\b", re.IGNORECASE),
+    re.compile(r"\bschwab\b.{0,120}\bplace\b", re.IGNORECASE),
+    re.compile(r"\bplace\b.{0,120}\bschwab\b", re.IGNORECASE),
+    re.compile(r"\bschwab\b.{0,120}\bcancel\b", re.IGNORECASE),
+    re.compile(r"\bschwab\b.{0,120}\breplace\b", re.IGNORECASE),
+    re.compile(r"\bschwab\b.{0,120}\bsaved[- ]?order\b", re.IGNORECASE),
+    re.compile(r"\bschwab\b.{0,120}\blive[_ -]?mode\b", re.IGNORECASE),
 )
 
 
@@ -63,8 +65,8 @@ def test_security_check_uses_schwab_order_specific_patterns() -> None:
         encoding="utf-8"
     )
 
-    assert r"\bschwab\b.*\border\b" in security_check
-    assert "Schwab read-only references are allowed" in security_check
+    assert r"\bschwab\b.{0,120}\bsubmit\b" in security_check
+    assert "Schwab read-only and validation-contract references are allowed" in security_check
 
 
 def _assert_no_schwab_order_capability(

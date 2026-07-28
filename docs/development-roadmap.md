@@ -317,6 +317,9 @@ submission, and live-mode arming.
 
 ## Milestone 12: Schwab order-contract integration and extended paper validation
 
+**Status:** Complete for validation-only order-contract foundation. See the
+[operator runbook](milestone-12-schwab-order-contract-validation.md).
+
 **Objective:** Validate broker-specific order contracts and the paper workflow without enabling live-account submission or assuming Schwab provides a paper-order API.
 
 **Depends on:** Milestone 11 and a separately approved broker-order specification.

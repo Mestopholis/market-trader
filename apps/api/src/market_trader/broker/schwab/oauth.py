@@ -28,6 +28,8 @@ SCHWAB_AUTHORIZE_URL = "https://api.schwabapi.com/v1/oauth/authorize"
 SCHWAB_TOKEN_URL = "https://api.schwabapi.com/v1/oauth/token"
 SCHWAB_MARKET_DATA_TOKEN_ID = "schwab-market-data"
 SCHWAB_MARKET_DATA_PRODUCT = "market_data"
+SCHWAB_ACCOUNTS_TRADING_TOKEN_ID = "schwab-accounts-trading"
+SCHWAB_ACCOUNTS_TRADING_PRODUCT = "accounts_trading"
 _STATE_TTL = timedelta(minutes=10)
 _STATE_SCHEMA_VERSION = 1
 _AUDIT_SCHEMA_VERSION = 1
@@ -45,6 +47,8 @@ class SchwabOAuthConfig:
     client_secret: str
     callback_url: str
     state_signing_key: str
+    token_id: str = SCHWAB_MARKET_DATA_TOKEN_ID
+    product: str = SCHWAB_MARKET_DATA_PRODUCT
     authorize_url: str = SCHWAB_AUTHORIZE_URL
     token_url: str = SCHWAB_TOKEN_URL
 
@@ -164,8 +168,8 @@ class SchwabOAuthService:
         bundle = self._exchange_authorization_code(code, now=now)
         self.token_repository.store_initial(
             session,
-            token_id=SCHWAB_MARKET_DATA_TOKEN_ID,
-            product=SCHWAB_MARKET_DATA_PRODUCT,
+            token_id=self.config.token_id,
+            product=self.config.product,
             bundle=bundle,
             now=now,
             correlation_id=correlation_id,
@@ -176,26 +180,26 @@ class SchwabOAuthService:
             session,
             correlation_id=correlation_id,
             event_type="schwab.oauth.callback_succeeded",
-            subject_id=SCHWAB_MARKET_DATA_TOKEN_ID,
+            subject_id=self.config.token_id,
             payload={
-                "product": SCHWAB_MARKET_DATA_PRODUCT,
+                "product": self.config.product,
                 "scope": bundle.scope,
                 "token_type": bundle.token_type,
             },
         )
         return self.token_repository.metadata(
             session,
-            token_id=SCHWAB_MARKET_DATA_TOKEN_ID,
+            token_id=self.config.token_id,
             now=now,
         )
 
     def refresh(self, session: Session, *, correlation_id: str) -> SchwabTokenMetadata:
         now = self._now()
-        existing = self.token_repository.read(session, token_id=SCHWAB_MARKET_DATA_TOKEN_ID)
+        existing = self.token_repository.read(session, token_id=self.config.token_id)
         bundle = self._exchange_refresh_token(existing.refresh_token, now=now)
         self.token_repository.rotate(
             session,
-            token_id=SCHWAB_MARKET_DATA_TOKEN_ID,
+            token_id=self.config.token_id,
             bundle=bundle,
             now=now,
         )
@@ -203,12 +207,12 @@ class SchwabOAuthService:
             session,
             correlation_id=correlation_id,
             event_type="schwab.oauth.refreshed",
-            subject_id=SCHWAB_MARKET_DATA_TOKEN_ID,
-            payload={"product": SCHWAB_MARKET_DATA_PRODUCT, "scope": bundle.scope},
+            subject_id=self.config.token_id,
+            payload={"product": self.config.product, "scope": bundle.scope},
         )
         return self.token_repository.metadata(
             session,
-            token_id=SCHWAB_MARKET_DATA_TOKEN_ID,
+            token_id=self.config.token_id,
             now=now,
         )
 
@@ -222,7 +226,7 @@ class SchwabOAuthService:
         now = self._now()
         self.token_repository.revoke(
             session,
-            token_id=SCHWAB_MARKET_DATA_TOKEN_ID,
+            token_id=self.config.token_id,
             now=now,
             reason_code=reason_code,
         )
@@ -230,12 +234,12 @@ class SchwabOAuthService:
             session,
             correlation_id=correlation_id,
             event_type="schwab.oauth.revoked",
-            subject_id=SCHWAB_MARKET_DATA_TOKEN_ID,
+            subject_id=self.config.token_id,
             payload={"reason_code": reason_code},
         )
         return self.token_repository.metadata(
             session,
-            token_id=SCHWAB_MARKET_DATA_TOKEN_ID,
+            token_id=self.config.token_id,
             now=now,
         )
 
@@ -299,6 +303,8 @@ class SchwabOAuthService:
             decoded.nonce
         ):
             raise SchwabOAuthError("oauth_state_invalid")
+        if decoded.product != self.config.product:
+            raise SchwabOAuthError("oauth_product_mismatch")
         return row
 
     def _sign_state(self, *, state_id: str, nonce: str, issued_at: datetime) -> str:
@@ -306,6 +312,7 @@ class SchwabOAuthService:
             "v": _STATE_SCHEMA_VERSION,
             "id": state_id,
             "nonce": nonce,
+            "product": self.config.product,
             "iat": ensure_utc(issued_at).isoformat(),
         }
         encoded = _b64(json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8"))
@@ -326,7 +333,11 @@ class SchwabOAuthService:
             raise SchwabOAuthError("oauth_state_invalid") from error
         if payload.get("v") != _STATE_SCHEMA_VERSION:
             raise SchwabOAuthError("oauth_state_invalid")
-        return _DecodedState(id=str(payload["id"]), nonce=str(payload["nonce"]))
+        return _DecodedState(
+            id=str(payload["id"]),
+            nonce=str(payload["nonce"]),
+            product=str(payload.get("product", SCHWAB_MARKET_DATA_PRODUCT)),
+        )
 
     def _signature(self, encoded_payload: str) -> str:
         return _b64(
@@ -387,6 +398,7 @@ class SchwabOAuthService:
 class _DecodedState:
     id: str
     nonce: str
+    product: str
 
 
 def _b64(value: bytes) -> str:

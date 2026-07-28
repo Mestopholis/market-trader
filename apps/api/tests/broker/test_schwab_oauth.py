@@ -13,6 +13,8 @@ from sqlalchemy.orm import Session
 
 from market_trader.api.auth import require_authenticated_session, require_csrf_protection
 from market_trader.broker.schwab.oauth import (
+    SCHWAB_ACCOUNTS_TRADING_PRODUCT,
+    SCHWAB_ACCOUNTS_TRADING_TOKEN_ID,
     SCHWAB_MARKET_DATA_TOKEN_ID,
     SchwabOAuthConfig,
     SchwabOAuthError,
@@ -168,6 +170,53 @@ def test_callback_success_consumes_state_stores_tokens_and_audits(
     ]
 
 
+def test_callback_can_store_accounts_trading_token_separately(
+    session: Session,
+) -> None:
+    requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(
+            200,
+            json={
+                "access_token": "accounts-access-token-a",
+                "refresh_token": "accounts-refresh-token-a",
+                "token_type": "Bearer",
+                "scope": "api",
+                "expires_in": 1800,
+            },
+        )
+
+    with httpx.Client(transport=httpx.MockTransport(handler)) as http_client:
+        service = SchwabOAuthService(
+            config=_config(
+                token_id=SCHWAB_ACCOUNTS_TRADING_TOKEN_ID,
+                product=SCHWAB_ACCOUNTS_TRADING_PRODUCT,
+            ),
+            token_repository=SchwabTokenRepository(SchwabTokenCipher("local-key")),
+            http_client=http_client,
+            clock=FrozenClock(NOW),
+        )
+        started = service.start(session, correlation_id="corr-accounts")
+        metadata = service.complete_callback(
+            session,
+            code="oauth-code-a",
+            state=started.state,
+            correlation_id="corr-accounts",
+        )
+
+    market_repository = SchwabTokenRepository(SchwabTokenCipher("local-key"))
+    assert metadata.token_id == SCHWAB_ACCOUNTS_TRADING_TOKEN_ID
+    assert metadata.product == SCHWAB_ACCOUNTS_TRADING_PRODUCT
+    with pytest.raises(LookupError, match=SCHWAB_MARKET_DATA_TOKEN_ID):
+        market_repository.metadata(
+            session,
+            token_id=SCHWAB_MARKET_DATA_TOKEN_ID,
+            now=NOW,
+        )
+
+
 def test_callback_rejects_replay_and_wrong_state(
     session: Session,
     service: SchwabOAuthService,
@@ -289,9 +338,41 @@ def test_broker_routes_start_refresh_and_revoke_with_local_csrf() -> None:
     assert fake.calls == ["start", "refresh", "revoke"]
 
 
+def test_accounts_trading_routes_use_separate_oauth_service() -> None:
+    fake = FakeOAuthService(token_id=SCHWAB_ACCOUNTS_TRADING_TOKEN_ID)
+    app.dependency_overrides[require_authenticated_session] = lambda: SessionClaims(
+        username="operator",
+        issued_at=NOW,
+    )
+    app.dependency_overrides[require_csrf_protection] = lambda: None
+    from market_trader.api.broker import get_schwab_accounts_trading_oauth_service
+
+    app.dependency_overrides[get_schwab_accounts_trading_oauth_service] = lambda: fake
+    client = TestClient(app, base_url="https://testserver")
+
+    started = client.post(
+        "/api/broker/schwab/accounts/oauth/start",
+        headers={CSRF_HEADER_NAME: "csrf"},
+    )
+    refreshed = client.post(
+        "/api/broker/schwab/accounts/oauth/refresh",
+        headers={CSRF_HEADER_NAME: "csrf"},
+    )
+    revoked = client.post(
+        "/api/broker/schwab/accounts/oauth/revoke",
+        headers={CSRF_HEADER_NAME: "csrf"},
+    )
+
+    assert started.status_code == 200
+    assert refreshed.json()["token_id"] == SCHWAB_ACCOUNTS_TRADING_TOKEN_ID
+    assert revoked.json()["token_id"] == SCHWAB_ACCOUNTS_TRADING_TOKEN_ID
+    assert fake.calls == ["start", "refresh", "revoke"]
+
+
 class FakeOAuthService:
-    def __init__(self) -> None:
+    def __init__(self, token_id: str = SCHWAB_MARKET_DATA_TOKEN_ID) -> None:
         self.calls: list[str] = []
+        self.token_id = token_id
 
     def start(self, _session: Session, *, correlation_id: str) -> dict[str, Any]:
         self.calls.append("start")
@@ -303,7 +384,7 @@ class FakeOAuthService:
 
     def refresh(self, _session: Session, *, correlation_id: str) -> dict[str, Any]:
         self.calls.append("refresh")
-        return {"token_id": SCHWAB_MARKET_DATA_TOKEN_ID, "status": "active"}
+        return {"token_id": self.token_id, "status": "active"}
 
     def revoke(
         self,
@@ -313,13 +394,19 @@ class FakeOAuthService:
         reason_code: str,
     ) -> dict[str, Any]:
         self.calls.append("revoke")
-        return {"token_id": SCHWAB_MARKET_DATA_TOKEN_ID, "status": "revoked"}
+        return {"token_id": self.token_id, "status": "revoked"}
 
 
-def _config() -> SchwabOAuthConfig:
+def _config(
+    *,
+    token_id: str = SCHWAB_MARKET_DATA_TOKEN_ID,
+    product: str = "market_data",
+) -> SchwabOAuthConfig:
     return SchwabOAuthConfig(
         client_id="client-id-a",
         client_secret="client-secret-a",
         callback_url="https://127.0.0.1:8182",
         state_signing_key="local-state-key",
+        token_id=token_id,
+        product=product,
     )

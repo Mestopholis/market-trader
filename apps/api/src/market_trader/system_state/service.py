@@ -155,37 +155,67 @@ def _placeholder_components() -> list[ComponentState]:
 
 def _schwab_components(engine: Engine) -> list[ComponentState]:
     settings = get_settings()
-    if not settings.schwab_market_data_enabled:
+    if not settings.schwab_market_data_enabled and not settings.schwab_accounts_trading_enabled:
         return []
     with Session(engine) as session:
         status = SchwabBrokerStatusReader(
             session=session,
             token_key=settings.schwab_token_encryption_key,
             callback_url=settings.schwab_callback_url,
-            configured=True,
+            configured=settings.schwab_market_data_enabled,
+            accounts_trading_configured=settings.schwab_accounts_trading_enabled,
         ).read()
-    return [_schwab_auth_component(status), _schwab_market_data_component(status)]
+    components = []
+    if settings.schwab_market_data_enabled:
+        components.extend([_schwab_auth_component(status), _schwab_market_data_component(status)])
+    if settings.schwab_accounts_trading_enabled:
+        components.append(_schwab_accounts_trading_component(status))
+    return components
 
 
 def _schwab_unavailable_components() -> list[ComponentState]:
-    if not get_settings().schwab_market_data_enabled:
+    settings = get_settings()
+    if not settings.schwab_market_data_enabled and not settings.schwab_accounts_trading_enabled:
         return []
-    return [
-        ComponentState(
-            name="schwab_auth",
-            status="unavailable",
-            code="schwab_auth_state_unavailable",
-            summary="Schwab auth state cannot be checked while the database is unavailable.",
-            blocking=True,
-        ),
-        ComponentState(
-            name="schwab_market_data",
-            status="unavailable",
-            code="schwab_market_data_state_unavailable",
-            summary="Schwab market data state cannot be checked while the database is unavailable.",
-            blocking=True,
-        ),
-    ]
+    components = []
+    if settings.schwab_market_data_enabled:
+        components.extend(
+            [
+                ComponentState(
+                    name="schwab_auth",
+                    status="unavailable",
+                    code="schwab_auth_state_unavailable",
+                    summary=(
+                        "Schwab auth state cannot be checked while the database is unavailable."
+                    ),
+                    blocking=True,
+                ),
+                ComponentState(
+                    name="schwab_market_data",
+                    status="unavailable",
+                    code="schwab_market_data_state_unavailable",
+                    summary=(
+                        "Schwab market data state cannot be checked while the database "
+                        "is unavailable."
+                    ),
+                    blocking=True,
+                ),
+            ]
+        )
+    if settings.schwab_accounts_trading_enabled:
+        components.append(
+            ComponentState(
+                name="schwab_accounts_trading",
+                status="unavailable",
+                code="schwab_accounts_state_unavailable",
+                summary=(
+                    "Schwab Accounts and Trading state cannot be checked while the "
+                    "database is unavailable."
+                ),
+                blocking=True,
+            )
+        )
+    return components
 
 
 def _schwab_auth_component(status: SchwabBrokerStatus) -> ComponentState:
@@ -263,6 +293,44 @@ def _schwab_market_data_component(status: SchwabBrokerStatus) -> ComponentState:
         summary="Schwab market data is unavailable.",
         blocking=True,
         details={"market_data_state": state},
+    )
+
+
+def _schwab_accounts_trading_component(status: SchwabBrokerStatus) -> ComponentState:
+    state = status.accounts_trading_state
+    if state == "connected":
+        return ComponentState(
+            name="schwab_accounts_trading",
+            status="ok",
+            code="schwab_accounts_connected",
+            summary="Schwab Accounts and Trading OAuth token is active.",
+            details={"accounts_trading_state": state},
+        )
+    if state == "expired":
+        return ComponentState(
+            name="schwab_accounts_trading",
+            status="blocking",
+            code="schwab_accounts_token_expired",
+            summary="Schwab Accounts and Trading OAuth token is expired.",
+            blocking=True,
+            details={"accounts_trading_state": state},
+        )
+    if state == "revoked":
+        return ComponentState(
+            name="schwab_accounts_trading",
+            status="blocking",
+            code="schwab_accounts_token_revoked",
+            summary="Schwab Accounts and Trading OAuth token is revoked.",
+            blocking=True,
+            details={"accounts_trading_state": state},
+        )
+    return ComponentState(
+        name="schwab_accounts_trading",
+        status="blocking",
+        code="schwab_accounts_disconnected",
+        summary="Schwab Accounts and Trading is configured but not connected.",
+        blocking=True,
+        details={"accounts_trading_state": state},
     )
 
 
