@@ -1,0 +1,33 @@
+{
+  "SPY": {
+    "assetMainType": "EQUITY",
+    "symbol": "SPY",
+    "quote": {
+      "bidPrice": 625.1,
+      "askPrice": 625.2,
+      "bidSize": 100,
+      "askSize": 200,
+      "lastPrice": 625.15,
+      "lastSize": 25,
+      "quoteTime": 1785168000000,
+      "tradeTime": 1785168000000,
+      "bidMICId": "ARCX",
+      "askMICId": "XNAS",
+      "lastMICId": "XNYS"
+    }
+  },
+  "QQQ": {
+    "assetMainType": "EQUITY",
+    "symbol": "QQQ",
+    "quote": {
+      "bidPrice": 555.05,
+      "askPrice": 555.15,
+      "bidSize": 75,
+      "askSize": 80,
+      "lastPrice": 555.1,
+      "lastSize": 10,
+      "quoteTime": 1785168000000,
+      "tradeTime": 1785168000000
+    }
+  }
+}
