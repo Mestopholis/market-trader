@@ -34,8 +34,13 @@ from market_trader.broker.schwab.oauth import (
 from market_trader.broker.schwab.tokens import SchwabTokenCipher, SchwabTokenRepository
 from market_trader.config import get_settings
 from market_trader.db.engine import create_engine_from_url
+from market_trader.domain.time import ensure_utc, utc_now
 from market_trader.observability.correlation import CorrelationContext
-from market_trader.scanner.configuration import load_scanner_configuration
+from market_trader.repositories.symbols import SymbolCreate, SymbolRepository
+from market_trader.scanner.configuration import (
+    ScannerConfiguration,
+    load_scanner_configuration,
+)
 from market_trader.scanner.live_scan import SchwabLiveScannerService, SchwabLiveScanResult
 
 MUTATING_DEPENDENCIES = [
@@ -66,6 +71,7 @@ class SchwabLiveScanRequest(BaseModel):
     source: str = Field(default="schwab", min_length=1)
     as_of: datetime | None = None
     observed_lookback_minutes: int = Field(default=15, ge=1, le=390)
+    refresh_quotes: bool = True
 
 
 class SchwabLiveScanResponse(BaseModel):
@@ -217,6 +223,10 @@ def scan_live_schwab_market_data(
     response: Response,
     payload: SchwabLiveScanRequest,
     session: Annotated[Session, Depends(get_schwab_session)],
+    live_market_data_service: Annotated[
+        SchwabLiveMarketDataIngestionService,
+        Depends(get_schwab_live_market_data_service),
+    ],
     service: Annotated[
         SchwabLiveScannerService,
         Depends(get_schwab_live_scanner_service),
@@ -224,15 +234,61 @@ def scan_live_schwab_market_data(
 ) -> SchwabLiveScanResult:
     _no_store(response)
     try:
+        correlation_id = _correlation_id(request)
+        source = payload.source.strip().lower()
+        scan_as_of = ensure_utc(payload.as_of) if payload.as_of is not None else utc_now()
+        if payload.refresh_quotes:
+            _ensure_scanner_universe_symbols(
+                session,
+                service.configuration,
+                observed_at=scan_as_of,
+                correlation_id=correlation_id,
+            )
+            live_market_data_service.refresh_quotes(
+                session,
+                symbols=service.universe_symbols,
+                correlation_id=correlation_id,
+            )
         return service.scan(
             session,
-            source=payload.source.strip().lower(),
-            as_of=payload.as_of,
+            source=source,
+            as_of=scan_as_of,
             observed_lookback_minutes=payload.observed_lookback_minutes,
-            correlation_id=_correlation_id(request),
+            correlation_id=correlation_id,
         )
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+def _ensure_scanner_universe_symbols(
+    session: Session,
+    configuration: ScannerConfiguration,
+    *,
+    observed_at: datetime,
+    correlation_id: str,
+) -> None:
+    repository = SymbolRepository(session)
+    for entry in configuration.universe.entries:
+        if repository.get_symbol_by_display_symbol(entry.display_symbol) is not None:
+            continue
+        repository.create_symbol(
+            SymbolCreate(
+                display_symbol=entry.display_symbol,
+                instrument_type=entry.security_type,
+                exchange=entry.exchange_family,
+                is_active=True,
+                first_observed_at=observed_at,
+                last_observed_at=observed_at,
+                metadata_payload={
+                    "schema_version": 1,
+                    "source": "scanner_universe",
+                    "role": entry.role,
+                    "sector_code": entry.sector_code,
+                },
+                metadata_schema_version=1,
+                correlation_id=correlation_id,
+            )
+        )
 
 
 @router.get("/schwab/oauth/callback", response_model=None)

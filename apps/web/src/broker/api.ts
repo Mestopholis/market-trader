@@ -55,7 +55,7 @@ export async function runSchwabLiveScan(signal?: AbortSignal): Promise<SchwabLiv
     '/api/broker/schwab/market-data/scan-live',
     'Schwab live scanner',
     signal,
-    { source: 'schwab', observed_lookback_minutes: 15 },
+    { source: 'schwab', observed_lookback_minutes: 15, refresh_quotes: true },
   )
 }
 
