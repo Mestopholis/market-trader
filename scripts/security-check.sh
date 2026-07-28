@@ -242,10 +242,25 @@ PY
 
 if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
   log "validating docker compose config"
-  (
+  compose_log="$(mktemp)"
+  if ! (
     cd "$root_dir"
     docker compose config >/dev/null
-  )
+  ) >"$compose_log" 2>&1; then
+    cat "$compose_log" >&2
+    rm -f "$compose_log"
+    exit 1
+  fi
+  if grep -q 'variable is not set' "$compose_log"; then
+    cat "$compose_log" >&2
+    printf '%s\n' \
+      "docker compose config reported unresolved interpolation." \
+      "If MARKET_TRADER_AUTH_PASSWORD_HASH contains dollar signs, quote it in .env:" \
+      "MARKET_TRADER_AUTH_PASSWORD_HASH='pbkdf2_sha256\$...'" >&2
+    rm -f "$compose_log"
+    exit 1
+  fi
+  rm -f "$compose_log"
 else
   log "docker compose is unavailable; skipping docker compose config"
 fi

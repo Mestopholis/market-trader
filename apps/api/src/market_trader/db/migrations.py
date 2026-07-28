@@ -7,11 +7,19 @@ _API_ROOT = Path(__file__).resolve().parents[3]
 
 
 def alembic_config(database_url: str) -> Config:
-    config = Config(str(_API_ROOT / "alembic.ini"))
-    config.set_main_option("script_location", str(_API_ROOT / "migrations"))
+    api_root = _resolve_api_root()
+    config = Config(str(api_root / "alembic.ini"))
+    config.set_main_option("script_location", str(api_root / "migrations"))
     config.set_main_option("sqlalchemy.url", database_url)
     return config
 
 
 def upgrade_to_head(database_url: str) -> None:
     command.upgrade(alembic_config(database_url), "head")
+
+
+def _resolve_api_root() -> Path:
+    for candidate in (_API_ROOT, Path.cwd(), *Path.cwd().parents):
+        if (candidate / "alembic.ini").is_file() and (candidate / "migrations").is_dir():
+            return candidate
+    return _API_ROOT

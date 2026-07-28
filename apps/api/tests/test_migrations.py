@@ -7,6 +7,7 @@ from sqlalchemy.dialects import postgresql
 from sqlalchemy.schema import CreateIndex
 from sqlalchemy.sql.schema import Table
 
+from market_trader.db import migrations as migrations_module
 from market_trader.db.migrations import alembic_config
 from market_trader.db.models import MarketDataQuarantineORM
 
@@ -49,6 +50,24 @@ def test_initial_migration_creates_domain_tables(tmp_path: Path) -> None:
         assert {"data_kind", "ingestion_key", "payload_digest"}.issubset(snapshot_columns)
     finally:
         engine.dispose()
+
+
+def test_alembic_config_falls_back_to_runtime_app_root(
+    tmp_path: Path, monkeypatch
+) -> None:
+    installed_root = tmp_path / "python3.12"
+    runtime_root = tmp_path / "app"
+    installed_root.mkdir()
+    (runtime_root / "migrations").mkdir(parents=True)
+    (runtime_root / "alembic.ini").write_text("[alembic]\n", encoding="utf-8")
+
+    monkeypatch.setattr(migrations_module, "_API_ROOT", installed_root)
+    monkeypatch.chdir(runtime_root)
+
+    config = alembic_config("sqlite:///unused.db")
+
+    assert config.config_file_name == str(runtime_root / "alembic.ini")
+    assert config.get_main_option("script_location") == str(runtime_root / "migrations")
 
 
 def test_initial_migration_matches_orm_metadata(tmp_path: Path) -> None:
