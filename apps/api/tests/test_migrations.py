@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import cast
 
 from alembic import command
+from pytest import MonkeyPatch
 from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.schema import CreateIndex
@@ -53,7 +54,7 @@ def test_initial_migration_creates_domain_tables(tmp_path: Path) -> None:
 
 
 def test_alembic_config_falls_back_to_runtime_app_root(
-    tmp_path: Path, monkeypatch
+    tmp_path: Path, monkeypatch: MonkeyPatch
 ) -> None:
     installed_root = tmp_path / "python3.12"
     runtime_root = tmp_path / "app"

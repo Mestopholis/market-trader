@@ -11,6 +11,7 @@ from sqlalchemy import Engine
 from sqlalchemy.orm import Session
 
 from market_trader.api.auth import require_authenticated_session, require_csrf_protection
+from market_trader.broker.read_models import SchwabBrokerStatus, SchwabBrokerStatusReader
 from market_trader.broker.schwab.oauth import (
     SchwabOAuthConfig,
     SchwabOAuthError,
@@ -66,6 +67,23 @@ def start_schwab_oauth(
 ) -> dict[str, Any]:
     _no_store(response)
     return _json(service.start(session, correlation_id=_correlation_id(request)))
+
+
+@router.get(
+    "/schwab/status",
+    response_model=SchwabBrokerStatus,
+    dependencies=[Depends(require_authenticated_session)],
+)
+def schwab_status(
+    session: Annotated[Session, Depends(get_schwab_session)],
+) -> SchwabBrokerStatus:
+    settings = get_settings()
+    return SchwabBrokerStatusReader(
+        session=session,
+        token_key=settings.schwab_token_encryption_key,
+        callback_url=settings.schwab_callback_url,
+        configured=settings.schwab_market_data_enabled,
+    ).read()
 
 
 @router.get("/schwab/oauth/callback")

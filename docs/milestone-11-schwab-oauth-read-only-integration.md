@@ -85,6 +85,59 @@ Implementation may use a local callback listener or a backend callback route,
 but the URL sent to Schwab must exactly match the portal registration. A
 callback mismatch should fail closed and keep Schwab state disconnected.
 
+For local operator testing, start the HTTPS callback/helper page from the
+repository root:
+
+```bash
+apps/api/.venv/bin/python scripts/start_schwab_helper.py
+```
+
+Then open:
+
+```bash
+open https://127.0.0.1:8182/
+```
+
+The helper generates a local self-signed certificate under ignored `data/`
+storage, migrates the local SQLite database, and serves a small authenticated
+connection page. Browser certificate warnings are expected for this local-only
+self-signed certificate.
+
+## Operations Status
+
+The authenticated dashboard Operations view includes a Schwab Market Data panel
+when the backend is available. It exposes only redacted read-only status:
+
+- configuration state;
+- OAuth connection state: unconfigured, disconnected, connected, expired, or
+  revoked;
+- market-data state: unknown, available, stale, rate-limited, unavailable, or
+  quarantined;
+- access-token expiry metadata;
+- latest market-data refresh metadata; and
+- refresh/revoke controls protected by local auth and CSRF.
+
+The status endpoint is:
+
+```text
+GET /api/broker/schwab/status
+```
+
+It must never return client secrets, raw access tokens, raw refresh tokens,
+account numbers, order controls, or live-mode controls.
+
+Readiness also includes Schwab auth and market-data components when Schwab
+Market Data is enabled. Disconnected, expired, revoked, stale, and rate-limited
+states are surfaced as non-order-affecting local operator states; provider
+unavailability can become blocking for broker-dependent future workflows.
+
+## Local Smoke Check
+
+After OAuth succeeds, a local operator may run a single read-only Market Data
+smoke check, such as a quote request for `SPY`, using the stored token. Live
+Schwab smoke checks are manual only and must not be added to CI or automated
+test suites.
+
 ## Fixture Fallback
 
 All automated tests and CI must run without Schwab credentials. Use mocked HTTP
@@ -103,6 +156,11 @@ Milestone 11 Market Data does not provide:
 - live-mode arming;
 - automatic trading; or
 - public callback exposure.
+
+The Accounts and Trading Production app remains a later milestone. Do not add
+account identity, balances, positions, transactions, reconciliation, or any
+order-affecting behavior until that app is separately approved and a new plan is
+reviewed.
 
 Any appearance of those capabilities in source, OpenAPI, fixtures, frontend
 build output, or operational docs should be treated as a milestone regression

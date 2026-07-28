@@ -26,7 +26,7 @@ def test_openapi_allows_read_only_schwab_but_no_schwab_order_capability() -> Non
     response = TestClient(create_app(), base_url="https://testserver").get("/api/openapi.json")
 
     assert response.status_code == 200
-    _assert_no_schwab_order_capability(json.dumps(response.json()))
+    _assert_no_schwab_order_capability(json.dumps(response.json(), indent=2))
 
 
 def test_source_and_fixtures_exclude_schwab_order_capability() -> None:

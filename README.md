@@ -12,6 +12,19 @@
 
 The foundation is paper-only and contains no broker credentials or order submission.
 
+## Schwab Market Data OAuth
+
+Milestone 11 adds local, read-only Schwab Market Data OAuth and an Operations
+status panel. To test the local callback helper after configuring `.env`, run:
+
+```bash
+apps/api/.venv/bin/python scripts/start_schwab_helper.py
+```
+
+Open `https://127.0.0.1:8182/` and use the Schwab Market Data app callback URL
+`https://127.0.0.1:8182`. Schwab Accounts and Trading, account reads, order
+preview, order submission, and live mode remain out of scope.
+
 ## Milestone 1 storage
 
 Milestone 1 adds versioned SQLite storage, Alembic migrations, audited repository

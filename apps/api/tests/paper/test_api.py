@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from collections.abc import Iterator
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
@@ -100,12 +101,18 @@ def _authorized_client() -> TestClient:
 
 
 def test_paper_openapi_excludes_live_and_external_broker_contracts() -> None:
-    payload = TestClient(app).get("/api/openapi.json").text.lower()
+    payload = TestClient(app).get("/api/openapi.json").json()
+    paper_payload = {
+        path: contract
+        for path, contract in payload["paths"].items()
+        if path.startswith("/api/paper/")
+    }
+    serialized = json.dumps(paper_payload).lower()
 
-    assert "live_mode" not in payload
-    assert "schwab" not in payload
-    assert "api_key" not in payload
-    assert "broker_reference" not in payload
+    assert "live_mode" not in serialized
+    assert "schwab" not in serialized
+    assert "api_key" not in serialized
+    assert "broker_reference" not in serialized
 
 
 class FakePaperService:

@@ -86,7 +86,9 @@ def test_smoke_verification_checks_the_market_state_contract() -> None:
     assert "$fixture_root/market_data/regular-session" in verification_script
     assert "market_trader.scanner.cli validate" in verification_script
     assert "$fixture_root/scanner/bullish" in verification_script
-    assert "SCHWAB" not in verification_script.upper()
+    assert "/api/broker/schwab/status" in verification_script
+    assert '"connection_state"' in verification_script
+    assert '"market_data_state"' in verification_script
     assert "PROVIDER_URL" not in verification_script.upper()
 
 
@@ -99,12 +101,12 @@ def test_smoke_verification_validates_catalysts_offline_without_sensitive_inputs
     assert "$fixture_root/catalysts/company-and-earnings" in verification_script
     for prohibited in (
         "SEC_CONTACT",
-        "SCHWAB",
         "FRED",
         "BEA",
         "NEWS_API",
         "SOCIAL_TOKEN",
         "MODEL_API",
+        "ACCESS_TOKEN",
         "ACCOUNT_ID",
         "APPROVAL_ID",
         "ORDER_ID",
