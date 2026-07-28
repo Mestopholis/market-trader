@@ -196,6 +196,31 @@ class SchwabTokenRepository:
         correlation_id: str,
     ) -> None:
         created_at = ensure_utc(now)
+        existing = session.get(SchwabTokenORM, token_id)
+        if existing is not None:
+            existing.product = product
+            existing.status = "active"
+            existing.encrypted_access_token = self._cipher.encrypt_text(
+                bundle.access_token
+            ).to_payload()
+            existing.encrypted_refresh_token = self._cipher.encrypt_text(
+                bundle.refresh_token
+            ).to_payload()
+            existing.token_type = bundle.token_type
+            existing.scope = bundle.scope
+            existing.access_token_expires_at = bundle.access_token_expires_at
+            existing.refresh_token_expires_at = bundle.refresh_token_expires_at
+            existing.encryption_key_id = self._cipher.key_id
+            existing.issued_at = created_at
+            existing.refreshed_at = None
+            existing.revoked_at = None
+            existing.last_error_code = None
+            existing.last_error_at = None
+            existing.correlation_id = correlation_id
+            existing.updated_at = created_at
+            session.flush()
+            return
+
         session.add(
             SchwabTokenORM(
                 id=token_id,

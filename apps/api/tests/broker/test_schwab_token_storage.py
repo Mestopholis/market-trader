@@ -96,6 +96,41 @@ def test_repository_rotates_refresh_tokens(session: Session) -> None:
     )
 
 
+def test_repository_reconnect_replaces_existing_token(session: Session) -> None:
+    repository = SchwabTokenRepository(SchwabTokenCipher("local-encryption-key-a"))
+    repository.store_initial(
+        session,
+        token_id="token-market-data",
+        product="market_data",
+        bundle=_bundle("access-token-a", "refresh-token-a"),
+        now=NOW,
+        correlation_id="corr-token-a",
+    )
+
+    repository.store_initial(
+        session,
+        token_id="token-market-data",
+        product="market_data",
+        bundle=_bundle("access-token-b", "refresh-token-b"),
+        now=NOW + timedelta(minutes=5),
+        correlation_id="corr-token-b",
+    )
+
+    metadata = repository.metadata(
+        session,
+        token_id="token-market-data",
+        now=NOW + timedelta(minutes=5),
+    )
+    assert metadata.status == "active"
+    assert metadata.issued_at == NOW + timedelta(minutes=5)
+    assert metadata.refreshed_at is None
+    assert metadata.revoked_at is None
+    assert metadata.last_error_code is None
+    assert repository.read(session, token_id="token-market-data").access_token == (
+        "access-token-b"
+    )
+
+
 def test_repository_revokes_tokens_and_blocks_secret_reads(session: Session) -> None:
     repository = SchwabTokenRepository(SchwabTokenCipher("local-encryption-key-a"))
     repository.store_initial(
