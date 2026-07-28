@@ -24,6 +24,14 @@ class SchwabLiveScannerService:
     def __init__(self, *, configuration: ScannerConfiguration) -> None:
         self._configuration = configuration
 
+    @property
+    def configuration(self) -> ScannerConfiguration:
+        return self._configuration
+
+    @property
+    def universe_symbols(self) -> tuple[str, ...]:
+        return tuple(entry.display_symbol for entry in self._configuration.universe.entries)
+
     def scan(
         self,
         session: Session,

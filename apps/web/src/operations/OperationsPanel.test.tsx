@@ -201,7 +201,7 @@ test('runs a live Schwab scanner pass from operations', async () => {
   ])
   expect(fetchMock.mock.calls[3][1]).toMatchObject({
     method: 'POST',
-    body: JSON.stringify({ source: 'schwab', observed_lookback_minutes: 15 }),
+    body: JSON.stringify({ source: 'schwab', observed_lookback_minutes: 15, refresh_quotes: true }),
   })
   expect(await screen.findByText('corr-broker-scan')).toBeInTheDocument()
 })
