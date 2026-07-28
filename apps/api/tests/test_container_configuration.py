@@ -51,6 +51,23 @@ def test_security_check_fails_on_compose_interpolation_warnings() -> None:
     assert "MARKET_TRADER_AUTH_PASSWORD_HASH" in security_check
 
 
+def test_env_example_documents_auth_and_schwab_placeholders() -> None:
+    env_example = (REPOSITORY_ROOT / ".env.example").read_text()
+
+    for expected in (
+        "MARKET_TRADER_AUTH_USERNAME=",
+        "MARKET_TRADER_AUTH_PASSWORD_HASH=",
+        "MARKET_TRADER_SESSION_SECRET=",
+        "MARKET_TRADER_SESSION_TTL_SECONDS=",
+        "MARKET_TRADER_SCHWAB_MARKET_DATA_ENABLED=",
+        "MARKET_TRADER_SCHWAB_CALLBACK_URL=",
+        "MARKET_TRADER_SCHWAB_CLIENT_ID=",
+        "MARKET_TRADER_SCHWAB_CLIENT_SECRET=",
+        "MARKET_TRADER_SCHWAB_TOKEN_ENCRYPTION_KEY=",
+    ):
+        assert expected in env_example
+
+
 def test_smoke_verification_checks_the_market_state_contract() -> None:
     verification_script = (
         REPOSITORY_ROOT / "scripts" / "verify-foundation.sh"
