@@ -44,6 +44,13 @@ def test_compose_passes_the_display_timezone_to_the_api() -> None:
     assert "America/Chicago" in compose
 
 
+def test_security_check_fails_on_compose_interpolation_warnings() -> None:
+    security_check = (REPOSITORY_ROOT / "scripts" / "security-check.sh").read_text()
+
+    assert "docker compose config reported unresolved interpolation" in security_check
+    assert "MARKET_TRADER_AUTH_PASSWORD_HASH" in security_check
+
+
 def test_smoke_verification_checks_the_market_state_contract() -> None:
     verification_script = (
         REPOSITORY_ROOT / "scripts" / "verify-foundation.sh"
@@ -58,9 +65,10 @@ def test_smoke_verification_checks_the_market_state_contract() -> None:
     assert '"display_timezone"' in verification_script
     assert '"trading_mode"' in verification_script
     assert "market_trader.market_data.cli validate" in verification_script
-    assert "/app/fixtures/market_data/regular-session" in verification_script
+    assert "fixture_root=/app/fixtures" in verification_script
+    assert "$fixture_root/market_data/regular-session" in verification_script
     assert "market_trader.scanner.cli validate" in verification_script
-    assert "/app/fixtures/scanner/bullish" in verification_script
+    assert "$fixture_root/scanner/bullish" in verification_script
     assert "SCHWAB" not in verification_script.upper()
     assert "PROVIDER_URL" not in verification_script.upper()
 
@@ -71,9 +79,7 @@ def test_smoke_verification_validates_catalysts_offline_without_sensitive_inputs
     ).read_text()
 
     assert "market_trader.catalysts.cli validate" in verification_script
-    assert (
-        "/app/fixtures/catalysts/company-and-earnings" in verification_script
-    )
+    assert "$fixture_root/catalysts/company-and-earnings" in verification_script
     for prohibited in (
         "SEC_CONTACT",
         "SCHWAB",

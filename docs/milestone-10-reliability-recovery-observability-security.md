@@ -172,6 +172,7 @@ docker compose down
 ```
 
 `MARKET_TRADER_AUTH_PASSWORD` is consumed by `verify-foundation.sh` only to perform the local login request. Do not persist plaintext passwords in tracked files.
+When storing `MARKET_TRADER_AUTH_PASSWORD_HASH` in `.env`, wrap the value in single quotes because PBKDF2 hashes contain `$` separators that Docker Compose otherwise treats as interpolation markers.
 
 When Docker is unavailable, `verify-foundation.sh` still validates fixtures through the local `apps/api/.venv` fallback. Serve the built frontend from `apps/web/dist` with `/api` proxied to the local API, set `MARKET_TRADER_URL` to that local web URL, and run the same script.
 
