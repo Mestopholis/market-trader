@@ -100,12 +100,14 @@ trading remain unavailable.
 
 Schwab configuration must be backend-only:
 
+- `MARKET_TRADER_SCHWAB_MARKET_DATA_ENABLED`
 - `MARKET_TRADER_SCHWAB_CLIENT_ID`
 - `MARKET_TRADER_SCHWAB_CLIENT_SECRET`
 - `MARKET_TRADER_SCHWAB_CALLBACK_URL`
 - `MARKET_TRADER_SCHWAB_TOKEN_ENCRYPTION_KEY`
-- `MARKET_TRADER_SCHWAB_EXPECTED_ACCOUNT_HASH`
-- `MARKET_TRADER_SCHWAB_ENABLED`
+
+The account slice will add account-specific configuration, such as an expected
+account hash, after Accounts and Trading Production is separately approved.
 
 Credential values must never be committed, logged, returned by APIs, embedded
 in OpenAPI examples, rendered in React, or written into fixtures. Logs may
@@ -153,7 +155,8 @@ Schwab market data may satisfy existing provider contracts:
 - option chains
 - provider health
 
-Schwab account data may satisfy new broker-read contracts:
+After Accounts and Trading Production is separately approved, Schwab account
+data may satisfy new broker-read contracts:
 
 - account identity
 - cash and buying-power style balances
@@ -168,10 +171,12 @@ All Schwab data must carry source, observed time, ingestion time, freshness
 state, provider state, and stable source keys. Stale or unavailable broker data
 must not be silently reused for risk or reconciliation decisions.
 
-## Reconciliation Requirements
+## Deferred Reconciliation Requirements
 
-Milestone 11 does not place orders, but it must compare read-only Schwab account
-state with local paper positions and working paper orders:
+Milestone 11 does not place orders. Reconciliation is deferred until Accounts
+and Trading Production is separately approved. That later slice must compare
+read-only Schwab account state with local paper positions and working paper
+orders:
 
 - show unmatched broker positions as informational reconciliation warnings;
 - show local paper positions missing from Schwab as expected while still in
@@ -189,7 +194,8 @@ The operations area must show:
 - account identity verification state using a redacted fingerprint only;
 - last successful market-data and account-data refresh times;
 - provider freshness and rate-limit states;
-- read-only balances, positions, and reconciliation summaries where available;
+- read-only balances, positions, and reconciliation summaries only after
+  Accounts and Trading Production is separately approved;
 - reauthenticate and revoke controls protected by local auth and CSRF.
 
 The UI must not render buttons, labels, routes, request builders, or hidden
@@ -203,11 +209,15 @@ Milestone 11 must add tests for:
 - OAuth state signing, expiry, replay rejection, and callback validation.
 - Token encryption, refresh, revocation, metadata, and redaction.
 - Schwab HTTP client request construction with mocked HTTP transport.
-- Normalization of quote, candle, option-chain, account, balance, position, and
-  transaction responses from recorded fixtures.
+- First slice normalization of quote, candle, and option-chain responses from
+  recorded fixtures.
+- Later account-slice normalization of account, balance, position, and
+  transaction responses from recorded fixtures after Accounts and Trading
+  Production is approved.
 - Provider stale, unavailable, rate-limited, unauthorized, and malformed
   responses.
-- Account identity mismatch creating a blocking state.
+- Account identity mismatch creating a blocking state after the account slice is
+  approved.
 - OpenAPI, source, frontend, fixtures, and docs scans proving no Schwab order
   submission, order preview, cancel, replace, live mode, or raw credential
   capability is exposed.
@@ -220,10 +230,12 @@ Milestone 11 must add tests for:
 - An authenticated local operator can connect and disconnect Schwab OAuth.
 - Tokens are encrypted at rest, refreshable when valid, revocable, and never
   leaked through logs, APIs, OpenAPI, fixtures, or frontend state.
-- Read-only Schwab market and account data can be normalized into existing or
-  new read models with explicit timestamps and freshness.
-- Account identity mismatch, missing credentials, expired tokens, revoked
-  tokens, stale data, rate limits, and provider outages fail closed.
+- Read-only Schwab market data can be normalized into existing read models with
+  explicit timestamps and freshness.
+- Missing credentials, expired tokens, revoked tokens, stale data, rate limits,
+  and provider outages fail closed.
+- After the account slice is approved, read-only Schwab account data can be
+  normalized into new read models and account identity mismatch fails closed.
 - Paper mode remains active after OAuth connect, refresh, revocation, restart,
   account mismatch, and recovery.
 - Every order-affecting Schwab capability remains absent and covered by
