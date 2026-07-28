@@ -364,6 +364,46 @@ def test_broker_routes_start_refresh_and_revoke_with_local_csrf() -> None:
     assert fake.calls == ["start", "refresh", "revoke"]
 
 
+def test_callback_browser_request_renders_success_page() -> None:
+    fake = FakeOAuthService()
+    from market_trader.api.broker import get_schwab_oauth_service
+
+    app.dependency_overrides[get_schwab_oauth_service] = lambda: fake
+    client = TestClient(app, base_url="https://testserver")
+
+    response = client.get(
+        "/api/broker/schwab/oauth/callback?state=state-a&code=oauth-code-a",
+        headers={"Accept": "text/html"},
+    )
+
+    assert response.status_code == 200
+    assert response.headers["Cache-Control"] == "no-store"
+    assert response.headers["Content-Type"].startswith("text/html")
+    assert "Schwab Market Data connected" in response.text
+    assert "http://127.0.0.1:5173" in response.text
+    assert fake.calls == ["callback"]
+
+
+def test_callback_api_request_keeps_json_response() -> None:
+    fake = FakeOAuthService()
+    from market_trader.api.broker import get_schwab_oauth_service
+
+    app.dependency_overrides[get_schwab_oauth_service] = lambda: fake
+    client = TestClient(app, base_url="https://testserver")
+
+    response = client.get(
+        "/api/broker/schwab/oauth/callback?state=state-a&code=oauth-code-a",
+        headers={"Accept": "application/json"},
+    )
+
+    assert response.status_code == 200
+    assert response.headers["Cache-Control"] == "no-store"
+    assert response.headers["Content-Type"].startswith("application/json")
+    assert response.json()["status"] == "connected"
+    assert response.json()["token"]["token_id"] == SCHWAB_MARKET_DATA_TOKEN_ID
+    assert fake.calls == ["callback"]
+
+
 def test_accounts_trading_routes_use_separate_oauth_service() -> None:
     fake = FakeOAuthService(token_id=SCHWAB_ACCOUNTS_TRADING_TOKEN_ID)
     app.dependency_overrides[require_authenticated_session] = lambda: SessionClaims(
@@ -411,6 +451,34 @@ class FakeOAuthService:
     def refresh(self, _session: Session, *, correlation_id: str) -> dict[str, Any]:
         self.calls.append("refresh")
         return {"token_id": self.token_id, "status": "active"}
+
+    def complete_callback(
+        self,
+        _session: Session,
+        *,
+        state: str,
+        correlation_id: str,
+        code: str | None = None,
+        error: str | None = None,
+        error_description: str | None = None,
+    ) -> dict[str, Any]:
+        self.calls.append("callback")
+        return {
+            "token_id": self.token_id,
+            "product": "market_data",
+            "status": "active",
+            "token_type": "Bearer",
+            "scope": "api",
+            "access_token_expires_at": NOW + timedelta(minutes=30),
+            "refresh_token_expires_at": None,
+            "encryption_key_id": "local-key-id",
+            "issued_at": NOW,
+            "refreshed_at": None,
+            "revoked_at": None,
+            "last_error_code": None,
+            "last_error_at": None,
+            "is_expired": False,
+        }
 
     def revoke(
         self,
