@@ -2,11 +2,13 @@ from __future__ import annotations
 
 from collections.abc import Generator
 from functools import lru_cache
+from html import escape
 from typing import Annotated, Any
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from fastapi.encoders import jsonable_encoder
+from fastapi.responses import HTMLResponse
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session
 
@@ -111,7 +113,7 @@ def schwab_status(
     ).read()
 
 
-@router.get("/schwab/oauth/callback")
+@router.get("/schwab/oauth/callback", response_model=None)
 def complete_schwab_oauth_callback(
     request: Request,
     response: Response,
@@ -121,7 +123,7 @@ def complete_schwab_oauth_callback(
     code: Annotated[str | None, Query(min_length=1)] = None,
     error: Annotated[str | None, Query(min_length=1)] = None,
     error_description: Annotated[str | None, Query(min_length=1)] = None,
-) -> dict[str, Any]:
+) -> Response | dict[str, Any]:
     _no_store(response)
     try:
         metadata = service.complete_callback(
@@ -134,10 +136,13 @@ def complete_schwab_oauth_callback(
         )
     except SchwabOAuthError as exc:
         raise _oauth_http_error(exc) from exc
-    return {"status": "connected", "token": _json(metadata)}
+    payload = {"status": "connected", "token": _json(metadata)}
+    if _wants_html(request):
+        return _schwab_callback_success_page(payload, title="Schwab Market Data connected")
+    return payload
 
 
-@router.get("/schwab/accounts/oauth/callback")
+@router.get("/schwab/accounts/oauth/callback", response_model=None)
 def complete_schwab_accounts_trading_oauth_callback(
     request: Request,
     response: Response,
@@ -150,7 +155,7 @@ def complete_schwab_accounts_trading_oauth_callback(
     code: Annotated[str | None, Query(min_length=1)] = None,
     error: Annotated[str | None, Query(min_length=1)] = None,
     error_description: Annotated[str | None, Query(min_length=1)] = None,
-) -> dict[str, Any]:
+) -> Response | dict[str, Any]:
     _no_store(response)
     try:
         metadata = service.complete_callback(
@@ -163,7 +168,13 @@ def complete_schwab_accounts_trading_oauth_callback(
         )
     except SchwabOAuthError as exc:
         raise _oauth_http_error(exc) from exc
-    return {"status": "connected", "token": _json(metadata)}
+    payload = {"status": "connected", "token": _json(metadata)}
+    if _wants_html(request):
+        return _schwab_callback_success_page(
+            payload,
+            title="Schwab Accounts and Trading connected",
+        )
+    return payload
 
 
 @router.post("/schwab/oauth/refresh", dependencies=MUTATING_DEPENDENCIES)
@@ -266,6 +277,84 @@ def _correlation_id(request: Request) -> str:
 
 def _no_store(response: Response) -> None:
     response.headers["Cache-Control"] = "no-store"
+
+
+def _wants_html(request: Request) -> bool:
+    accept = request.headers.get("accept", "")
+    return "text/html" in accept.lower()
+
+
+def _schwab_callback_success_page(payload: dict[str, Any], *, title: str) -> HTMLResponse:
+    token = payload.get("token", {})
+    token_payload = token if isinstance(token, dict) else {}
+    expires_at = escape(str(token_payload.get("access_token_expires_at", "unknown")))
+    product = escape(str(token_payload.get("product", "schwab")))
+    status = escape(str(token_payload.get("status", "connected")))
+    safe_title = escape(title)
+    return HTMLResponse(
+        content=f"""
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{safe_title}</title>
+  <style>
+    :root {{ color-scheme: light dark; font-family: system-ui, -apple-system, sans-serif; }}
+    body {{
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      background: #101418;
+      color: #f5f7fa;
+    }}
+    main {{
+      width: min(560px, calc(100vw - 32px));
+      border: 1px solid #2c3642;
+      border-radius: 8px;
+      padding: 24px;
+      background: #171d24;
+    }}
+    h1 {{ margin: 0 0 12px; font-size: 24px; }}
+    dl {{
+      display: grid;
+      grid-template-columns: max-content minmax(0, 1fr);
+      gap: 8px 14px;
+      margin: 18px 0;
+    }}
+    dt {{ color: #aab4bc; }}
+    dd {{ margin: 0; overflow-wrap: anywhere; }}
+    a {{ color: #8fb7ff; }}
+    .actions {{ display: flex; flex-wrap: wrap; gap: 12px; margin-top: 18px; }}
+    .button {{
+      display: inline-block;
+      padding: 10px 14px;
+      border-radius: 6px;
+      background: #4f8cff;
+      color: white;
+      text-decoration: none;
+    }}
+  </style>
+</head>
+<body>
+  <main>
+    <h1>{safe_title}</h1>
+    <dl>
+      <dt>Product</dt><dd>{product}</dd>
+      <dt>Status</dt><dd>{status}</dd>
+      <dt>Access expires</dt><dd>{expires_at}</dd>
+    </dl>
+    <div class="actions">
+      <a class="button" href="http://127.0.0.1:5173/">Open dashboard</a>
+      <a href="https://127.0.0.1:8182/">Back to Schwab Connect</a>
+    </div>
+  </main>
+</body>
+</html>
+        """,
+        headers={"Cache-Control": "no-store"},
+    )
 
 
 def _json(value: object) -> dict[str, Any]:
