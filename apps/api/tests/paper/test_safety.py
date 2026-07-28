@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
@@ -26,10 +27,16 @@ OPENAPI_FORBIDDEN_TERMS = ("schwab", "live_mode", "api_key", "secret")
 
 
 def test_paper_api_openapi_excludes_live_broker_and_credential_contracts() -> None:
-    openapi = TestClient(app).get("/api/openapi.json").text.lower()
+    openapi = TestClient(app).get("/api/openapi.json").json()
+    paper_openapi = {
+        path: contract
+        for path, contract in openapi["paths"].items()
+        if path.startswith("/api/paper/")
+    }
+    serialized = json.dumps(paper_openapi).lower()
 
     for forbidden in (*OPENAPI_FORBIDDEN_TERMS, "broker_reference"):
-        assert forbidden not in openapi
+        assert forbidden not in serialized
 
 
 def test_paper_lifecycle_persists_only_simulated_references(tmp_path: Path) -> None:

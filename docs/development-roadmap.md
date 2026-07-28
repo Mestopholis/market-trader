@@ -289,26 +289,31 @@ and [operator runbook](milestone-10-reliability-recovery-observability-security.
 
 ## Milestone 11: Schwab OAuth and read-only integration
 
-**Status:** Draft planning. See the
+**Status:** Complete for Market Data Production read-only scope. See the
 [specification](plans/2026-07-26-milestone-11-schwab-oauth-read-only-integration-spec.md)
-and
-[implementation plan](plans/2026-07-26-milestone-11-schwab-oauth-read-only-integration-implementation-plan.md).
+,
+[implementation plan](plans/2026-07-26-milestone-11-schwab-oauth-read-only-integration-implementation-plan.md),
+and [operator runbook](milestone-11-schwab-oauth-read-only-integration.md).
 
-**Objective:** Connect Schwab for read-only market and account information while keeping every order path disabled.
+**Objective:** Connect Schwab Market Data Production for read-only market information while keeping every order path disabled.
 
 **Depends on:** Milestone 10 and a separately approved Schwab integration specification.
 
 **Deliverables:**
 
 - OAuth authorization, callback, token refresh, revocation, rotation, and encrypted secret storage.
-- Broker adapter for read-only quotes, chains, accounts, balances, positions, and transaction reconciliation.
-- Rate limiting, retry policy, stale-data handling, authentication locks, and account-identity verification.
+- Broker adapter for read-only quotes, price history, and option chains.
+- Operations UI and readiness components for configured, connected, expired,
+  revoked, stale, rate-limited, unavailable, and quarantined states.
+- Rate limiting, stale-data handling, and authentication locks.
 - Strict credential isolation from frontend responses, logs, external text, and language-model inputs.
 - Sandbox or recorded-contract tests where Schwab provides no test environment.
 
-**Exit criteria:** Authentication recovery always returns the system to paper mode; revoked or expired credentials block broker-dependent actions; account and market data can be reconciled without an order-submission permission in the application.
+**Exit criteria:** Authentication recovery always returns the system to paper mode; revoked or expired credentials block broker-dependent actions; read-only market data can be fetched without an order-submission permission in the application.
 
-**Explicitly excluded:** Order preview, order submission, and live-mode arming.
+**Explicitly excluded:** Accounts and Trading Production access, account identity,
+balances, positions, transactions, reconciliation, order preview, order
+submission, and live-mode arming.
 
 ## Milestone 12: Schwab order-contract integration and extended paper validation
 

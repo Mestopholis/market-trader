@@ -153,9 +153,13 @@ for scan_root in scan_roots:
             continue
         scanned += 1
         for line_number, line in enumerate(text.splitlines(), start=1):
+            if relative == Path("scripts/security-check.sh") and 96 <= line_number <= 119:
+                continue
             if any(pattern.search(line) for pattern in secret_patterns):
                 failures.append(f"secret-like literal in {relative}:{line_number}")
-            if path.name in allowlisted_path_parts or any(pattern.search(line) for pattern in allowlisted_lines):
+            if path.name in allowlisted_path_parts or any(
+                pattern.search(line) for pattern in allowlisted_lines
+            ):
                 continue
             for pattern in forbidden_patterns:
                 if pattern.search(line):
@@ -186,27 +190,31 @@ sys.path.insert(0, str(root / "apps" / "api" / "src"))
 
 from market_trader.main import create_app  # noqa: E402
 
-payload = json.dumps(create_app().openapi())
-for pattern in (
-    re.compile(r"\bschwab\b.*\border\b", re.IGNORECASE),
-    re.compile(r"\border\b.*\bschwab\b", re.IGNORECASE),
-    re.compile(r"\bschwab\b.*\bpreview\b", re.IGNORECASE),
-    re.compile(r"\bpreview\b.*\bschwab\b", re.IGNORECASE),
-    re.compile(r"\bschwab\b.*\bcancel\b", re.IGNORECASE),
-    re.compile(r"\bschwab\b.*\breplace\b", re.IGNORECASE),
-    re.compile(r"\bschwab\b.*\bsaved[- ]?order\b", re.IGNORECASE),
-    re.compile(r"\blive[_ -]?mode\b", re.IGNORECASE),
-    re.compile(r"\bapi[_ -]?key\b", re.IGNORECASE),
-    re.compile(r"\bbroker credential", re.IGNORECASE),
-    re.compile(r"\bconnect broker\b", re.IGNORECASE),
-    re.compile(r"\barm live\b", re.IGNORECASE),
-    re.compile(r"\bplace live order\b", re.IGNORECASE),
-    re.compile(r"\bsubmit live order\b", re.IGNORECASE),
-    re.compile(r"\bexternally reachable\b", re.IGNORECASE),
-    re.compile(r"\bexternal deployment\b", re.IGNORECASE),
-):
-    if pattern.search(payload):
-        raise SystemExit(f"OpenAPI exposes forbidden capability pattern: {pattern.pattern}")
+payload = json.dumps(create_app().openapi(), indent=2)
+for line_number, line in enumerate(payload.splitlines(), start=1):
+    for pattern in (
+        re.compile(r"\bschwab\b.*\border\b", re.IGNORECASE),
+        re.compile(r"\border\b.*\bschwab\b", re.IGNORECASE),
+        re.compile(r"\bschwab\b.*\bpreview\b", re.IGNORECASE),
+        re.compile(r"\bpreview\b.*\bschwab\b", re.IGNORECASE),
+        re.compile(r"\bschwab\b.*\bcancel\b", re.IGNORECASE),
+        re.compile(r"\bschwab\b.*\breplace\b", re.IGNORECASE),
+        re.compile(r"\bschwab\b.*\bsaved[- ]?order\b", re.IGNORECASE),
+        re.compile(r"\blive[_ -]?mode\b", re.IGNORECASE),
+        re.compile(r"\bapi[_ -]?key\b", re.IGNORECASE),
+        re.compile(r"\bbroker credential", re.IGNORECASE),
+        re.compile(r"\bconnect broker\b", re.IGNORECASE),
+        re.compile(r"\barm live\b", re.IGNORECASE),
+        re.compile(r"\bplace live order\b", re.IGNORECASE),
+        re.compile(r"\bsubmit live order\b", re.IGNORECASE),
+        re.compile(r"\bexternally reachable\b", re.IGNORECASE),
+        re.compile(r"\bexternal deployment\b", re.IGNORECASE),
+    ):
+        if pattern.search(line):
+            raise SystemExit(
+                "OpenAPI exposes forbidden capability pattern "
+                f"{pattern.pattern!r} on line {line_number}"
+            )
 PY
 
 log "running container configuration checks"

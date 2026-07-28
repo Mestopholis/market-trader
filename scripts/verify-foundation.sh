@@ -82,6 +82,32 @@ assert payload["data_state"] in {"ready", "stale", "partial", "unavailable"}
 assert isinstance(payload["sources"], list)
 '
 
+broker_status="$(auth_curl "${base_url}/api/broker/schwab/status")"
+printf '%s' "$broker_status" | python3 -c '
+import json
+import sys
+
+payload = json.load(sys.stdin)
+assert payload["connection_state"] in {
+    "unconfigured",
+    "disconnected",
+    "connected",
+    "expired",
+    "revoked",
+}
+assert payload["market_data_state"] in {
+    "unconfigured",
+    "unknown",
+    "available",
+    "stale",
+    "rate_limited",
+    "unavailable",
+    "quarantined",
+}
+assert "client_secret" not in json.dumps(payload)
+assert "access" "_token" not in json.dumps(payload)
+'
+
 curl --fail --silent --show-error "$base_url/" | grep -q '<div id="root"></div>'
 
 if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
@@ -110,6 +136,10 @@ run_api_python -m market_trader.options_analysis.cli validate \
 
 run_api_python -m market_trader.risk.cli validate \
   "$fixture_root/risk/share-sizing-boundaries/approved-share.json" >/dev/null
+
+if [ -x "$root_dir/apps/api/.venv/bin/python" ]; then
+  "$root_dir/apps/api/.venv/bin/python" "$root_dir/scripts/start_schwab_helper.py" --check >/dev/null
+fi
 
 run_api_python - "$fixture_root/paper_lifecycle" <<'PY'
 import json

@@ -1,6 +1,13 @@
 import { useEffect, useState } from 'react'
 
 import { fetchReadinessWithMeta, recoverPaperLifecycleWithMeta } from '../api'
+import {
+  fetchSchwabBrokerStatusWithMeta,
+  refreshSchwabToken,
+  revokeSchwabToken,
+} from '../broker/api'
+import BrokerStatusPanel from '../broker/BrokerStatusPanel'
+import type { SchwabBrokerStatus } from '../broker/types'
 import type { PaperRecoveryResponse } from '../paper/types'
 import RecoveryPanel from './RecoveryPanel'
 import SystemHealthPanel from './SystemHealthPanel'
@@ -12,6 +19,8 @@ type PanelState =
       kind: 'ready'
       readiness: ReadinessResponse
       readinessCorrelationId?: string
+      brokerStatus: SchwabBrokerStatus
+      brokerCorrelationId?: string
       recovery: PaperRecoveryResponse
       recoveryCorrelationId?: string
     }
@@ -23,11 +32,14 @@ export default function OperationsPanel() {
   async function loadAll(signal?: AbortSignal) {
     try {
       const readiness = await fetchReadinessWithMeta(signal)
+      const brokerStatus = await fetchSchwabBrokerStatusWithMeta(signal)
       const recovery = await recoverPaperLifecycleWithMeta(signal)
       setState({
         kind: 'ready',
         readiness: readiness.data,
         readinessCorrelationId: readiness.correlationId,
+        brokerStatus: brokerStatus.data,
+        brokerCorrelationId: brokerStatus.correlationId,
         recovery: recovery.data,
         recoveryCorrelationId: recovery.correlationId,
       })
@@ -47,6 +59,36 @@ export default function OperationsPanel() {
       })
     } catch {
       setState({ kind: 'error', area: 'recovery' })
+    }
+  }
+
+  async function refreshBrokerToken() {
+    if (state.kind !== 'ready') return
+    try {
+      await refreshSchwabToken()
+      const brokerStatus = await fetchSchwabBrokerStatusWithMeta()
+      setState({
+        ...state,
+        brokerStatus: brokerStatus.data,
+        brokerCorrelationId: brokerStatus.correlationId,
+      })
+    } catch {
+      setState({ kind: 'error', area: 'health' })
+    }
+  }
+
+  async function revokeBrokerToken() {
+    if (state.kind !== 'ready') return
+    try {
+      await revokeSchwabToken()
+      const brokerStatus = await fetchSchwabBrokerStatusWithMeta()
+      setState({
+        ...state,
+        brokerStatus: brokerStatus.data,
+        brokerCorrelationId: brokerStatus.correlationId,
+      })
+    } catch {
+      setState({ kind: 'error', area: 'health' })
     }
   }
 
@@ -72,6 +114,12 @@ export default function OperationsPanel() {
   return (
     <div className="dashboard-stack">
       <SystemHealthPanel readiness={state.readiness} correlationId={state.readinessCorrelationId} />
+      <BrokerStatusPanel
+        status={state.brokerStatus}
+        correlationId={state.brokerCorrelationId}
+        onRefresh={refreshBrokerToken}
+        onRevoke={revokeBrokerToken}
+      />
       <RecoveryPanel
         recovery={state.recovery}
         correlationId={state.recoveryCorrelationId}

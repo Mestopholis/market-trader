@@ -4,7 +4,10 @@ from alembic.runtime.migration import MigrationContext
 from alembic.script import ScriptDirectory
 from sqlalchemy import Engine, text
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
 
+from market_trader.broker.read_models import SchwabBrokerStatus, SchwabBrokerStatusReader
+from market_trader.config import get_settings
 from market_trader.db.engine import create_engine_from_url
 from market_trader.db.migrations import alembic_config
 from market_trader.faults.injectors import FaultInjector
@@ -23,6 +26,7 @@ def collect_system_state(
         components.append(_database_state(engine))
         components.append(_migration_state(engine, database_url))
         components.extend(_placeholder_components())
+        components.extend(_schwab_components(engine))
         components.append(_risk_lock_state(engine))
         components.extend(_post_risk_placeholder_components())
     except SQLAlchemyError:
@@ -42,6 +46,7 @@ def collect_system_state(
                 blocking=True,
             ),
             *_placeholder_components(),
+            *_schwab_unavailable_components(),
             ComponentState(
                 name="risk_locks",
                 status="unavailable",
@@ -146,6 +151,119 @@ def _placeholder_components() -> list[ComponentState]:
             "Scheduler job health has not been recorded yet.",
         ),
     ]
+
+
+def _schwab_components(engine: Engine) -> list[ComponentState]:
+    settings = get_settings()
+    if not settings.schwab_market_data_enabled:
+        return []
+    with Session(engine) as session:
+        status = SchwabBrokerStatusReader(
+            session=session,
+            token_key=settings.schwab_token_encryption_key,
+            callback_url=settings.schwab_callback_url,
+            configured=True,
+        ).read()
+    return [_schwab_auth_component(status), _schwab_market_data_component(status)]
+
+
+def _schwab_unavailable_components() -> list[ComponentState]:
+    if not get_settings().schwab_market_data_enabled:
+        return []
+    return [
+        ComponentState(
+            name="schwab_auth",
+            status="unavailable",
+            code="schwab_auth_state_unavailable",
+            summary="Schwab auth state cannot be checked while the database is unavailable.",
+            blocking=True,
+        ),
+        ComponentState(
+            name="schwab_market_data",
+            status="unavailable",
+            code="schwab_market_data_state_unavailable",
+            summary="Schwab market data state cannot be checked while the database is unavailable.",
+            blocking=True,
+        ),
+    ]
+
+
+def _schwab_auth_component(status: SchwabBrokerStatus) -> ComponentState:
+    if status.connection_state == "connected":
+        return ComponentState(
+            name="schwab_auth",
+            status="ok",
+            code="schwab_connected",
+            summary="Schwab Market Data OAuth token is active.",
+            details={"connection_state": status.connection_state},
+        )
+    if status.connection_state == "expired":
+        return ComponentState(
+            name="schwab_auth",
+            status="warning",
+            code="schwab_token_expired",
+            summary="Schwab Market Data OAuth token is expired.",
+            details={"connection_state": status.connection_state},
+        )
+    if status.connection_state == "revoked":
+        return ComponentState(
+            name="schwab_auth",
+            status="warning",
+            code="schwab_token_revoked",
+            summary="Schwab Market Data OAuth token is revoked.",
+            details={"connection_state": status.connection_state},
+        )
+    return ComponentState(
+        name="schwab_auth",
+        status="warning",
+        code="schwab_disconnected",
+        summary="Schwab Market Data OAuth is configured but not connected.",
+        details={"connection_state": status.connection_state},
+    )
+
+
+def _schwab_market_data_component(status: SchwabBrokerStatus) -> ComponentState:
+    state = status.market_data_state
+    if state == "available":
+        return ComponentState(
+            name="schwab_market_data",
+            status="ok",
+            code="schwab_market_data_available",
+            summary="Schwab market data is available.",
+            details={"market_data_state": state},
+        )
+    if state == "unknown":
+        return ComponentState(
+            name="schwab_market_data",
+            status="unknown",
+            code="schwab_market_data_unknown",
+            summary="Schwab market data has not refreshed yet.",
+            details={"market_data_state": state},
+        )
+    if state == "rate_limited":
+        return ComponentState(
+            name="schwab_market_data",
+            status="warning",
+            code="schwab_rate_limited",
+            summary="Schwab market data is currently rate-limited.",
+            details={"market_data_state": state},
+        )
+    if state == "stale":
+        return ComponentState(
+            name="schwab_market_data",
+            status="warning",
+            code="schwab_market_data_stale",
+            summary="Schwab market data is stale.",
+            details={"market_data_state": state},
+        )
+    return ComponentState(
+        name="schwab_market_data",
+        status="unavailable",
+        code="schwab_market_data_unavailable",
+        summary="Schwab market data is unavailable.",
+        blocking=True,
+        details={"market_data_state": state},
+    )
 
 
 def _post_risk_placeholder_components() -> list[ComponentState]:

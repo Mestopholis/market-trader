@@ -42,6 +42,16 @@ const recovery = {
   open_positions: [],
 }
 
+const schwabStatus = {
+  configured: true,
+  callback_url: 'https://127.0.0.1:8182',
+  connection_state: 'connected',
+  market_data_state: 'available',
+  token: null,
+  last_market_data_refresh: null,
+  actions: { oauth_start: true, refresh: false, revoke: false },
+}
+
 function response(body: unknown, headers: Record<string, string> = {}): Response {
   return new Response(JSON.stringify(body), { status: 200, headers })
 }
@@ -50,6 +60,9 @@ test('renders health states and the response correlation id', async () => {
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
     if (String(input).includes('/api/readiness')) {
       return response(readiness, { 'X-Correlation-ID': 'corr-ops-1' })
+    }
+    if (String(input).includes('/api/broker/schwab/status')) {
+      return response(schwabStatus, { 'X-Correlation-ID': 'corr-broker-1' })
     }
     return response(recovery, { 'X-Correlation-ID': 'corr-recovery-1' })
   })
@@ -60,6 +73,8 @@ test('renders health states and the response correlation id', async () => {
   expect(screen.getByText('restart_recovery_gap')).toBeInTheDocument()
   expect(screen.getByText('Process restart recovery has pending reconciliation work.')).toBeInTheDocument()
   expect(screen.getByText('corr-ops-1')).toBeInTheDocument()
+  expect(screen.getByRole('heading', { name: 'Schwab Market Data' })).toBeInTheDocument()
+  expect(screen.getByText('corr-broker-1')).toBeInTheDocument()
   expect(screen.getByRole('heading', { name: 'Recovery drill' })).toBeInTheDocument()
   expect(screen.getByText('1 timed-out order')).toBeInTheDocument()
   expect(screen.getByText('corr-recovery-1')).toBeInTheDocument()
@@ -69,6 +84,7 @@ test('refreshes recovery state and renders safe errors only', async () => {
   const user = userEvent.setup()
   const fetchMock = vi.spyOn(globalThis, 'fetch')
     .mockResolvedValueOnce(response(readiness))
+    .mockResolvedValueOnce(response(schwabStatus))
     .mockResolvedValueOnce(response(recovery))
     .mockRejectedValueOnce(new Error('database_url=sqlite:///secret.db token=abc'))
 
@@ -82,6 +98,7 @@ test('refreshes recovery state and renders safe errors only', async () => {
   expect(document.body.textContent).not.toContain('token=abc')
   expect(fetchMock.mock.calls.map((call) => String(call[0]))).toEqual([
     '/api/readiness',
+    '/api/broker/schwab/status',
     '/api/paper/recover',
     '/api/paper/recover',
   ])
