@@ -1,8 +1,9 @@
 from enum import StrEnum
 from functools import lru_cache
+from urllib.parse import urlparse
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from pydantic import model_validator
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -27,6 +28,11 @@ class Settings(BaseSettings):
     auth_password_hash: str | None = None
     session_secret: str | None = None
     session_ttl_seconds: int = 3600
+    schwab_market_data_enabled: bool = False
+    schwab_callback_url: str = "https://127.0.0.1:8182"
+    schwab_client_id: str | None = None
+    schwab_client_secret: str | None = Field(default=None, repr=False)
+    schwab_token_encryption_key: str | None = Field(default=None, repr=False)
 
     @model_validator(mode="after")
     def validate_safety_settings(self) -> "Settings":
@@ -36,6 +42,32 @@ class Settings(BaseSettings):
             ZoneInfo(self.display_timezone)
         except ZoneInfoNotFoundError as error:
             raise ValueError("Unknown display timezone") from error
+        if self.schwab_market_data_enabled:
+            missing = [
+                name
+                for name, value in (
+                    ("MARKET_TRADER_SCHWAB_CLIENT_ID", self.schwab_client_id),
+                    ("MARKET_TRADER_SCHWAB_CLIENT_SECRET", self.schwab_client_secret),
+                    (
+                        "MARKET_TRADER_SCHWAB_TOKEN_ENCRYPTION_KEY",
+                        self.schwab_token_encryption_key,
+                    ),
+                )
+                if not value
+            ]
+            if missing:
+                joined = ", ".join(missing)
+                raise ValueError(f"Schwab Market Data requires {joined}")
+            parsed_callback = urlparse(self.schwab_callback_url)
+            if (
+                parsed_callback.scheme != "https"
+                or parsed_callback.hostname not in {"127.0.0.1", "localhost"}
+                or parsed_callback.port != 8182
+                or parsed_callback.path not in {"", "/"}
+            ):
+                raise ValueError(
+                    "Schwab Market Data requires a loopback HTTPS callback on port 8182"
+                )
         return self
 
 
