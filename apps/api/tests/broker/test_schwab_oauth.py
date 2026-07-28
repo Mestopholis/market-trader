@@ -266,6 +266,32 @@ def test_error_callback_records_failure_without_token_request(
     assert service.requests == []  # type: ignore[attr-defined]
 
 
+def test_callback_wraps_provider_token_failure_as_safe_oauth_error(
+    session: Session,
+) -> None:
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(400, json={"error": "invalid_grant"})
+
+    with httpx.Client(transport=httpx.MockTransport(handler)) as http_client:
+        service = SchwabOAuthService(
+            config=_config(),
+            token_repository=SchwabTokenRepository(SchwabTokenCipher("local-key")),
+            http_client=http_client,
+            clock=FrozenClock(NOW),
+        )
+        started = service.start(session, correlation_id="corr-provider-failure")
+
+        with pytest.raises(SchwabOAuthError, match="oauth_token_exchange_failed") as error:
+            service.complete_callback(
+                session,
+                code="provider-code",
+                state=started.state,
+                correlation_id="corr-provider-failure",
+            )
+
+    assert error.value.code == "oauth_token_exchange_failed"
+
+
 def test_refresh_rotates_tokens_and_revoke_blocks_reads(
     session: Session,
     service: SchwabOAuthService,

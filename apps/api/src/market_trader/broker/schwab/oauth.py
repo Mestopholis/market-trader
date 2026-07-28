@@ -244,17 +244,14 @@ class SchwabOAuthService:
         )
 
     def _exchange_authorization_code(self, code: str, *, now: datetime) -> SchwabTokenBundle:
-        response = self._http_client.post(
-            self.config.token_url,
+        return self._exchange_token(
             data={
                 "grant_type": "authorization_code",
                 "code": code,
                 "redirect_uri": self.config.callback_url,
             },
-            auth=(self.config.client_id, self.config.client_secret),
+            now=now,
         )
-        response.raise_for_status()
-        return self._bundle_from_payload(response.json(), now=now)
 
     def _exchange_refresh_token(
         self,
@@ -262,16 +259,29 @@ class SchwabOAuthService:
         *,
         now: datetime,
     ) -> SchwabTokenBundle:
-        response = self._http_client.post(
-            self.config.token_url,
+        return self._exchange_token(
             data={
                 "grant_type": "refresh_token",
                 "refresh_token": refresh_token,
             },
-            auth=(self.config.client_id, self.config.client_secret),
+            now=now,
         )
-        response.raise_for_status()
-        return self._bundle_from_payload(response.json(), now=now)
+
+    def _exchange_token(self, *, data: dict[str, str], now: datetime) -> SchwabTokenBundle:
+        try:
+            response = self._http_client.post(
+                self.config.token_url,
+                data=data,
+                auth=(self.config.client_id, self.config.client_secret),
+            )
+            response.raise_for_status()
+            payload = response.json()
+        except (httpx.HTTPError, ValueError) as error:
+            raise SchwabOAuthError("oauth_token_exchange_failed") from error
+        try:
+            return self._bundle_from_payload(payload, now=now)
+        except (KeyError, TypeError, ValueError) as error:
+            raise SchwabOAuthError("oauth_token_exchange_failed") from error
 
     def _bundle_from_payload(
         self,
