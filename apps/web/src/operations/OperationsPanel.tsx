@@ -3,7 +3,9 @@ import { useEffect, useState } from 'react'
 import { fetchReadinessWithMeta, recoverPaperLifecycleWithMeta } from '../api'
 import {
   fetchSchwabBrokerStatusWithMeta,
+  refreshSchwabAccountsToken,
   refreshSchwabToken,
+  revokeSchwabAccountsToken,
   revokeSchwabToken,
 } from '../broker/api'
 import BrokerStatusPanel from '../broker/BrokerStatusPanel'
@@ -92,6 +94,36 @@ export default function OperationsPanel() {
     }
   }
 
+  async function refreshAccountsToken() {
+    if (state.kind !== 'ready') return
+    try {
+      await refreshSchwabAccountsToken()
+      const brokerStatus = await fetchSchwabBrokerStatusWithMeta()
+      setState({
+        ...state,
+        brokerStatus: brokerStatus.data,
+        brokerCorrelationId: brokerStatus.correlationId,
+      })
+    } catch {
+      setState({ kind: 'error', area: 'health' })
+    }
+  }
+
+  async function revokeAccountsToken() {
+    if (state.kind !== 'ready') return
+    try {
+      await revokeSchwabAccountsToken()
+      const brokerStatus = await fetchSchwabBrokerStatusWithMeta()
+      setState({
+        ...state,
+        brokerStatus: brokerStatus.data,
+        brokerCorrelationId: brokerStatus.correlationId,
+      })
+    } catch {
+      setState({ kind: 'error', area: 'health' })
+    }
+  }
+
   useEffect(() => {
     const controller = new AbortController()
     void loadAll(controller.signal)
@@ -119,6 +151,8 @@ export default function OperationsPanel() {
         correlationId={state.brokerCorrelationId}
         onRefresh={refreshBrokerToken}
         onRevoke={revokeBrokerToken}
+        onAccountsRefresh={refreshAccountsToken}
+        onAccountsRevoke={revokeAccountsToken}
       />
       <RecoveryPanel
         recovery={state.recovery}

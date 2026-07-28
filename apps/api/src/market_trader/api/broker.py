@@ -13,6 +13,10 @@ from sqlalchemy.orm import Session
 from market_trader.api.auth import require_authenticated_session, require_csrf_protection
 from market_trader.broker.read_models import SchwabBrokerStatus, SchwabBrokerStatusReader
 from market_trader.broker.schwab.oauth import (
+    SCHWAB_ACCOUNTS_TRADING_PRODUCT,
+    SCHWAB_ACCOUNTS_TRADING_TOKEN_ID,
+    SCHWAB_MARKET_DATA_PRODUCT,
+    SCHWAB_MARKET_DATA_TOKEN_ID,
     SchwabOAuthConfig,
     SchwabOAuthError,
     SchwabOAuthService,
@@ -38,6 +42,26 @@ def get_schwab_oauth_service() -> SchwabOAuthService:
             client_secret=settings.schwab_client_secret or "",
             callback_url=settings.schwab_callback_url,
             state_signing_key=settings.schwab_token_encryption_key or "",
+            token_id=SCHWAB_MARKET_DATA_TOKEN_ID,
+            product=SCHWAB_MARKET_DATA_PRODUCT,
+        ),
+        token_repository=SchwabTokenRepository(
+            SchwabTokenCipher(settings.schwab_token_encryption_key or "")
+        ),
+        http_client=_http_client(),
+    )
+
+
+def get_schwab_accounts_trading_oauth_service() -> SchwabOAuthService:
+    settings = get_settings()
+    return SchwabOAuthService(
+        config=SchwabOAuthConfig(
+            client_id=settings.schwab_accounts_trading_client_id or "",
+            client_secret=settings.schwab_accounts_trading_client_secret or "",
+            callback_url=settings.schwab_callback_url,
+            state_signing_key=settings.schwab_token_encryption_key or "",
+            token_id=SCHWAB_ACCOUNTS_TRADING_TOKEN_ID,
+            product=SCHWAB_ACCOUNTS_TRADING_PRODUCT,
         ),
         token_repository=SchwabTokenRepository(
             SchwabTokenCipher(settings.schwab_token_encryption_key or "")
@@ -83,6 +107,7 @@ def schwab_status(
         token_key=settings.schwab_token_encryption_key,
         callback_url=settings.schwab_callback_url,
         configured=settings.schwab_market_data_enabled,
+        accounts_trading_configured=settings.schwab_accounts_trading_enabled,
     ).read()
 
 
@@ -92,6 +117,35 @@ def complete_schwab_oauth_callback(
     response: Response,
     session: Annotated[Session, Depends(get_schwab_session)],
     service: Annotated[SchwabOAuthService, Depends(get_schwab_oauth_service)],
+    state: Annotated[str, Query(min_length=1)],
+    code: Annotated[str | None, Query(min_length=1)] = None,
+    error: Annotated[str | None, Query(min_length=1)] = None,
+    error_description: Annotated[str | None, Query(min_length=1)] = None,
+) -> dict[str, Any]:
+    _no_store(response)
+    try:
+        metadata = service.complete_callback(
+            session,
+            state=state,
+            code=code,
+            error=error,
+            error_description=error_description,
+            correlation_id=_correlation_id(request),
+        )
+    except SchwabOAuthError as exc:
+        raise _oauth_http_error(exc) from exc
+    return {"status": "connected", "token": _json(metadata)}
+
+
+@router.get("/schwab/accounts/oauth/callback")
+def complete_schwab_accounts_trading_oauth_callback(
+    request: Request,
+    response: Response,
+    session: Annotated[Session, Depends(get_schwab_session)],
+    service: Annotated[
+        SchwabOAuthService,
+        Depends(get_schwab_accounts_trading_oauth_service),
+    ],
     state: Annotated[str, Query(min_length=1)],
     code: Annotated[str | None, Query(min_length=1)] = None,
     error: Annotated[str | None, Query(min_length=1)] = None,
@@ -132,6 +186,57 @@ def revoke_schwab_oauth(
     response: Response,
     session: Annotated[Session, Depends(get_schwab_session)],
     service: Annotated[SchwabOAuthService, Depends(get_schwab_oauth_service)],
+) -> dict[str, Any]:
+    _no_store(response)
+    return _json(
+        service.revoke(
+            session,
+            correlation_id=_correlation_id(request),
+            reason_code="operator_revoked",
+        )
+    )
+
+
+@router.post("/schwab/accounts/oauth/start", dependencies=MUTATING_DEPENDENCIES)
+def start_schwab_accounts_trading_oauth(
+    request: Request,
+    response: Response,
+    session: Annotated[Session, Depends(get_schwab_session)],
+    service: Annotated[
+        SchwabOAuthService,
+        Depends(get_schwab_accounts_trading_oauth_service),
+    ],
+) -> dict[str, Any]:
+    _no_store(response)
+    return _json(service.start(session, correlation_id=_correlation_id(request)))
+
+
+@router.post("/schwab/accounts/oauth/refresh", dependencies=MUTATING_DEPENDENCIES)
+def refresh_schwab_accounts_trading_oauth(
+    request: Request,
+    response: Response,
+    session: Annotated[Session, Depends(get_schwab_session)],
+    service: Annotated[
+        SchwabOAuthService,
+        Depends(get_schwab_accounts_trading_oauth_service),
+    ],
+) -> dict[str, Any]:
+    _no_store(response)
+    try:
+        return _json(service.refresh(session, correlation_id=_correlation_id(request)))
+    except SchwabOAuthError as exc:
+        raise _oauth_http_error(exc) from exc
+
+
+@router.post("/schwab/accounts/oauth/revoke", dependencies=MUTATING_DEPENDENCIES)
+def revoke_schwab_accounts_trading_oauth(
+    request: Request,
+    response: Response,
+    session: Annotated[Session, Depends(get_schwab_session)],
+    service: Annotated[
+        SchwabOAuthService,
+        Depends(get_schwab_accounts_trading_oauth_service),
+    ],
 ) -> dict[str, Any]:
     _no_store(response)
     return _json(

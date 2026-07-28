@@ -47,9 +47,19 @@ const schwabStatus = {
   callback_url: 'https://127.0.0.1:8182',
   connection_state: 'connected',
   market_data_state: 'available',
+  accounts_trading_configured: true,
+  accounts_trading_state: 'disconnected',
   token: null,
+  accounts_trading_token: null,
   last_market_data_refresh: null,
-  actions: { oauth_start: true, refresh: false, revoke: false },
+  actions: {
+    oauth_start: true,
+    refresh: false,
+    revoke: false,
+    accounts_oauth_start: true,
+    accounts_refresh: false,
+    accounts_revoke: false,
+  },
 }
 
 function response(body: unknown, headers: Record<string, string> = {}): Response {
@@ -74,6 +84,7 @@ test('renders health states and the response correlation id', async () => {
   expect(screen.getByText('Process restart recovery has pending reconciliation work.')).toBeInTheDocument()
   expect(screen.getByText('corr-ops-1')).toBeInTheDocument()
   expect(screen.getByRole('heading', { name: 'Schwab Market Data' })).toBeInTheDocument()
+  expect(screen.getByRole('heading', { name: 'Schwab Accounts and Trading' })).toBeInTheDocument()
   expect(screen.getByText('corr-broker-1')).toBeInTheDocument()
   expect(screen.getByRole('heading', { name: 'Recovery drill' })).toBeInTheDocument()
   expect(screen.getByText('1 timed-out order')).toBeInTheDocument()

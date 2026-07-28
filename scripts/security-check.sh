@@ -97,16 +97,18 @@ secret_patterns = [
     re.compile(r"(?i)\b(secret|token|password|api[_-]?key)\s*[:=]\s*['\"][^'\"]{8,}['\"]"),
 ]
 forbidden_patterns = [
-    # Schwab read-only references are allowed in Milestone 11. Schwab order,
-    # account, live-mode, credential exposure, and public deployment capability
-    # remain forbidden until separately approved.
-    re.compile(r"\bschwab\b.*\border\b", re.IGNORECASE),
-    re.compile(r"\border\b.*\bschwab\b", re.IGNORECASE),
-    re.compile(r"\bschwab\b.*\bpreview\b", re.IGNORECASE),
-    re.compile(r"\bpreview\b.*\bschwab\b", re.IGNORECASE),
-    re.compile(r"\bschwab\b.*\bcancel\b", re.IGNORECASE),
-    re.compile(r"\bschwab\b.*\breplace\b", re.IGNORECASE),
-    re.compile(r"\bschwab\b.*\bsaved[- ]?order\b", re.IGNORECASE),
+    # Schwab read-only and validation-contract references are allowed in
+    # Milestone 12. Schwab live submission, cancel/replace, credential exposure,
+    # and public deployment capability remain forbidden until separately approved.
+    re.compile(r"\bschwab\b.{0,120}\border submit\b", re.IGNORECASE),
+    re.compile(r"\border submit\b.{0,120}\bschwab\b", re.IGNORECASE),
+    re.compile(r"\bschwab\b.{0,120}\bsubmit\b", re.IGNORECASE),
+    re.compile(r"\bsubmit\b.{0,120}\bschwab\b", re.IGNORECASE),
+    re.compile(r"\bschwab\b.{0,120}\bplace\b", re.IGNORECASE),
+    re.compile(r"\bplace\b.{0,120}\bschwab\b", re.IGNORECASE),
+    re.compile(r"\bschwab\b.{0,120}\bcancel\b", re.IGNORECASE),
+    re.compile(r"\bschwab\b.{0,120}\breplace\b", re.IGNORECASE),
+    re.compile(r"\bschwab\b.{0,120}\bsaved[- ]?order\b", re.IGNORECASE),
     re.compile(r"\blive[_ -]?mode\b", re.IGNORECASE),
     re.compile(r"\bbroker credential", re.IGNORECASE),
     re.compile(r"\bconnect broker\b", re.IGNORECASE),
@@ -193,13 +195,15 @@ from market_trader.main import create_app  # noqa: E402
 payload = json.dumps(create_app().openapi(), indent=2)
 for line_number, line in enumerate(payload.splitlines(), start=1):
     for pattern in (
-        re.compile(r"\bschwab\b.*\border\b", re.IGNORECASE),
-        re.compile(r"\border\b.*\bschwab\b", re.IGNORECASE),
-        re.compile(r"\bschwab\b.*\bpreview\b", re.IGNORECASE),
-        re.compile(r"\bpreview\b.*\bschwab\b", re.IGNORECASE),
-        re.compile(r"\bschwab\b.*\bcancel\b", re.IGNORECASE),
-        re.compile(r"\bschwab\b.*\breplace\b", re.IGNORECASE),
-        re.compile(r"\bschwab\b.*\bsaved[- ]?order\b", re.IGNORECASE),
+        re.compile(r"\bschwab\b.{0,120}\border submit\b", re.IGNORECASE),
+        re.compile(r"\border submit\b.{0,120}\bschwab\b", re.IGNORECASE),
+        re.compile(r"\bschwab\b.{0,120}\bsubmit\b", re.IGNORECASE),
+        re.compile(r"\bsubmit\b.{0,120}\bschwab\b", re.IGNORECASE),
+        re.compile(r"\bschwab\b.{0,120}\bplace\b", re.IGNORECASE),
+        re.compile(r"\bplace\b.{0,120}\bschwab\b", re.IGNORECASE),
+        re.compile(r"\bschwab\b.{0,120}\bcancel\b", re.IGNORECASE),
+        re.compile(r"\bschwab\b.{0,120}\breplace\b", re.IGNORECASE),
+        re.compile(r"\bschwab\b.{0,120}\bsaved[- ]?order\b", re.IGNORECASE),
         re.compile(r"\blive[_ -]?mode\b", re.IGNORECASE),
         re.compile(r"\bapi[_ -]?key\b", re.IGNORECASE),
         re.compile(r"\bbroker credential", re.IGNORECASE),

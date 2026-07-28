@@ -25,6 +25,14 @@ export async function revokeSchwabToken(signal?: AbortSignal): Promise<SchwabTok
   return schwabPost('/api/broker/schwab/oauth/revoke', 'Schwab token revoke', signal)
 }
 
+export async function refreshSchwabAccountsToken(signal?: AbortSignal): Promise<SchwabTokenStatus> {
+  return schwabPost('/api/broker/schwab/accounts/oauth/refresh', 'Schwab accounts token refresh', signal)
+}
+
+export async function revokeSchwabAccountsToken(signal?: AbortSignal): Promise<SchwabTokenStatus> {
+  return schwabPost('/api/broker/schwab/accounts/oauth/revoke', 'Schwab accounts token revoke', signal)
+}
+
 async function schwabPost<T>(url: string, label: string, signal?: AbortSignal): Promise<T> {
   const response = await fetch(url, {
     method: 'POST',

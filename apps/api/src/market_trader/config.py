@@ -33,6 +33,9 @@ class Settings(BaseSettings):
     schwab_client_id: str | None = None
     schwab_client_secret: str | None = Field(default=None, repr=False)
     schwab_token_encryption_key: str | None = Field(default=None, repr=False)
+    schwab_accounts_trading_enabled: bool = False
+    schwab_accounts_trading_client_id: str | None = None
+    schwab_accounts_trading_client_secret: str | None = Field(default=None, repr=False)
 
     @model_validator(mode="after")
     def validate_safety_settings(self) -> "Settings":
@@ -42,6 +45,17 @@ class Settings(BaseSettings):
             ZoneInfo(self.display_timezone)
         except ZoneInfoNotFoundError as error:
             raise ValueError("Unknown display timezone") from error
+        if self.schwab_market_data_enabled or self.schwab_accounts_trading_enabled:
+            parsed_callback = urlparse(self.schwab_callback_url)
+            if (
+                parsed_callback.scheme != "https"
+                or parsed_callback.hostname not in {"127.0.0.1", "localhost"}
+                or parsed_callback.port != 8182
+                or parsed_callback.path not in {"", "/"}
+            ):
+                raise ValueError(
+                    "Schwab integrations require a loopback HTTPS callback on port 8182"
+                )
         if self.schwab_market_data_enabled:
             missing = [
                 name
@@ -58,16 +72,28 @@ class Settings(BaseSettings):
             if missing:
                 joined = ", ".join(missing)
                 raise ValueError(f"Schwab Market Data requires {joined}")
-            parsed_callback = urlparse(self.schwab_callback_url)
-            if (
-                parsed_callback.scheme != "https"
-                or parsed_callback.hostname not in {"127.0.0.1", "localhost"}
-                or parsed_callback.port != 8182
-                or parsed_callback.path not in {"", "/"}
-            ):
-                raise ValueError(
-                    "Schwab Market Data requires a loopback HTTPS callback on port 8182"
+        if self.schwab_accounts_trading_enabled:
+            missing = [
+                name
+                for name, value in (
+                    (
+                        "MARKET_TRADER_SCHWAB_ACCOUNTS_TRADING_CLIENT_ID",
+                        self.schwab_accounts_trading_client_id,
+                    ),
+                    (
+                        "MARKET_TRADER_SCHWAB_ACCOUNTS_TRADING_CLIENT_SECRET",
+                        self.schwab_accounts_trading_client_secret,
+                    ),
+                    (
+                        "MARKET_TRADER_SCHWAB_TOKEN_ENCRYPTION_KEY",
+                        self.schwab_token_encryption_key,
+                    ),
                 )
+                if not value
+            ]
+            if missing:
+                joined = ", ".join(missing)
+                raise ValueError(f"Schwab Accounts and Trading requires {joined}")
         return self
 
 

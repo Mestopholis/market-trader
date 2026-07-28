@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import argparse
+import base64
+import json
 import os
 import subprocess
 import sys
@@ -35,7 +37,12 @@ app = create_app()
 def schwab_helper_root(request: Request):
     query = dict(request.query_params)
     if "state" in query or "code" in query or "error" in query:
-        target = "/api/broker/schwab/oauth/callback"
+        product = _product_from_state(query.get("state"))
+        target = (
+            "/api/broker/schwab/accounts/oauth/callback"
+            if product == "accounts_trading"
+            else "/api/broker/schwab/oauth/callback"
+        )
         if query:
             target = f"{target}?{urlencode(query)}"
         return RedirectResponse(target, status_code=307)
@@ -62,11 +69,17 @@ def schwab_helper_root(request: Request):
 </head>
 <body>
   <main>
-    <h1>Schwab Market Data Connect</h1>
+    <h1>Schwab Connect</h1>
     <form id="connect-form">
+      <label>Product
+        <select id="product">
+          <option value="market_data">Market Data</option>
+          <option value="accounts_trading">Accounts and Trading</option>
+        </select>
+      </label>
       <label>Local username <input id="username" autocomplete="username" required /></label>
       <label>Local password <input id="password" type="password" autocomplete="current-password" required /></label>
-      <button id="connect" type="submit">Connect Schwab</button>
+      <button id="connect" type="submit">Connect</button>
     </form>
     <pre id="status">Ready.</pre>
   </main>
@@ -100,7 +113,11 @@ def schwab_helper_root(request: Request):
         if (!csrf) throw new Error('Local login did not set a CSRF cookie.')
 
         status.textContent = 'Starting Schwab OAuth...'
-        const started = await fetch('/api/broker/schwab/oauth/start', {
+        const product = document.querySelector('#product').value
+        const startPath = product === 'accounts_trading'
+          ? '/api/broker/schwab/accounts/oauth/start'
+          : '/api/broker/schwab/oauth/start'
+        const started = await fetch(startPath, {
           method: 'POST',
           credentials: 'same-origin',
           headers: { Accept: 'application/json', 'X-CSRF-Token': csrf },
@@ -173,6 +190,19 @@ def _ensure_certificate() -> None:
         ],
         check=True,
     )
+
+
+def _product_from_state(state: str | None) -> str:
+    if not state:
+        return "market_data"
+    encoded = state.split(".", maxsplit=1)[0]
+    try:
+        padding = "=" * (-len(encoded) % 4)
+        payload = json.loads(base64.urlsafe_b64decode((encoded + padding).encode("ascii")))
+    except (ValueError, json.JSONDecodeError):
+        return "market_data"
+    product = payload.get("product")
+    return str(product) if product is not None else "market_data"
 
 
 if __name__ == "__main__":

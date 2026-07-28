@@ -63,6 +63,9 @@ def test_env_example_documents_auth_and_schwab_placeholders() -> None:
         "MARKET_TRADER_SCHWAB_CALLBACK_URL=",
         "MARKET_TRADER_SCHWAB_CLIENT_ID=",
         "MARKET_TRADER_SCHWAB_CLIENT_SECRET=",
+        "MARKET_TRADER_SCHWAB_ACCOUNTS_TRADING_ENABLED=",
+        "MARKET_TRADER_SCHWAB_ACCOUNTS_TRADING_CLIENT_ID=",
+        "MARKET_TRADER_SCHWAB_ACCOUNTS_TRADING_CLIENT_SECRET=",
         "MARKET_TRADER_SCHWAB_TOKEN_ENCRYPTION_KEY=",
     ):
         assert expected in env_example
