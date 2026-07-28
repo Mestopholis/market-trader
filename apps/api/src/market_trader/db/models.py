@@ -734,3 +734,76 @@ class RiskReservationORM(Base):
         JSON().with_variant(JSONB(), "postgresql")
     )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class SchwabOAuthStateORM(Base):
+    __tablename__ = "schwab_oauth_states"
+    __table_args__ = (
+        Index("ux_schwab_oauth_states_state_hash", "state_hash", unique=True),
+        Index("ix_schwab_oauth_states_status_expires", "status", "expires_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    state_hash: Mapped[str] = mapped_column(String(128))
+    nonce_hash: Mapped[str] = mapped_column(String(128))
+    callback_url: Mapped[str] = mapped_column(String(512))
+    status: Mapped[str] = mapped_column(String(40))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    consumed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    correlation_id: Mapped[str] = mapped_column(String(64), index=True)
+
+
+class SchwabTokenORM(Base):
+    __tablename__ = "schwab_tokens"
+    __table_args__ = (
+        Index("ix_schwab_tokens_product_status", "product", "status"),
+        Index("ix_schwab_tokens_expires", "access_token_expires_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    product: Mapped[str] = mapped_column(String(40))
+    status: Mapped[str] = mapped_column(String(40))
+    encrypted_access_token: Mapped[dict[str, Any]] = mapped_column(
+        JSON().with_variant(JSONB(), "postgresql")
+    )
+    encrypted_refresh_token: Mapped[dict[str, Any]] = mapped_column(
+        JSON().with_variant(JSONB(), "postgresql")
+    )
+    token_type: Mapped[str] = mapped_column(String(40))
+    scope: Mapped[str] = mapped_column(String(512))
+    access_token_expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    refresh_token_expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True)
+    )
+    encryption_key_id: Mapped[str] = mapped_column(String(64))
+    issued_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    refreshed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_error_code: Mapped[str | None] = mapped_column(String(120))
+    last_error_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    correlation_id: Mapped[str] = mapped_column(String(64), index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class SchwabMarketDataSyncORM(Base):
+    __tablename__ = "schwab_market_data_syncs"
+    __table_args__ = (
+        Index("ux_schwab_market_data_syncs_sync_key", "sync_key", unique=True),
+        Index("ix_schwab_market_data_syncs_kind_status", "data_kind", "status"),
+        Index("ix_schwab_market_data_syncs_observed", "observed_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    sync_key: Mapped[str] = mapped_column(String(160))
+    data_kind: Mapped[str] = mapped_column(String(40))
+    status: Mapped[str] = mapped_column(String(40))
+    provider_state: Mapped[str] = mapped_column(String(40))
+    observed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    payload: Mapped[dict[str, Any]] = mapped_column(
+        JSON().with_variant(JSONB(), "postgresql")
+    )
+    correlation_id: Mapped[str] = mapped_column(String(64), index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
