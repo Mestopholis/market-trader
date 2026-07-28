@@ -30,7 +30,7 @@ packages = ["src/market_trader"]
 
 [tool.pytest.ini_options]
 addopts = "-q --strict-markers --cov=market_trader --cov-report=term-missing"
-pythonpath = ["src"]
+pythonpath = ["src", "."]
 testpaths = ["tests"]
 
 [tool.ruff]
