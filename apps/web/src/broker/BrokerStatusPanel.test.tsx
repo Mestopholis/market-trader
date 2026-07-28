@@ -60,12 +60,14 @@ test('renders connected read-only market data status and safe actions', async ()
   const onRevoke = vi.fn()
   const onAccountsRefresh = vi.fn()
   const onAccountsRevoke = vi.fn()
+  const onQuoteRefresh = vi.fn()
 
   render(
     <BrokerStatusPanel
       status={connectedStatus}
       onRefresh={onRefresh}
       onRevoke={onRevoke}
+      onQuoteRefresh={onQuoteRefresh}
       onAccountsRefresh={onAccountsRefresh}
       onAccountsRevoke={onAccountsRevoke}
     />,
@@ -83,9 +85,11 @@ test('renders connected read-only market data status and safe actions', async ()
 
   await user.click(screen.getByRole('button', { name: 'Refresh Schwab token' }))
   await user.click(screen.getByRole('button', { name: 'Revoke Schwab token' }))
+  await user.click(screen.getByRole('button', { name: 'Refresh SPY quote' }))
 
   expect(onRefresh).toHaveBeenCalledOnce()
   expect(onRevoke).toHaveBeenCalledOnce()
+  expect(onQuoteRefresh).toHaveBeenCalledOnce()
   expect(screen.getByRole('button', { name: 'Refresh Accounts token' })).toBeDisabled()
   expect(screen.getByRole('button', { name: 'Revoke Accounts token' })).toBeDisabled()
 })
@@ -110,6 +114,7 @@ test('renders reconnect guidance when disconnected and disables unsafe actions',
       }}
       onRefresh={vi.fn()}
       onRevoke={vi.fn()}
+      onQuoteRefresh={vi.fn()}
       onAccountsRefresh={vi.fn()}
       onAccountsRevoke={vi.fn()}
     />,
@@ -119,4 +124,5 @@ test('renders reconnect guidance when disconnected and disables unsafe actions',
   expect(screen.getByText('Use the local OAuth helper on https://127.0.0.1:8182.')).toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'Refresh Schwab token' })).toBeDisabled()
   expect(screen.getByRole('button', { name: 'Revoke Schwab token' })).toBeDisabled()
+  expect(screen.getByRole('button', { name: 'Refresh SPY quote' })).toBeDisabled()
 })

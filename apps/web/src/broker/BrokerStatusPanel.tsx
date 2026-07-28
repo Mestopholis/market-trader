@@ -5,6 +5,7 @@ type BrokerStatusPanelProps = {
   status: SchwabBrokerStatus
   onRefresh: () => void
   onRevoke: () => void
+  onQuoteRefresh: () => void
   onAccountsRefresh: () => void
   onAccountsRevoke: () => void
 }
@@ -14,6 +15,7 @@ export default function BrokerStatusPanel({
   status,
   onRefresh,
   onRevoke,
+  onQuoteRefresh,
   onAccountsRefresh,
   onAccountsRevoke,
 }: BrokerStatusPanelProps) {
@@ -27,6 +29,14 @@ export default function BrokerStatusPanel({
           </div>
           <div className="operations-actions">
             {correlationId ? <span className="state-chip">{correlationId}</span> : null}
+            <button
+              type="button"
+              className="paper-action-button"
+              onClick={onQuoteRefresh}
+              disabled={status.connection_state !== 'connected'}
+            >
+              Refresh SPY quote
+            </button>
             <button
               type="button"
               className="paper-action-button"

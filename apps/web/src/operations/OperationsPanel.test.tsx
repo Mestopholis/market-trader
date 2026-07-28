@@ -114,3 +114,55 @@ test('refreshes recovery state and renders safe errors only', async () => {
     '/api/paper/recover',
   ])
 })
+
+test('refreshes a live Schwab quote and reloads broker status', async () => {
+  const user = userEvent.setup()
+  const refreshedStatus = {
+    ...schwabStatus,
+    last_market_data_refresh: {
+      sync_key: 'schwab:quote:SPY',
+      data_kind: 'quote',
+      status: 'completed',
+      provider_state: 'available',
+      observed_at: '2026-07-28T18:53:01Z',
+      completed_at: '2026-07-28T18:53:02Z',
+      correlation_id: 'corr-live-quote',
+      is_stale: false,
+    },
+  }
+  const fetchMock = vi.spyOn(globalThis, 'fetch')
+    .mockResolvedValueOnce(response(readiness))
+    .mockResolvedValueOnce(response(schwabStatus))
+    .mockResolvedValueOnce(response(recovery))
+    .mockResolvedValueOnce(response({
+      sync_key: 'schwab:quote:SPY',
+      data_kind: 'quote',
+      symbols: ['SPY'],
+      provider_state: 'available',
+      accepted: 1,
+      degraded: 0,
+      stale: 0,
+      quarantined: 0,
+      deduplicated: 0,
+    }))
+    .mockResolvedValueOnce(response(refreshedStatus, { 'X-Correlation-ID': 'corr-broker-live' }))
+
+  render(<OperationsPanel />)
+
+  await screen.findByRole('heading', { name: 'Schwab Market Data' })
+  await user.click(screen.getByRole('button', { name: 'Refresh SPY quote' }))
+
+  expect(fetchMock.mock.calls.map((call) => String(call[0]))).toEqual([
+    '/api/readiness',
+    '/api/broker/schwab/status',
+    '/api/paper/recover',
+    '/api/broker/schwab/market-data/quotes/refresh',
+    '/api/broker/schwab/status',
+  ])
+  expect(fetchMock.mock.calls[3][1]).toMatchObject({
+    method: 'POST',
+    body: JSON.stringify({ symbols: ['SPY'] }),
+  })
+  expect(await screen.findByText('corr-broker-live')).toBeInTheDocument()
+  expect(screen.getByText(/quote available at/)).toBeInTheDocument()
+})

@@ -63,3 +63,15 @@ export type SchwabBrokerStatus = {
     accounts_revoke: boolean
   }
 }
+
+export type SchwabQuoteRefreshResponse = {
+  sync_key: string
+  data_kind: 'quote'
+  symbols: string[]
+  provider_state: SchwabMarketDataState
+  accepted: number
+  degraded: number
+  stale: number
+  quarantined: number
+  deduplicated: number
+}

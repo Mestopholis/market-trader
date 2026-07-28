@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { fetchReadinessWithMeta, recoverPaperLifecycleWithMeta } from '../api'
 import {
   fetchSchwabBrokerStatusWithMeta,
+  refreshSchwabQuotes,
   refreshSchwabAccountsToken,
   refreshSchwabToken,
   revokeSchwabAccountsToken,
@@ -94,6 +95,21 @@ export default function OperationsPanel() {
     }
   }
 
+  async function refreshLiveQuote() {
+    if (state.kind !== 'ready') return
+    try {
+      await refreshSchwabQuotes(['SPY'])
+      const brokerStatus = await fetchSchwabBrokerStatusWithMeta()
+      setState({
+        ...state,
+        brokerStatus: brokerStatus.data,
+        brokerCorrelationId: brokerStatus.correlationId,
+      })
+    } catch {
+      setState({ kind: 'error', area: 'health' })
+    }
+  }
+
   async function refreshAccountsToken() {
     if (state.kind !== 'ready') return
     try {
@@ -151,6 +167,7 @@ export default function OperationsPanel() {
         correlationId={state.brokerCorrelationId}
         onRefresh={refreshBrokerToken}
         onRevoke={revokeBrokerToken}
+        onQuoteRefresh={refreshLiveQuote}
         onAccountsRefresh={refreshAccountsToken}
         onAccountsRevoke={revokeAccountsToken}
       />
