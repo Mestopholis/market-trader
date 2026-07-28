@@ -1,7 +1,7 @@
 import json
 import subprocess
 import sys
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -16,6 +16,10 @@ from market_trader.db.models import (
     JournalEventORM,
     ScannerRunORM,
     SignalORM,
+)
+from market_trader.repositories.market_data import (
+    MarketDataRepository,
+    MarketDataSnapshotCreate,
 )
 from market_trader.repositories.symbols import SymbolCreate, SymbolRepository
 from market_trader.scanner.cli import _DEFAULT_CONFIGURATION, main
@@ -94,6 +98,39 @@ def test_persistent_scan_matches_memory_and_exact_rerun_is_idempotent(
     assert first["run_key"] == second["run_key"] == memory["run_key"]
     assert first_counts == _scanner_counts(database_url)
     assert first_counts[:3] == (1, 30, 5)
+
+
+def test_scan_live_reads_market_data_snapshots_and_persists_result(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    database_url = f"sqlite:///{tmp_path / 'scanner-live.db'}"
+    _seed_universe(database_url)
+    _seed_quote_snapshot(database_url, "SPY")
+
+    code = main(
+        [
+            "scan-live",
+            "--database-url",
+            database_url,
+            "--config",
+            str(CONFIGURATION),
+            "--as-of",
+            (OBSERVED + timedelta(seconds=2)).isoformat(),
+            "--observed-lookback-minutes",
+            "15",
+        ]
+    )
+
+    payload = json.loads(capsys.readouterr().out)
+    assert code == 0
+    assert payload["command"] == "scan-live"
+    assert payload["persistence"] == "database"
+    assert payload["source"] == "schwab"
+    assert payload["counts"]["eligible"] + payload["counts"]["ineligible"] + payload["counts"][
+        "blocked"
+    ] == 30
+    assert payload["run_key"]
+    assert _scanner_counts(database_url)[0] == 1
 
 
 def test_expected_mismatch_is_a_sanitized_dataset_error(
@@ -182,6 +219,61 @@ def _seed_universe(database_url: str) -> None:
                         correlation_id="scanner-cli-seed",
                     )
                 )
+    finally:
+        engine.dispose()
+
+
+def _seed_quote_snapshot(database_url: str, display_symbol: str) -> None:
+    engine = create_engine_from_url(database_url)
+    try:
+        with Session(engine) as session, session.begin():
+            symbol = SymbolRepository(session).get_symbol_by_display_symbol(display_symbol)
+            assert symbol is not None
+            MarketDataRepository(session).store_snapshot(
+                MarketDataSnapshotCreate(
+                    ingestion_key=f"schwab:quote:{display_symbol}:cli",
+                    payload_digest="b" * 64,
+                    event_id="schwab-quote-cli",
+                    source="schwab",
+                    data_kind="quote",
+                    symbol_id=symbol.id,
+                    instrument_id=None,
+                    observed_at=OBSERVED,
+                    ingested_at=OBSERVED + timedelta(seconds=1),
+                    session_date=None,
+                    quality_state="valid",
+                    reason_codes=(),
+                    configuration_version_id=None,
+                    payload={
+                        "symbol": display_symbol,
+                        "bid": "625.10",
+                        "ask": "625.20",
+                        "bid_size": 100,
+                        "ask_size": 200,
+                        "last": "625.15",
+                        "last_size": 25,
+                        "last_at": OBSERVED.isoformat(),
+                        "bid_venue": "XNYS",
+                        "ask_venue": "ARCX",
+                        "trade_venue": "XNAS",
+                        "condition_codes": [],
+                        "metadata": {
+                            "source": "schwab",
+                            "event_id": "schwab-quote-cli",
+                            "observed_at": OBSERVED.isoformat(),
+                            "ingested_at": (OBSERVED + timedelta(seconds=1)).isoformat(),
+                            "session_date": None,
+                            "normalized_schema_version": 1,
+                            "configuration_version": "schwab-market-data-v1",
+                            "correlation_id": "corr-scanner-live-cli",
+                            "quality_state": "valid",
+                            "quality_reasons": [],
+                        },
+                    },
+                    payload_schema_version=1,
+                    correlation_id="corr-scanner-live-cli",
+                )
+            )
     finally:
         engine.dispose()
 
