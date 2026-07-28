@@ -24,6 +24,7 @@ from market_trader.db.models import (
 from market_trader.domain.time import FrozenClock
 from market_trader.main import create_app
 from market_trader.repositories.symbols import SymbolCreate, SymbolRepository
+from market_trader.scanner.live_scan import SchwabLiveScanResult
 from market_trader.security.csrf import CSRF_HEADER_NAME
 from market_trader.security.session import SessionClaims
 from tests.db_helpers import migrated_engine
@@ -139,6 +140,56 @@ def test_broker_api_refreshes_live_schwab_quotes(
     assert fake.calls == [(("SPY", "AAPL"), "corr-live-api")]
 
 
+def test_broker_api_runs_live_schwab_scan(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    database_url = f"sqlite:///{tmp_path / 'api-scan.db'}"
+    monkeypatch.setenv("MARKET_TRADER_DATABASE_URL", database_url)
+    monkeypatch.setenv("MARKET_TRADER_SCHWAB_MARKET_DATA_ENABLED", "true")
+    monkeypatch.setenv("MARKET_TRADER_SCHWAB_CLIENT_ID", "synthetic-client")
+    monkeypatch.setenv("MARKET_TRADER_SCHWAB_CLIENT_SECRET", "synthetic-secret")
+    monkeypatch.setenv("MARKET_TRADER_SCHWAB_TOKEN_ENCRYPTION_KEY", "synthetic-key")
+    get_settings.cache_clear()
+
+    app = create_app()
+    app.dependency_overrides[require_authenticated_session] = lambda: SessionClaims(
+        username="operator",
+        issued_at=NOW,
+    )
+    app.dependency_overrides[require_csrf_protection] = lambda: None
+    from market_trader.api.broker import get_schwab_live_scanner_service
+
+    fake = FakeLiveScannerService()
+    app.dependency_overrides[get_schwab_live_scanner_service] = lambda: fake
+
+    response = TestClient(app, base_url="https://testserver").post(
+        "/api/broker/schwab/market-data/scan-live",
+        json={
+            "source": "schwab",
+            "as_of": NOW.isoformat(),
+            "observed_lookback_minutes": 15,
+        },
+        headers={CSRF_HEADER_NAME: "csrf", "X-Correlation-ID": "corr-live-scan-api"},
+    )
+
+    assert response.status_code == 200
+    assert response.headers["Cache-Control"] == "no-store"
+    assert response.json() == {
+        "source": "schwab",
+        "run_key": "scan:live:test",
+        "result_digest": "digest-live-test",
+        "counts": {
+            "eligible": 1,
+            "ineligible": 28,
+            "blocked": 1,
+            "signals": 5,
+            "candidates": 2,
+        },
+    }
+    assert fake.calls == [("schwab", NOW, 15, "corr-live-scan-api")]
+
+
 class FakeSchwabClient:
     def __init__(self, payloads: dict[str, dict[str, Any]]) -> None:
         self.payloads = payloads
@@ -178,6 +229,35 @@ class FakeLiveMarketDataService:
             stale=0,
             quarantined=0,
             deduplicated=0,
+        )
+
+
+class FakeLiveScannerService:
+    def __init__(self) -> None:
+        self.calls: list[tuple[str, datetime, int, str]] = []
+
+    def scan(
+        self,
+        session: Session,
+        *,
+        source: str,
+        as_of: datetime,
+        observed_lookback_minutes: int,
+        correlation_id: str,
+    ) -> SchwabLiveScanResult:
+        assert isinstance(session, Session)
+        self.calls.append((source, as_of, observed_lookback_minutes, correlation_id))
+        return SchwabLiveScanResult(
+            source=source,
+            run_key="scan:live:test",
+            result_digest="digest-live-test",
+            counts={
+                "eligible": 1,
+                "ineligible": 28,
+                "blocked": 1,
+                "signals": 5,
+                "candidates": 2,
+            },
         )
 
 
