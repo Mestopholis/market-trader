@@ -40,6 +40,9 @@ def test_initial_migration_creates_domain_tables(tmp_path: Path) -> None:
             "catalyst_quarantine",
             "catalyst_decisions",
             "catalyst_summaries",
+            "schwab_oauth_states",
+            "schwab_tokens",
+            "schwab_market_data_syncs",
         }.issubset(set(inspector.get_table_names()))
         snapshot_columns = {
             column["name"] for column in inspector.get_columns("market_data_snapshots")
@@ -74,6 +77,35 @@ def test_initial_migration_matches_orm_metadata(tmp_path: Path) -> None:
     command.upgrade(config, "head")
 
     command.check(config)
+
+
+def test_schwab_read_only_migration_adds_oauth_and_token_tables(
+    tmp_path: Path,
+) -> None:
+    database_url = f"sqlite:///{tmp_path / 'schwab-read-only.db'}"
+    config = alembic_config(database_url)
+
+    command.upgrade(config, "head")
+
+    engine = create_engine(database_url)
+    try:
+        inspector = inspect(engine)
+        assert {
+            "schwab_oauth_states",
+            "schwab_tokens",
+            "schwab_market_data_syncs",
+        }.issubset(set(inspector.get_table_names()))
+        token_columns = {column["name"] for column in inspector.get_columns("schwab_tokens")}
+        assert {
+            "encrypted_access_token",
+            "encrypted_refresh_token",
+            "access_token_expires_at",
+            "refresh_token_expires_at",
+            "status",
+            "encryption_key_id",
+        }.issubset(token_columns)
+    finally:
+        engine.dispose()
 
 
 def test_market_data_migration_upgrades_existing_snapshot(tmp_path: Path) -> None:

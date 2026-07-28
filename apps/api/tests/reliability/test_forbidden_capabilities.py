@@ -12,7 +12,6 @@ from market_trader.main import create_app
 REPO_ROOT = Path(__file__).resolve().parents[4]
 
 FORBIDDEN_EXPOSURE_PATTERNS = (
-    re.compile(r"\bschwab\b", re.IGNORECASE),
     re.compile(r"\blive[_ -]?mode\b", re.IGNORECASE),
     re.compile(r"\bapi[_ -]?key\b", re.IGNORECASE),
     re.compile(r"\bbroker credential", re.IGNORECASE),

@@ -1,0 +1,33 @@
+{
+  "symbol": "SPY",
+  "status": "SUCCESS",
+  "underlying": {
+    "symbol": "SPY"
+  },
+  "callExpDateMap": {
+    "2026-08-21:25": {
+      "630.0": [
+        {
+          "symbol": "SPY_082126C00630000",
+          "putCall": "CALL",
+          "expirationDate": "2026-08-21T20:00:00+0000",
+          "strikePrice": 630.0,
+          "bid": 4.1,
+          "ask": 4.2,
+          "bidSize": 10,
+          "askSize": 12,
+          "last": 4.15,
+          "totalVolume": 200,
+          "openInterest": 5000,
+          "volatility": 21.0,
+          "delta": 0.45,
+          "gamma": 0.02,
+          "theta": -0.08,
+          "vega": 0.15,
+          "nonStandard": false
+        }
+      ]
+    }
+  },
+  "putExpDateMap": {}
+}
