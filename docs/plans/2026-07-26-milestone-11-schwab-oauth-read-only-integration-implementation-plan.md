@@ -36,9 +36,9 @@
 | Path | Responsibility |
 | --- | --- |
 | `apps/api/src/market_trader/broker/schwab/*` | Schwab OAuth, token storage, client, normalizers, and read-only adapters. |
-| `apps/api/src/market_trader/broker/read_models.py` | Provider-neutral account, balance, position, transaction, and reconciliation models. |
-| `apps/api/src/market_trader/api/broker.py` | Authenticated Schwab status, OAuth, revoke, refresh, and read-only broker data routes. |
-| `apps/api/src/market_trader/db/models.py` | Encrypted token, OAuth state, broker account, broker position, and reconciliation ORM rows. |
+| `apps/api/src/market_trader/broker/read_models.py` | Provider-neutral broker connection and market-data status read models. Account, balance, position, transaction, and reconciliation models are deferred until the Accounts and Trading app is approved. |
+| `apps/api/src/market_trader/api/broker.py` | Authenticated Schwab status, OAuth, revoke, refresh, and read-only market-data broker routes. |
+| `apps/api/src/market_trader/db/models.py` | Encrypted token, OAuth state, and market-data sync metadata rows. Account rows are deferred until the Accounts and Trading app is approved. |
 | `apps/api/migrations/versions/*_schwab_read_only.py` | Milestone 11 storage migration. |
 | `apps/api/tests/broker/*` | OAuth, token, client, normalizer, read-model, and safety tests. |
 | `apps/api/tests/market_data/*` | Schwab provider conformance tests using mocked HTTP and recorded fixtures. |
@@ -152,16 +152,13 @@
 - [ ] Run GREEN: `.venv/bin/ruff check src/market_trader/broker src/market_trader/api/broker.py src/market_trader/main.py tests/broker/test_schwab_oauth.py && .venv/bin/mypy src/market_trader/broker src/market_trader/api/broker.py src/market_trader/main.py tests/broker/test_schwab_oauth.py && .venv/bin/pytest tests/broker/test_schwab_oauth.py -q`.
 - [ ] Commit: `git add apps/api/src/market_trader/broker apps/api/src/market_trader/api/broker.py apps/api/src/market_trader/main.py apps/api/tests/broker/test_schwab_oauth.py && git commit -m "feat: add schwab oauth flow"`.
 
-### Task 5: Schwab HTTP Client And Read-Only Normalizers
+### Task 5: Schwab HTTP Client And Market Data Normalizers
 
 **Files:**
 - Create: `apps/api/src/market_trader/broker/schwab/client.py`
 - Create: `apps/api/src/market_trader/broker/schwab/normalizers.py`
 - Create: `apps/api/fixtures/schwab_read_only/quotes.json`
 - Create: `apps/api/fixtures/schwab_read_only/option-chain.json`
-- Create: `apps/api/fixtures/schwab_read_only/accounts.json`
-- Create: `apps/api/fixtures/schwab_read_only/positions.json`
-- Create: `apps/api/fixtures/schwab_read_only/transactions.json`
 - Create: `apps/api/tests/broker/test_schwab_client.py`
 - Create: `apps/api/tests/broker/test_schwab_normalizers.py`
 
@@ -171,7 +168,8 @@
   before request, 401 auth lock, 429 rate-limit state, 5xx provider-unavailable
   state, malformed JSON quarantine, timeout handling, and redacted diagnostics.
 - [ ] Write failing normalizer tests for redacted recorded fixtures covering
-  quotes, option chains, accounts, balances, positions, and transactions.
+  quotes and option chains. Do not add account, balance, position, transaction,
+  or reconciliation fixtures until the Accounts and Trading app is approved.
 - [ ] Run RED: `.venv/bin/pytest tests/broker/test_schwab_client.py tests/broker/test_schwab_normalizers.py -q`.
 - [ ] Implement a small `httpx` client wrapper and pure normalizers. Do not
   include order endpoints in code, fixtures, type names, or tests.
@@ -196,28 +194,26 @@
 - [ ] Run GREEN: `.venv/bin/ruff check src/market_trader/broker src/market_trader/market_data/providers.py tests/market_data/test_schwab_provider_contracts.py && .venv/bin/mypy src/market_trader/broker src/market_trader/market_data/providers.py tests/market_data/test_schwab_provider_contracts.py && .venv/bin/pytest tests/market_data/test_schwab_provider_contracts.py -q`.
 - [ ] Commit: `git add apps/api/src/market_trader/broker/schwab apps/api/src/market_trader/market_data/providers.py apps/api/tests/market_data/test_schwab_provider_contracts.py && git commit -m "feat: add schwab market data provider"`.
 
-### Task 7: Account Read Models And Reconciliation
+### Task 7: Market Data Status Read Models
 
 **Files:**
 - Create: `apps/api/src/market_trader/broker/read_models.py`
-- Create: `apps/api/src/market_trader/broker/reconciliation.py`
 - Modify: `apps/api/src/market_trader/api/broker.py`
 - Modify: `apps/api/src/market_trader/system_state/service.py`
 - Create: `apps/api/tests/broker/test_broker_read_models.py`
-- Create: `apps/api/tests/broker/test_broker_reconciliation.py`
 
 **Steps:**
 
-- [ ] Write failing tests for account fingerprint verification, balances,
-  positions, transactions, reconciliation summaries, account mismatch blocking,
-  unavailable states, stale states, and no paper-position mutation.
-- [ ] Run RED: `.venv/bin/pytest tests/broker/test_broker_read_models.py tests/broker/test_broker_reconciliation.py -q`.
-- [ ] Implement read models and reconciliation service using normalized Schwab
-  account observations and local paper state.
-- [ ] Add readiness components for Schwab auth, account identity, market data,
-  account data, rate limits, and reconciliation.
-- [ ] Run GREEN: `.venv/bin/ruff check src/market_trader/broker src/market_trader/api/broker.py src/market_trader/system_state tests/broker/test_broker_read_models.py tests/broker/test_broker_reconciliation.py && .venv/bin/mypy src/market_trader/broker src/market_trader/api/broker.py src/market_trader/system_state tests/broker/test_broker_read_models.py tests/broker/test_broker_reconciliation.py && .venv/bin/pytest tests/broker/test_broker_read_models.py tests/broker/test_broker_reconciliation.py -q`.
-- [ ] Commit: `git add apps/api/src/market_trader/broker apps/api/src/market_trader/api/broker.py apps/api/src/market_trader/system_state apps/api/tests/broker && git commit -m "feat: expose schwab account read models"`.
+- [ ] Write failing tests for market-data app configuration state, OAuth
+  connection state, token freshness, last market-data refresh, rate-limit state,
+  provider unavailable state, and stale states.
+- [ ] Run RED: `.venv/bin/pytest tests/broker/test_broker_read_models.py -q`.
+- [ ] Implement read models using Schwab token metadata and normalized
+  market-data provider state.
+- [ ] Add readiness components for Schwab auth, market data, stale data, rate
+  limits, and provider availability.
+- [ ] Run GREEN: `.venv/bin/ruff check src/market_trader/broker src/market_trader/api/broker.py src/market_trader/system_state tests/broker/test_broker_read_models.py && .venv/bin/mypy src/market_trader/broker src/market_trader/api/broker.py src/market_trader/system_state tests/broker/test_broker_read_models.py && .venv/bin/pytest tests/broker/test_broker_read_models.py -q`.
+- [ ] Commit: `git add apps/api/src/market_trader/broker apps/api/src/market_trader/api/broker.py apps/api/src/market_trader/system_state apps/api/tests/broker/test_broker_read_models.py && git commit -m "feat: expose schwab market data status"`.
 
 ### Task 8: Operations UI
 
@@ -233,9 +229,9 @@
 **Steps:**
 
 - [ ] Write failing tests for broker status rendering, configured/unconfigured
-  states, connected/expired/revoked states, account fingerprint display,
-  freshness timestamps, reconciliation warnings, reauthenticate action, revoke
-  action, and absence of order/live controls.
+  states, connected/expired/revoked states, market-data freshness timestamps,
+  rate-limit/provider warning states, reauthenticate action, revoke action, and
+  absence of account, order, and live controls.
 - [ ] Run RED: `npm test -- BrokerStatusPanel OperationsPanel`.
 - [ ] Implement API helpers and UI using existing operations styling. Keep the
   panel dense and operational, not a marketing flow.
@@ -254,8 +250,9 @@
 
 - [ ] Add offline verification to `verify-foundation.sh` proving the app starts
   without Schwab credentials and deterministic fixtures still validate.
-- [ ] Document local OAuth setup, reauth, revoke, account mismatch recovery,
-  rate-limit handling, fixture fallback, and explicit non-capabilities.
+- [ ] Document local OAuth setup, reauth, revoke, rate-limit handling, fixture
+  fallback, pending Accounts and Trading approval, and explicit
+  non-capabilities.
 - [ ] Run backend verification:
   `.venv/bin/ruff check src tests scripts && .venv/bin/mypy src tests scripts && .venv/bin/pytest -q && .venv/bin/alembic upgrade head`.
 - [ ] Run frontend verification:
